@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArchiveRestore, BarChart3, Bookmark, Columns3, Download, GitMerge, Pencil, Plus, Search, Sigma, Trash2, X } from "lucide-react";
+import { ArchiveRestore, BarChart3, Bookmark, Columns3, Download, GitMerge, Pencil, Plus, Search, Sigma, Trash2, Upload, X } from "lucide-react";
 import type { SortingState } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../ui/components/ui/dropdown-menu";
-import { api } from "./api";
+import { api, type ImportResult, type ImportTotals } from "./api";
 import { useToast } from "./App";
 import { t } from "./i18n";
 import { Button } from "../ui/primitives/Button";
@@ -35,6 +35,32 @@ import { activeFields } from "../ui/record-core/options";
 /* ObjectView — the list surface: view bar (search · filter chip · count · view switch ·
    New) + table or kanban. GLANCE → ZOOM → ACT: status visible per row, one click to
    the record, edits in place. */
+
+/* Minimal RFC-4180-ish CSV: quoted fields may hold commas, newlines and ""
+   escapes; \n and \r\n both split rows; all-empty lines are dropped. */
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let cell = "";
+  let inQ = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (inQ) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { cell += '"'; i++; }
+        else inQ = false;
+      } else cell += c;
+    } else if (c === '"') inQ = true;
+    else if (c === ",") { row.push(cell); cell = ""; }
+    else if (c === "\n" || c === "\r") {
+      if (c === "\r" && text[i + 1] === "\n") i++;
+      row.push(cell); cell = "";
+      rows.push(row); row = [];
+    } else cell += c;
+  }
+  if (cell !== "" || row.length) { row.push(cell); rows.push(row); }
+  return rows.filter((r) => r.some((v) => v.trim() !== ""));
+}
 
 export function ObjectView({
   config,
@@ -115,6 +141,7 @@ export function ObjectView({
   const [bulkEdit, setBulkEdit] = React.useState<{ field: string; value: string; running: boolean; done: number } | null>(null);
   const bulkCancel = React.useRef(false);
   const [creating, setCreating] = React.useState(false);
+  const [importOpen, setImportOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<Record<string, string>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
@@ -566,6 +593,11 @@ export function ObjectView({
         )}
         <Button size="md" variant="ghost" icon={<ArchiveRestore size={14} />} data-testid="trash-open" onClick={openTrash} aria-label="Open trash" />
         {canCreate && (
+        <Button size="md" variant="ghost" icon={<Upload size={14} />} data-testid="import-open" onClick={() => setImportOpen(true)}>
+          {t("import.open")}
+        </Button>
+        )}
+        {canCreate && (
         <Button variant="primary" size="md" icon={<Plus size={14} />} data-testid="new-record" onClick={() => setCreating(true)}>
           New {config.labelOne.toLowerCase()}
         </Button>
@@ -641,6 +673,16 @@ export function ObjectView({
           onSortChange={setSort}
           selection={selection}
           onSelectionChange={setSelection}
+        />
+      )}
+
+      {importOpen && (
+        <ImportDialog
+          config={config}
+          onClose={(changed) => {
+            setImportOpen(false);
+            if (changed) load();
+          }}
         />
       )}
 
@@ -904,5 +946,251 @@ export function ObjectView({
         </div>
       </Dialog>
     </div>
+  );
+}
+
+/* Import wizard — paste/pick a CSV, map columns to fields, preview the first
+   rows against the server's validators, then run in chunks of 200 with a
+   cancel between chunks (the bulk-edit pattern). Totals and failed rows
+   accumulate across ALL chunks; failed rows download as CSV with a reason. */
+function ImportDialog({ config, onClose }: { config: ObjectConfig; onClose: (changed: boolean) => void }) {
+  const toast = useToast();
+  const fields = activeFields(config.fields);
+  const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
+  const [step, setStep] = React.useState<"input" | "map" | "preview" | "run" | "done">("input");
+  const [text, setText] = React.useState("");
+  const [headers, setHeaders] = React.useState<string[]>([]);
+  const [dataRows, setDataRows] = React.useState<string[][]>([]);
+  const [mapping, setMapping] = React.useState<string[]>([]); // per CSV column: field key or "" (skip)
+  const [previewRes, setPreviewRes] = React.useState<ImportResult[] | null>(null);
+  const [progress, setProgress] = React.useState(0);
+  const [totals, setTotals] = React.useState<ImportTotals>({ created: 0, restored: 0, skipped: 0, failed: 0 });
+  const [failedRows, setFailedRows] = React.useState<{ cells: string[]; reason: string }[]>([]);
+  const cancelRef = React.useRef(false);
+  const changedRef = React.useRef(false);
+
+  const parseInput = () => {
+    const rows = parseCsv(text);
+    if (rows.length < 2) {
+      toast("Need a header row plus at least one data row");
+      return;
+    }
+    setHeaders(rows[0]);
+    setDataRows(rows.slice(1));
+    setMapping(
+      rows[0].map((h) => {
+        const n = h.trim().toLowerCase();
+        const f = fields.find((x) => x.key.toLowerCase() === n || x.label.toLowerCase() === n);
+        return f?.key ?? "";
+      }),
+    );
+    setStep("map");
+  };
+
+  const mappedRow = React.useCallback(
+    (cells: string[]) => {
+      const o: Record<string, unknown> = {};
+      mapping.forEach((fk, i) => {
+        if (fk) o[fk] = cells[i] ?? "";
+      });
+      return o;
+    },
+    [mapping],
+  );
+  const primaryMapped = mapping.includes(primary.key);
+
+  const toPreview = () => {
+    api
+      .importRows(config.key, dataRows.slice(0, 5).map(mappedRow), true)
+      .then((r) => {
+        setPreviewRes(r.results);
+        setStep("preview");
+      })
+      .catch((e) => toast(e.message));
+  };
+
+  const run = async () => {
+    setStep("run");
+    cancelRef.current = false;
+    // totals + failed rows accumulate across EVERY chunk — the summary is the
+    // whole file, never just the last batch
+    const agg: ImportTotals = { created: 0, restored: 0, skipped: 0, failed: 0 };
+    const fails: { cells: string[]; reason: string }[] = [];
+    for (let start = 0; start < dataRows.length; start += 200) {
+      if (cancelRef.current) break;
+      const chunk = dataRows.slice(start, start + 200);
+      try {
+        const r = await api.importRows(config.key, chunk.map(mappedRow));
+        agg.created += r.totals.created;
+        agg.restored += r.totals.restored;
+        agg.skipped += r.totals.skipped;
+        agg.failed += r.totals.failed;
+        for (const res of r.results) {
+          if (res.verdict === "failed") fails.push({ cells: chunk[res.index], reason: res.reason ?? "" });
+        }
+        if (r.totals.created + r.totals.restored > 0) changedRef.current = true;
+        setProgress(Math.min(start + 200, dataRows.length));
+        setTotals({ ...agg });
+      } catch (e) {
+        toast(`Import stopped at row ${start + 1}: ${(e as Error).message}`);
+        break;
+      }
+    }
+    setFailedRows(fails);
+    setTotals({ ...agg });
+    setStep("done");
+  };
+
+  const downloadFailed = () => {
+    const esc = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+    const csv = [
+      [...headers, "reason"].map(esc).join(","),
+      ...failedRows.map((f) => [...headers.map((_, i) => f.cells[i]), f.reason].map(esc).join(",")),
+    ].join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `${config.key}-import-failed.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  };
+
+  const close = () => {
+    cancelRef.current = true;
+    onClose(changedRef.current);
+  };
+  const verdictTone = (v: ImportResult["verdict"]) =>
+    v === "failed" ? "danger" : v === "skipped" ? undefined : "accent";
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(v) => { if (!v) close(); }}
+      title={t("import.title", { label: config.label })}
+      footer={
+        step === "input" ? (
+          <>
+            <Button onClick={close}>{t("import.cancel")}</Button>
+            <Button variant="primary" data-testid="import-next" disabled={!text.trim()} onClick={parseInput}>
+              {t("import.next")}
+            </Button>
+          </>
+        ) : step === "map" ? (
+          <>
+            <Button data-testid="import-back" onClick={() => setStep("input")}>{t("import.back")}</Button>
+            <Button variant="primary" data-testid="import-next" disabled={!primaryMapped} onClick={toPreview}>
+              {t("import.next")}
+            </Button>
+          </>
+        ) : step === "preview" ? (
+          <>
+            <Button data-testid="import-back" onClick={() => setStep("map")}>{t("import.back")}</Button>
+            <Button variant="primary" data-testid="import-run" onClick={run}>
+              {t("import.run", { n: dataRows.length })}
+            </Button>
+          </>
+        ) : step === "run" ? (
+          <Button data-testid="import-cancel" onClick={() => { cancelRef.current = true; }}>
+            {t("import.cancel")}
+          </Button>
+        ) : (
+          <Button variant="primary" data-testid="import-close" onClick={close}>
+            {t("import.close")}
+          </Button>
+        )
+      }
+    >
+      <div style={{ display: "grid", gap: 12, minWidth: 440 }} data-testid="import-dialog">
+        {step === "input" && (
+          <>
+            <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <span className="nxMicro">Paste CSV (first row = headers)</span>
+              <textarea
+                className="nxInput"
+                data-testid="import-text"
+                rows={8}
+                placeholder={"name,email\nAda Example,ada@example.test"}
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                style={{ font: "var(--nx-text-meta)", fontFamily: "ui-monospace, monospace", resize: "vertical", minHeight: 120 }}
+              />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, font: "var(--nx-text-meta)", color: "var(--nx-fg-muted)" }}>
+              or pick a file:
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                data-testid="import-file"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) f.text().then(setText).catch(() => toast("Could not read that file"));
+                }}
+              />
+            </label>
+          </>
+        )}
+
+        {step === "map" && (
+          <div style={{ display: "grid", gap: 8 }}>
+            {headers.map((h, i) => (
+              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, alignItems: "center" }}>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <code>{h || `(column ${i + 1})`}</code>
+                </span>
+                <select
+                  className="nxInput"
+                  data-testid={`import-map-${i}`}
+                  value={mapping[i] ?? ""}
+                  onChange={(e) => setMapping((m) => m.map((v, j) => (j === i ? e.target.value : v)))}
+                >
+                  <option value="">Skip</option>
+                  {fields.map((f) => (
+                    <option key={f.key} value={f.key}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+            {!primaryMapped && (
+              <span style={{ font: "var(--nx-text-meta)", color: "var(--nx-warn, var(--nx-fg-muted))" }}>
+                Map a column to {primary.label} to continue.
+              </span>
+            )}
+          </div>
+        )}
+
+        {step === "preview" && (
+          <div data-testid="import-preview" style={{ display: "grid", gap: 6 }}>
+            <span className="nxMicro">First {Math.min(5, dataRows.length)} of {dataRows.length} rows</span>
+            {(previewRes ?? []).map((r) => (
+              <div key={r.index} style={{ display: "flex", gap: 10, alignItems: "center", padding: "5px 8px", borderRadius: "var(--nx-radius-s)", background: "var(--nx-bg-raised)" }}>
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {String(mappedRow(dataRows[r.index])[primary.key] ?? "—")}
+                </span>
+                <Badge tone={verdictTone(r.verdict)}>{r.verdict}</Badge>
+                {r.reason && <span style={{ font: "var(--nx-text-meta)", color: "var(--nx-fg-faint)" }}>{r.reason}</span>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {step === "run" && (
+          <div style={{ padding: 12, textAlign: "center" }} data-testid="import-progress">
+            Importing… {progress} / {dataRows.length}
+          </div>
+        )}
+
+        {step === "done" && (
+          <div style={{ display: "grid", gap: 10 }}>
+            <div data-testid="import-summary" style={{ fontWeight: 600 }}>
+              {t("import.summary", { ...totals })}
+            </div>
+            {failedRows.length > 0 && (
+              <Button icon={<Download size={13} />} data-testid="import-failed-csv" onClick={downloadFailed}>
+                {t("import.failedCsv")}
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </Dialog>
   );
 }

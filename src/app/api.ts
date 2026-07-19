@@ -16,7 +16,7 @@ export interface AppConfig {
   /* server-set: seeded fictional rows are present (drives the Demo badge) */
   demo?: boolean;
   /* server-set: feature flags (one env flag gates nav + page + API) */
-  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean };
+  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean };
   objects: ObjectConfig[];
 }
 
@@ -117,4 +117,22 @@ export const api = {
   state: () => j<Record<string, unknown>>("/api/state"),
   setState: (key: string, value: unknown) =>
     j<{ key: string }>("/api/state", { method: "POST", body: JSON.stringify({ key, value }) }),
+  me: () =>
+    j<{ enabled: boolean; accounts?: boolean; user: string | null; role?: "owner" | "admin" | "member" | "viewer" }>("/api/auth/me"),
+  importRows: (obj: string, rows: Record<string, unknown>[], preview = false) =>
+    j<{ results: ImportResult[]; totals: ImportTotals }>(`/api/objects/${obj}/import`, {
+      method: "POST", body: JSON.stringify({ rows, preview }),
+    }),
+  apiKeys: () => j<{ keys: ApiKeyMeta[] }>("/api/apikeys").then((r) => r.keys),
+  apiKeyCreate: (name: string, role: string) =>
+    j<ApiKeyMeta & { secret: string }>("/api/apikeys", { method: "POST", body: JSON.stringify({ name, role }) }),
+  apiKeyRevoke: (id: string) =>
+    j<{ ok: boolean }>(`/api/apikeys/${id}/revoke`, { method: "POST", body: "{}" }),
 };
+
+export interface ImportResult { index: number; verdict: "created" | "restored" | "skipped" | "failed"; id?: string; reason?: string }
+export interface ImportTotals { created: number; restored: number; skipped: number; failed: number }
+export interface ApiKeyMeta {
+  id: string; name: string; role: string; prefix: string; last4: string;
+  createdAt: string; revokedAt: string | null;
+}
