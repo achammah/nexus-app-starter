@@ -10,6 +10,10 @@ const schema = z.object({
   CONFIG_PATH: z.string().optional(),
   // Auth seam (both or neither): "email:password,email2:pass2" + a cookie-signing secret
   AUTH_USERS: z.string().optional(),
+  // Full accounts mode: self-serve signup + verification/reset/deletion flows
+  // (needs APP_SECRET; mail goes to the dev outbox until SMTP_URL is wired)
+  AUTH_MODE: z.enum(["accounts"]).optional(),
+  SMTP_URL: z.string().optional(),
   APP_SECRET: z.string().min(16, "APP_SECRET must be ≥16 chars").optional(),
   // Nexus platform (server-side only — never reaches the browser)
   NEXUS_API_KEY: z.string().startsWith("nxs_").optional(),
@@ -26,12 +30,13 @@ if (!parsed.success) {
 }
 export const env = parsed.data;
 
-if (env.AUTH_USERS && !env.APP_SECRET) {
-  console.error("[env] AUTH_USERS is set but APP_SECRET is missing — sessions cannot be signed. Set both or neither.");
+if ((env.AUTH_USERS || env.AUTH_MODE) && !env.APP_SECRET) {
+  console.error("[env] AUTH_USERS/AUTH_MODE is set but APP_SECRET is missing — sessions cannot be signed. Set both or neither.");
   process.exit(1);
 }
 
-export const AUTH_ENABLED = Boolean(env.AUTH_USERS && env.APP_SECRET);
+export const ACCOUNTS_ENABLED = Boolean(env.AUTH_MODE === "accounts" && env.APP_SECRET);
+export const AUTH_ENABLED = Boolean((env.AUTH_USERS || ACCOUNTS_ENABLED) && env.APP_SECRET);
 export const USERS = new Map(
   (env.AUTH_USERS ?? "")
     .split(",")

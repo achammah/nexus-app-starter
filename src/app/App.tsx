@@ -54,8 +54,8 @@ export function App() {
   const [counts, setCounts] = React.useState<Record<string, number>>({});
   const [err, setErr] = React.useState<string | null>(null);
   const [toasts, setToasts] = React.useState<Toast[]>([]);
-  // auth gate: null = probing · {enabled,user} = known
-  const [auth, setAuth] = React.useState<{ enabled: boolean; user: string | null } | null>(null);
+  // auth gate: null = probing · {enabled,accounts,user} = known
+  const [auth, setAuth] = React.useState<{ enabled: boolean; accounts?: boolean; user: string | null; verified?: boolean } | null>(null);
   const route = useHashRoute();
 
   const probeAuth = React.useCallback(() => {
@@ -71,6 +71,30 @@ export function App() {
     setToasts((t) => [...t, { id, text }]);
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2600);
   }, []);
+
+  // mail deep links that can arrive while SIGNED IN: email verification + account
+  // deletion — handled on mount AND on hash changes (a link click in an open app)
+  const handledToken = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    const handle = () => {
+      const verify = window.location.hash.match(/#\/verify\?token=([^&]+)/);
+      const del = window.location.hash.match(/#\/delete\?token=([^&]+)/);
+      const hit = verify ? (["/api/auth/verify", verify[1], "Email verified"] as const)
+        : del ? (["/api/auth/delete-confirm", del[1], "Account deleted"] as const) : null;
+      if (!hit || handledToken.current === hit[1]) return;
+      handledToken.current = hit[1];
+      fetch(hit[0], { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: hit[1] }) })
+        .then((r) => {
+          toast(r.ok ? hit[2] : "That link is invalid or expired");
+          window.location.hash = "#/";
+          probeAuth();
+        })
+        .catch(() => toast("Network error"));
+    };
+    handle();
+    window.addEventListener("hashchange", handle);
+    return () => window.removeEventListener("hashchange", handle);
+  }, [toast, probeAuth]);
 
   // Stable identity (functional update + no-op when unchanged) — an inline arrow here
   // recreates the child's load callback every render and spins a refetch/re-render
@@ -88,7 +112,7 @@ export function App() {
         document.title = c.app.name;
         const skin = resolveSkin(c);
         if (skin) applySkin(skin);
-        if (!route.object && !route.page) {
+        if (!route.object && !route.page && !/^#\/(reset|verify|delete)\?/.test(window.location.hash)) {
           route.go(c.objects[0] ? `#/o/${c.objects[0].key}` : customPages[0] ? `#/p/${customPages[0].key}` : "#/");
         }
         c.objects.forEach((o) => api.list(o.key).then((rows) => setCounts((m) => ({ ...m, [o.key]: rows.length }))).catch(() => {}));
@@ -104,7 +128,7 @@ export function App() {
   };
 
   if (auth?.enabled && !auth.user && config)
-    return <Login appName={config.app.name} onDone={probeAuth} />;
+    return <Login appName={config.app.name} accounts={auth.accounts} onDone={probeAuth} />;
   if (err)
     return (
       <div style={{ display: "grid", placeItems: "center", height: "100vh", color: "var(--nx-danger)" }}>

@@ -24,6 +24,65 @@ export class Store {
     return this.revs[objKey] ?? 0;
   }
 
+  /* ---- accounts (AUTH_MODE=accounts): users · one-time tokens · dev outbox ---- */
+
+  userAdd({ email, name, hash }) {
+    const u = {
+      id: `u_${++this.n}`, email: email.toLowerCase(), name, hash,
+      verified: false, pwv: 0, createdAt: new Date().toISOString(), deletedAt: null,
+    };
+    (this.users ??= []).push(u);
+    return u;
+  }
+
+  userByEmail(email) {
+    return (this.users ?? []).find((u) => u.email === String(email ?? "").toLowerCase() && !u.deletedAt) ?? null;
+  }
+
+  userVerify(email) {
+    const u = this.userByEmail(email);
+    if (u) u.verified = true;
+    return u;
+  }
+
+  /* password change bumps pwv — outstanding session cookies die with it */
+  userSetHash(email, hash) {
+    const u = this.userByEmail(email);
+    if (u) { u.hash = hash; u.pwv += 1; }
+    return u;
+  }
+
+  userSoftDelete(email) {
+    const u = this.userByEmail(email);
+    if (u) { u.deletedAt = new Date().toISOString(); u.email = `deleted:${Date.now()}:${u.email}`; }
+    return u;
+  }
+
+  tokenIssue({ kind, email, ttlMinutes, token }) {
+    const t = { token, kind, email: email.toLowerCase(), expires: Date.now() + ttlMinutes * 60_000 };
+    (this.tokens ??= []).push(t);
+    return t;
+  }
+
+  /* single-use: a successful take removes the token */
+  tokenTake(token, kind) {
+    const list = this.tokens ?? [];
+    const i = list.findIndex((t) => t.token === token && t.kind === kind);
+    if (i === -1) return null;
+    const [t] = list.splice(i, 1);
+    return t.expires > Date.now() ? t : null;
+  }
+
+  outboxAdd({ to, subject, text, kind }) {
+    const m = { id: `m_${++this.n}`, to: to.toLowerCase(), subject, text, kind, ts: new Date().toISOString() };
+    (this.outbox ??= []).push(m);
+    return m;
+  }
+
+  outboxList() {
+    return [...(this.outbox ?? [])].reverse();
+  }
+
   _bump(objKey) {
     this.revs[objKey] = (this.revs[objKey] ?? 0) + 1;
   }

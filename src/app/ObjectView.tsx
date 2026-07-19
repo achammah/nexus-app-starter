@@ -125,10 +125,15 @@ export function ObjectView({
     [rows, selFilters],
   );
 
+  // only the LATEST load's response may commit — concurrent loads (user action +
+  // rev poll) can resolve out of order and a stale response would win the state
+  const loadSeq = React.useRef(0);
   const load = React.useCallback(() => {
+    const seq = ++loadSeq.current;
     api
       .list(config.key, q ? { q } : {})
       .then((r) => {
+        if (seq !== loadSeq.current) return;
         setRows(r);
         onCountChange(config.key, r.length);
       })

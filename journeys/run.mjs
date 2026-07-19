@@ -423,6 +423,108 @@ const journeys = [
     },
   },
   {
+    name: "accounts-signup-verify", feature: "Accounts (signup + email verification)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4660", AUTH_MODE: "accounts", APP_SECRET: "journey-secret-16-chars-plus" },
+      });
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch("http://localhost:4660/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto("http://localhost:4660/");
+        await p2.waitForSelector('[data-testid="login-card"]');
+        await p2.click('[data-testid="to-signup"]');
+        await p2.fill('[data-testid="signup-name"]', "Ada Fixture");
+        await p2.fill('[data-testid="login-email"]', "ada@fixture.example");
+        await p2.fill('[data-testid="login-password"]', "correct-horse-9");
+        await p2.click('[data-testid="login-submit"]');
+        await p2.waitForSelector('[data-testid="nav"]');
+        assert(true, "signup creates the account and enters the app");
+        // the verification mail lands in the dev outbox; its deep link completes the flow
+        const mail = (await (await p2.request.get("http://localhost:4660/api/outbox")).json()).mail
+          .find((m) => m.kind === "verify" && m.to === "ada@fixture.example");
+        assert(!!mail, "verification mail is in the outbox");
+        const token = mail.text.match(/token=([A-Za-z0-9_-]+)/)[1];
+        // a mail link opens as a fresh tab (same cookies, fresh load)
+        const p3 = await ctx.newPage();
+        await p3.goto(`http://localhost:4660/#/verify?token=${token}`);
+        await p3.waitForFunction(() =>
+          [...document.querySelectorAll('[data-testid="toast"]')].some((t) => t.textContent?.includes("Email verified")),
+        );
+        const me = await (await p3.request.get("http://localhost:4660/api/auth/me")).json();
+        assert(me.verified === true, "the account is verified after following the mail link");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "reset-antienum-delete", feature: "Password reset (anti-enumeration) + delete-by-confirmation",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4670", AUTH_MODE: "accounts", APP_SECRET: "journey-secret-16-chars-plus" },
+      });
+      const B = "http://localhost:4670";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        // seed a user (request context keeps the session cookie)
+        await p2.request.post(B + "/api/auth/signup", { data: { email: "maya@fixture.example", name: "Maya", password: "first-pass-123" } });
+        // anti-enumeration: known + unknown addresses answer IDENTICALLY
+        const known = await p2.request.post(B + "/api/auth/forgot", { data: { email: "maya@fixture.example" } });
+        const ghost = await p2.request.post(B + "/api/auth/forgot", { data: { email: "ghost@fixture.example" } });
+        assert(known.status() === 200 && ghost.status() === 200
+          && JSON.stringify(await known.json()) === JSON.stringify(await ghost.json()),
+          "forgot-password answers identically for known and unknown addresses");
+        const mail = (await (await p2.request.get(B + "/api/outbox")).json()).mail;
+        assert(mail.some((m) => m.kind === "reset" && m.to === "maya@fixture.example"), "known address got a reset mail");
+        assert(mail.some((m) => m.kind === "reset-decoy" && m.to === "ghost@fixture.example"), "unknown address got a DECOY mail (timing parity)");
+        // complete the reset via the UI deep link — from a SIGNED-OUT browser
+        // (real flow: the person who forgot the password has no session)
+        const token = mail.find((m) => m.kind === "reset").text.match(/token=([A-Za-z0-9_-]+)/)[1];
+        const ctxReset = await page.context().browser().newContext();
+        const pr = await ctxReset.newPage();
+        await pr.goto(`${B}/#/reset?token=${token}`);
+        await pr.waitForSelector('[data-testid="login-password"]');
+        await pr.fill('[data-testid="login-password"]', "second-pass-456");
+        await pr.click('[data-testid="login-submit"]');
+        await pr.waitForSelector('[data-testid="login-note"]');
+        await ctxReset.close();
+        // old password dead, old SESSION dead (pwv bump), new password works
+        const oldTry = await p2.request.post(B + "/api/auth/login", { data: { email: "maya@fixture.example", password: "first-pass-123" } });
+        assert(oldTry.status() === 401, "old password is dead after reset");
+        const meAfter = await (await p2.request.get(B + "/api/auth/me")).json();
+        assert(meAfter.user === null, "pre-reset session cookie is invalidated (password-version bump)");
+        const newTry = await p2.request.post(B + "/api/auth/login", { data: { email: "maya@fixture.example", password: "second-pass-456" } });
+        assert(newTry.status() === 200, "new password signs in");
+        // deletion: request → mail token → confirm → account gone
+        await p2.request.post(B + "/api/auth/delete-request", { data: {} });
+        const delMail = (await (await p2.request.get(B + "/api/outbox")).json()).mail.find((m) => m.kind === "delete-confirm");
+        assert(!!delMail, "deletion asks for mail confirmation, never deletes on click");
+        const delToken = delMail.text.match(/token=([A-Za-z0-9_-]+)/)[1];
+        await p2.request.post(B + "/api/auth/delete-confirm", { data: { token: delToken } });
+        const ghostLogin = await p2.request.post(B + "/api/auth/login", { data: { email: "maya@fixture.example", password: "second-pass-456" } });
+        assert(ghostLogin.status() === 401, "deleted account cannot sign in");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
     name: "org-reskin", feature: "Skin system (org brand as data)",
     async run(page) {
       // default app carries the nexus skin

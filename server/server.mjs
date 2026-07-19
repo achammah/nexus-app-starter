@@ -54,6 +54,12 @@ async function api(req, res, url) {
     if (parts[1] === "config") return send(res, 200, { ...CONFIG, demo: store.demo });
     if (parts[1] === "healthz") return send(res, 200, { ok: true, version: VERSION, app: CONFIG.app.slug });
 
+    if (parts[1] === "outbox") {
+      // dev mail transport (server/email.mjs) — gone once SMTP_URL is set
+      if (env.SMTP_URL) return send(res, 404, { error: "outbox disabled (SMTP configured)" });
+      return send(res, 200, { mail: store.outboxList() });
+    }
+
     if (parts[1] === "state") {
       if (req.method === "GET") return send(res, 200, store.stateLatest());
       if (req.method === "POST") {
@@ -153,8 +159,8 @@ async function api(req, res, url) {
 
 async function handler(req, res) {
   const url = new URL(req.url, "http://x");
-  if (await handleAuth(req, res, url, readBody, send)) return;
-  if (!gate(req, url)) return send(res, 401, { error: "unauthorized" });
+  if (await handleAuth(req, res, url, readBody, send, store)) return;
+  if (!gate(req, url, store)) return send(res, 401, { error: "unauthorized" });
   if (url.pathname.startsWith("/api/")) return api(req, res, url);
 
   // static: dist/ with SPA fallback; placeholder when dist is missing
