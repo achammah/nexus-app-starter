@@ -1941,9 +1941,11 @@ const journeys = [
       assert(true, "palette 'New company' opens the create dialog");
       await page.keyboard.press("Escape");
       await page.waitForSelector('[role="dialog"]', { state: "detached", timeout: 6000 });
-      // record context: favorite toggle
-      await page.click('.nxRowLink:has-text("Brightline Analytics")');
-      await page.waitForSelector('[data-testid="peek-panel"]');
+      // record context: favorite toggle — on the FULL record page. Cmd/Ctrl+K over an
+      // OPEN panel now routes to the panel's actions page (covered by `panel-actions`),
+      // so the palette's record-context coverage lives here, where no panel can be open.
+      await page.goto(URLBASE + "/#/o/companies/r/co_1");
+      await page.waitForSelector('[data-testid="record-name"]');
       await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
       await page.waitForSelector('[data-testid="palette-act-fav"]');
       await page.click('[data-testid="palette-act-fav"]');
@@ -1953,7 +1955,6 @@ const journeys = [
       // unpin round trip via the record's own star (palette add is already proven)
       await page.click('[data-testid="fav-toggle"]');
       await page.waitForFunction(() => !document.querySelector('[data-testid="fav-shelf"]'));
-      await page.keyboard.press("Escape");
     },
   },
   {
@@ -3303,6 +3304,124 @@ const journeys = [
       } finally {
         proc.kill();
       }
+    },
+  },
+  // --- lane: panel-pages
+  {
+    name: "panel-search", feature: "Panel search page (slash)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="table-companies"] tbody tr');
+      const rowsBefore = await page.locator('[data-testid="table-companies"] tbody tr').count();
+      await page.keyboard.press("/");
+      await page.waitForSelector('[data-testid="panel-search-input"]');
+      assert(true, "slash opens the panel on its search page");
+      await page.keyboard.type("brightline");
+      await page.waitForSelector('[data-testid^="panel-search-hit-"]');
+      await page.waitForSelector(".panelHitType");
+      assert(true, "cross-object results carry type labels");
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("ArrowUp");
+      await page.keyboard.press("Enter");
+      await page.waitForSelector('[data-testid="record-name"]');
+      const crumbs = await page.textContent('[data-testid="peek-crumbs"]');
+      assert(/Search/.test(crumbs ?? "") && /Company/.test(crumbs ?? ""), `Enter pushes the record over search on ONE stack (${crumbs})`);
+      assert((await page.locator('[data-testid="table-companies"] tbody tr').count()) === rowsBefore, "the list behind never changed");
+      assert(!/\/r\//.test(page.url()), "no navigation — the record opened in the panel");
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[data-testid="panel-search-input"]');
+      const restored = await page.evaluate(() => document.querySelector('[data-testid="panel-search-input"]')?.value);
+      assert(restored === "brightline", `stepping back restores the query (${restored})`);
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => document.querySelector('[data-testid="panel-search-input"]')?.value === "");
+      assert(true, "Escape clears the text first");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector('[data-testid="peek-panel"]'));
+      assert(true, "Escape on the empty root closes the panel");
+    },
+  },
+  {
+    name: "panel-actions", feature: "Panel actions page (context actions)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector(".nxRowLink");
+      await page.click('.nxRowLink:has-text("Brightline Analytics")');
+      await page.waitForSelector('[data-testid="peek-panel"]');
+      // route 1: the panel-header button
+      await page.click('[data-testid="peek-actions"]');
+      await page.waitForSelector('[data-testid="panel-act-fav"]');
+      const crumbs1 = await page.textContent('[data-testid="peek-crumbs"]');
+      assert(/Company/.test(crumbs1 ?? "") && /Actions/.test(crumbs1 ?? ""), `actions page stacks over the record (${crumbs1})`);
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[data-testid="record-name"]');
+      // route 2: Cmd/Ctrl+K over the OPEN panel goes to panel actions, not the palette
+      await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+      await page.waitForSelector('[data-testid="panel-act-fav"]');
+      assert((await page.locator('[data-testid="palette-input"]').count()) === 0, "the palette yields to the panel's actions page");
+      await page.click('[data-testid="panel-act-fav"]');
+      await page.waitForSelector('[data-testid="fav-shelf"]');
+      assert(true, "running Favorite from the panel pins the record (shelf appears)");
+      await page.click('[data-testid="panel-act-search"]');
+      await page.waitForSelector('[data-testid="panel-search-input"]');
+      const crumbs2 = (await page.textContent('[data-testid="peek-crumbs"]')) ?? "";
+      assert(/Company/.test(crumbs2) && /Actions/.test(crumbs2) && /Search/.test(crumbs2), `Search records pushes a 3-deep stack (${crumbs2})`);
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[data-testid="panel-act-search"]');
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[data-testid="record-name"]');
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector('[data-testid="peek-panel"]'));
+      assert(true, "Escape ×3 walks search → actions → record → closed");
+      // hygiene: unpin via the record's own star
+      await page.click('.nxRowLink:has-text("Brightline Analytics")');
+      await page.waitForSelector('[data-testid="fav-toggle"]');
+      await page.click('[data-testid="fav-toggle"]');
+      await page.waitForFunction(() => !document.querySelector('[data-testid="fav-shelf"]'));
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector('[data-testid="peek-panel"]'));
+    },
+  },
+  {
+    name: "panel-slash-guard", feature: "Slash-key guard (grid + dialogs win)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="table-companies"] tbody tr');
+      // cell focus: "/" seeds the cell editor (type-to-edit) — never the panel
+      await page.focus('[data-testid="table-companies"]');
+      await page.keyboard.press("ArrowDown");
+      await page.waitForSelector("tr[data-row-focus]");
+      await page.keyboard.press("Enter");
+      await page.waitForSelector("td[data-cell-focus]");
+      await page.keyboard.press("ArrowRight"); // domain — an editable text column
+      await page.keyboard.press("/");
+      await page.waitForSelector("td[data-cell-focus] input, td input.nxCellEdit");
+      const seeded = await page.inputValue("td[data-cell-focus] input").catch(() => page.inputValue("td input.nxCellEdit"));
+      assert(seeded === "/", `slash seeds the cell editor, not the panel (${seeded})`);
+      assert((await page.locator('[data-testid="peek-panel"]').count()) === 0, "no panel while the grid owns the key");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector("td[data-cell-focus] input"));
+      await page.keyboard.press("Escape"); // cell → row
+      await page.waitForSelector("tr[data-row-focus]");
+      // row focus is navigation, not typing: "/" DOES open search (deliberate, locked here)
+      await page.keyboard.press("/");
+      await page.waitForSelector('[data-testid="panel-search-input"]');
+      assert(true, "row focus does not block the search page (deliberate)");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector('[data-testid="peek-panel"]'));
+      // open dialog: "/" stays in the dialog — no panel
+      await page.click('[data-testid="new-record"]');
+      await page.waitForSelector('[role="dialog"]');
+      await page.keyboard.press("/");
+      assert((await page.locator('[data-testid="peek-panel"]').count()) === 0, "no panel while a dialog is open");
+      assert((await page.locator('[role="dialog"]').count()) === 1, "the dialog stays put");
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[role="dialog"]', { state: "detached" });
+      // palette self-toggle: open + close via Cmd/K, no panel involved
+      await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+      await page.waitForSelector('[data-testid="palette-input"]');
+      await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+      await page.waitForSelector('[data-testid="palette-input"]', { state: "detached" });
+      assert((await page.locator('[data-testid="peek-panel"]').count()) === 0, "palette toggling stays palette-owned (no panel)");
     },
   },
 ];

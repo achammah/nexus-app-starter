@@ -45,6 +45,11 @@ const dicts = {
     "tasks.bucket.week": "This week",
     "tasks.bucket.later": "Later",
     "tasks.bucket.done": "Done",
+    "panel.search": "Search",
+    "panel.actions": "Actions",
+    "panel.searchRecords": "Search records",
+    "panel.searchPlaceholder": "Search records…",
+    "panel.empty": "No matches.",
   },
 } as const;
 
