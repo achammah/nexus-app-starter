@@ -193,13 +193,13 @@ async function api(req, res, url, apiKey = null) {
             const invalid = store.validate(objKey, body, zombie.id);
             if (invalid) return send(res, 400, { error: invalid });
             store.restoreRow(objKey, zombie.id);
-            const row = store.patch(objKey, zombie.id, body);
+            const row = store.project(objKey, store.patch(objKey, zombie.id, body));
             emitEvent(store, `${objKey}.restored`, { row });
             return send(res, 200, { ...row, _resurrected: true });
           }
           const invalid = store.validate(objKey, body);
           if (invalid) return send(res, 400, { error: invalid });
-          const created = store.create(objKey, body, { createdBy: session?.email, teamId: teamCtx?.id });
+          const created = store.project(objKey, store.create(objKey, body, { createdBy: session?.email, teamId: teamCtx?.id }));
           emitEvent(store, `${objKey}.created`, { row: created });
           return send(res, 201, created);
         }
@@ -397,14 +397,14 @@ async function api(req, res, url, apiKey = null) {
         const namePrimary = cfg.fields.find((x) => x.primary) ?? cfg.fields[0];
         const via = `${f.primitive.label ?? f.primitive.kind} (mock)`;
         const mockValue = `(mock) ${f.label} for ${row[namePrimary.key] ?? id} — replace the /enrich mock in server/server.mjs with a real ${f.primitive.kind} call.`;
-        return send(res, 200, store.enrich(objKey, id, field, mockValue, via));
+        return send(res, 200, store.project(objKey, store.enrich(objKey, id, field, mockValue, via)));
       }
       if (parts[4] === "restore" && req.method === "POST") {
         if (deny("restore", { own })) return;
         const row = store.restoreRow(objKey, id);
         if (!row) return send(res, 404, { error: "not in trash" });
-        emitEvent(store, `${objKey}.restored`, { row });
-        return send(res, 200, row);
+        emitEvent(store, `${objKey}.restored`, { row: store.project(objKey, row) });
+        return send(res, 200, store.project(objKey, row));
       }
       if (parts[4] === "destroy" && req.method === "DELETE") {
         if (deny("destroy", { own })) return;
@@ -415,7 +415,7 @@ async function api(req, res, url, apiKey = null) {
       }
       if (req.method === "GET") {
         if (deny("view")) return;
-        const row = store.get(objKey, id);
+        const row = store.getView(objKey, id);
         return row ? send(res, 200, row) : send(res, 404, { error: "not found" });
       }
       if (req.method === "PATCH") {
@@ -423,7 +423,7 @@ async function api(req, res, url, apiKey = null) {
         const patch = await readBody(req);
         const invalid = store.validate(objKey, patch, id);
         if (invalid) return send(res, 400, { error: invalid });
-        const row = store.patch(objKey, id, patch);
+        const row = store.project(objKey, store.patch(objKey, id, patch));
         if (row) {
           emitEvent(store, `${objKey}.updated`, { row, patch });
           notifyWatchers(objKey, id, `${Object.keys(patch).join(", ")} updated`, session);
@@ -439,7 +439,9 @@ async function api(req, res, url, apiKey = null) {
     }
     return send(res, 404, { error: "no route" });
   } catch (e) {
-    return send(res, 500, { error: String(e && e.message ? e.message : e) });
+    // store write ops throw {status:400} for relation-normalization errors
+    // (ambiguous label, unknown target) — surface them as client errors
+    return send(res, e && e.status ? e.status : 500, { error: String(e && e.message ? e.message : e) });
   }
 }
 

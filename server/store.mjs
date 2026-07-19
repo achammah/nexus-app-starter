@@ -48,6 +48,171 @@ export class Store {
     this.n = 1000;
     // seeded fictional rows present → surfaces as a "Demo data" badge in the UI
     this.demo = Object.values(this.rows).some((rows) => rows.length > 0);
+    this._normalizeAllRelations();
+  }
+
+  /* ---- relation identity: rows STORE target ids; every read PROJECTS labels ----
+     Wire shapes: single = "re_1001" · multiple = ["ce_1001", …] · polymorphic =
+     { object, id } (poly refs carry their object key — id prefixes can collide
+     across objects). Writes accept an id, an {object?, id} ref, or a primary-label
+     string that resolves uniquely; an ambiguous label errors (400), an unmatched
+     label stays verbatim (a dangling label — today's behavior). Reads return the
+     projected LABEL in the field itself, so the API keeps its historical label
+     semantics, plus a `_refs` decoration carrying the raw ids for identity-aware
+     UI (pickers, disambiguation, integrity checks). */
+
+  relFields(objKey) {
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    return (cfg?.fields ?? []).filter((f) => f.type === "relation");
+  }
+
+  relTargets(f) {
+    return Array.isArray(f.relationTargets) && f.relationTargets.length ? f.relationTargets : f.relation ? [f.relation] : [];
+  }
+
+  /* a target row's display label = its primary field, shaped-aware (fullName → joined) */
+  relLabel(targetKey, row) {
+    const cfg = this.config.objects.find((o) => o.key === targetKey);
+    if (!cfg || !row) return "";
+    const primary = cfg.fields.find((x) => x.primary) ?? cfg.fields[0];
+    const s = flatVal(row[primary.key], primary.type);
+    return s === "—" ? "" : s;
+  }
+
+  /* per-call id→row maps over the targets of the given relation fields — built
+     once per projection, never persisted. Includes trashed rows: a trashed
+     target keeps projecting its label (restore heals silently). */
+  _relMaps(rels) {
+    const maps = {};
+    for (const f of rels) for (const t of this.relTargets(f)) maps[t] ??= new Map((this.rows[t] ?? []).map((r) => [r.id, r]));
+    return maps;
+  }
+
+  _refLabel(f, ref, maps) {
+    const isObj = typeof ref === "object" && ref !== null;
+    const tKey = isObj ? ref.object : this.relTargets(f)[0];
+    const hit = maps[tKey]?.get(isObj ? ref.id : ref);
+    if (hit) return this.relLabel(tKey, hit);
+    return isObj ? "" : String(ref ?? ""); // unmatched string = dangling label, verbatim
+  }
+
+  _projectRow(objKey, row, rels, maps) {
+    const out = { ...row };
+    const refs = {};
+    for (const f of rels) {
+      const v = row[f.key];
+      if (v === null || v === undefined || v === "") continue;
+      if (f.multiple) {
+        const list = Array.isArray(v) ? v : [v];
+        refs[f.key] = list.map((x) => (typeof x === "object" && x !== null ? { ...x } : x));
+        out[f.key] = list.map((x) => this._refLabel(f, x, maps));
+      } else if (typeof v === "object") {
+        refs[f.key] = { ...v };
+        out[f.key] = this._refLabel(f, v, maps);
+      } else {
+        if (this.relTargets(f).some((t) => maps[t]?.has(v))) refs[f.key] = v;
+        out[f.key] = this._refLabel(f, v, maps); // dangling labels pass through verbatim
+      }
+    }
+    if (Object.keys(refs).length) out._refs = refs;
+    return out;
+  }
+
+  /* projected single row — route GET / create / patch responses */
+  project(objKey, row) {
+    if (!row) return row;
+    const rels = this.relFields(objKey).filter((f) => f.isActive !== false);
+    if (!rels.length) return row;
+    return this._projectRow(objKey, row, rels, this._relMaps(rels));
+  }
+
+  getView(objKey, id) {
+    return this.project(objKey, this.get(objKey, id));
+  }
+
+  /* readable label text for a relation VALUE (timeline summaries, merge preview) */
+  _relDisplayText(f, v) {
+    if (v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) return "";
+    const maps = this._relMaps([f]);
+    const list = f.multiple && Array.isArray(v) ? v : [v];
+    return list.map((x) => this._refLabel(f, x, maps)).filter(Boolean).join("; ");
+  }
+
+  _relThrow(msg) {
+    const e = new Error(msg);
+    e.status = 400;
+    throw e;
+  }
+
+  /* Write-side normalization — lives in the STORE WRITE OPS (create/patch), so
+     every writer (routes, CSV import, merge's fill, any future caller) shares
+     ONE implementation; routes never normalize. Mutates the body in place, so
+     the command log records the NORMALIZED values. Errors throw with status
+     400 (thrown ops are never logged — the wrapper logs after success). */
+  normalizeRelations(objKey, body) {
+    for (const f of this.relFields(objKey)) {
+      if (!(f.key in body)) continue;
+      const v = body[f.key];
+      if (v === null || v === undefined || v === "") continue;
+      if (f.multiple) {
+        if (!Array.isArray(v)) this._relThrow(`${f.label} must be a list`);
+        const out = [];
+        const seen = new Set();
+        for (const entry of v) {
+          const norm = this._normOneRef(f, entry);
+          const key = typeof norm === "object" && norm !== null ? `${norm.object}:${norm.id}` : String(norm);
+          if (!seen.has(key)) { seen.add(key); out.push(norm); }
+        }
+        body[f.key] = out;
+      } else {
+        body[f.key] = this._normOneRef(f, v);
+      }
+    }
+  }
+
+  _normOneRef(f, entry) {
+    const targets = this.relTargets(f);
+    if (typeof entry === "object" && entry !== null) {
+      const tKey = entry.object ?? targets[0];
+      if (!targets.includes(tKey)) this._relThrow(`${f.label}: "${tKey}" is not an allowed target (${targets.join(", ")})`);
+      if (!(this.rows[tKey] ?? []).some((r) => r.id === entry.id)) this._relThrow(`${f.label}: no ${tKey} record "${entry.id}"`);
+      return f.relationTargets ? { object: tKey, id: entry.id } : entry.id;
+    }
+    const s = String(entry);
+    for (const tKey of targets) {
+      if ((this.rows[tKey] ?? []).some((r) => r.id === s)) return f.relationTargets ? { object: tKey, id: s } : s;
+    }
+    const hits = [];
+    for (const tKey of targets) {
+      for (const r of this.rows[tKey] ?? []) {
+        if (!r._deletedAt && this.relLabel(tKey, r) === s) hits.push({ object: tKey, id: r.id });
+      }
+    }
+    if (hits.length === 1) return f.relationTargets ? hits[0] : hits[0].id;
+    if (hits.length > 1) this._relThrow(`${f.label}: "${s}" matches ${hits.length} records (${hits.map((h) => `${h.object}/${h.id}`).join(", ")}) — pass an id`);
+    return s; // no match → dangling label kept verbatim
+  }
+
+  /* Boot pass: legacy label values in seed/config rows normalize to ids ONCE —
+     in memory, BEFORE any command-log replay, logging nothing, id counter
+     untouched. INVARIANT: idempotent — ids resolve to themselves and dangling
+     labels stay verbatim, so running it over already-normalized rows is a
+     no-op. An ambiguous seed label stays verbatim rather than guessing. */
+  _normalizeAllRelations() {
+    for (const o of this.config.objects) {
+      const rels = (o.fields ?? []).filter((f) => f.type === "relation");
+      if (!rels.length) continue;
+      for (const row of this.rows[o.key] ?? []) {
+        for (const f of rels) {
+          const v = row[f.key];
+          if (v === null || v === undefined || v === "") continue;
+          try {
+            if (f.multiple) { if (Array.isArray(v)) row[f.key] = v.map((x) => this._normOneRef(f, x)); }
+            else row[f.key] = this._normOneRef(f, v);
+          } catch { /* ambiguous/bad seed value — keep verbatim, deterministically */ }
+        }
+      }
+    }
   }
 
   rev(objKey) {
@@ -304,6 +469,13 @@ export class Store {
 
   list(objKey, q = {}) {
     let rows = (this.rows[objKey] ?? []).filter((r) => !r._deletedAt);
+    // project BEFORE filter/search/sort so relation fields filter, match and
+    // sort by their LABELS (the API's historical semantics), not by stored ids
+    const rels = this.relFields(objKey).filter((f) => f.isActive !== false);
+    if (rels.length) {
+      const maps = this._relMaps(rels);
+      rows = rows.map((r) => this._projectRow(objKey, r, rels, maps));
+    }
     if (q.filterField && q.filterValue !== undefined) {
       const op = q.filterOp || "eq";
       rows = rows.filter((r) => {
@@ -410,6 +582,7 @@ export class Store {
   }
 
   create(objKey, body, meta = {}) {
+    this.normalizeRelations(objKey, body);
     const row = { id: `${objKey.slice(0, 2)}_${++this.n}`, ...body };
     if (meta.createdBy) row._createdBy = meta.createdBy;
     if (meta.teamId) row._team = meta.teamId;
@@ -421,14 +594,17 @@ export class Store {
   patch(objKey, id, patch) {
     const row = this.get(objKey, id);
     if (!row) return null;
+    this.normalizeRelations(objKey, patch);
     const cfg = this.config.objects.find((o) => o.key === objKey);
     for (const [k, v] of Object.entries(patch)) {
       if (k === "id") continue;
       const old = row[k];
       row[k] = v;
       const kind = cfg?.stageField === k ? "stage" : "updated";
-      const type = cfg?.fields.find((f) => f.key === k)?.type;
-      this._ev(objKey, id, kind, kind === "stage" ? `Stage: ${old ?? "—"} → ${v}` : `${k}: ${flatVal(old, type)} → ${flatVal(v, type)}`);
+      const f = cfg?.fields.find((x) => x.key === k);
+      // relation summaries log LABELS (ids are storage, not prose)
+      const show = (val) => (f?.type === "relation" ? this._relDisplayText(f, val) || "—" : flatVal(val, f?.type));
+      this._ev(objKey, id, kind, kind === "stage" ? `Stage: ${old ?? "—"} → ${v}` : `${k}: ${show(old)} → ${show(v)}`);
     }
     return row;
   }
@@ -455,6 +631,25 @@ export class Store {
     const rows = this.rows[objKey] ?? [];
     const i = rows.findIndex((r) => r.id === id);
     if (i === -1) return false;
+    // destroy SEVERS every inbound relation ref (the record ceases to exist, so
+    // do its links — trash does NOT sever: a trashed target keeps projecting and
+    // restore heals). Runs inside this already-logged op → replays deterministically.
+    for (const o of this.config.objects) {
+      for (const f of o.fields) {
+        if (f.type !== "relation" || !this.relTargets(f).includes(objKey)) continue;
+        let touched = false;
+        for (const r of this.rows[o.key] ?? []) {
+          const v = r[f.key];
+          if (f.multiple && Array.isArray(v)) {
+            const nx = v.filter((x) => (typeof x === "object" && x !== null ? !(x.object === objKey && x.id === id) : x !== id));
+            if (nx.length !== v.length) { r[f.key] = nx; touched = true; }
+          } else if (typeof v === "object" && v !== null) {
+            if (v.object === objKey && v.id === id) { r[f.key] = null; touched = true; }
+          } else if (v === id) { r[f.key] = null; touched = true; }
+        }
+        if (touched) this._bump(o.key);
+      }
+    }
     rows.splice(i, 1);
     delete (this.events[objKey] ?? {})[id];
     delete (this.files[objKey] ?? {})[id];
@@ -513,40 +708,59 @@ export class Store {
       let source = "winner";
       if (empty(value)) {
         const donor = losers.find((l) => !empty(l[f.key]));
-        if (donor) { value = donor[f.key]; source = String(donor[primary.key] ?? donor.id); }
+        if (donor) { value = donor[f.key]; source = this.relLabel(objKey, donor) || donor.id; }
       }
       finalRow[f.key] = value;
-      if (!empty(value)) fields.push({ key: f.key, label: f.label, value, source });
+      // preview shows LABELS for relation values; finalRow (the commit) keeps ids
+      if (!empty(value)) fields.push({ key: f.key, label: f.label, value: f.type === "relation" ? this._relDisplayText(f, value) || value : value, source });
     }
     return { winner, losers, fields, finalRow, primaryKey: primary.key };
   }
 
-  /* merge: apply the plan — winner absorbs, relations elsewhere re-point from each
-     loser's primary value to the winner's, timeline + watchers travel, losers land
-     in the trash with a pointer note. ONE logged op — replays atomically. */
+  /* merge: apply the plan — winner absorbs, inbound relation refs re-point from
+     each loser's ID to the winner's (multi lists deduped, poly matched by
+     object+id), timeline + watchers travel, losers land in the trash. ONE
+     logged op — replays atomically. Dangling labels are not links and don't
+     re-point. */
   mergeRows(objKey, ids, winnerId) {
     const plan = this.mergePlan(objKey, ids, winnerId);
     if (!plan) return null;
-    const { winner, losers, finalRow, primaryKey } = plan;
+    const { winner, losers, finalRow } = plan;
     Object.assign(winner, finalRow);
-    const winnerRef = String(winner[primaryKey] ?? "");
     for (const loser of losers) {
-      const loserRef = String(loser[primaryKey] ?? "");
-      if (loserRef && loserRef !== winnerRef) {
-        for (const o of this.config.objects) {
-          for (const f of o.fields) {
-            if (f.type !== "relation" || f.relation !== objKey) continue;
-            for (const r of this.rows[o.key] ?? []) {
-              if (String(r[f.key] ?? "") === loserRef) r[f.key] = winnerRef;
-            }
+      for (const o of this.config.objects) {
+        for (const f of o.fields) {
+          if (f.type !== "relation" || !this.relTargets(f).includes(objKey)) continue;
+          let touched = false;
+          for (const r of this.rows[o.key] ?? []) {
+            const v = r[f.key];
+            if (f.multiple && Array.isArray(v)) {
+              if (!v.some((x) => (typeof x === "object" && x !== null ? x.object === objKey && x.id === loser.id : x === loser.id))) continue;
+              const seen = new Set();
+              r[f.key] = v
+                .map((x) => {
+                  if (typeof x === "object" && x !== null) return x.object === objKey && x.id === loser.id ? { object: objKey, id: winner.id } : x;
+                  return x === loser.id ? winner.id : x;
+                })
+                .filter((x) => {
+                  const key = typeof x === "object" && x !== null ? `${x.object}:${x.id}` : String(x);
+                  if (seen.has(key)) return false;
+                  seen.add(key);
+                  return true;
+                });
+              touched = true;
+            } else if (typeof v === "object" && v !== null) {
+              if (v.object === objKey && v.id === loser.id) { r[f.key] = { object: objKey, id: winner.id }; touched = true; }
+            } else if (v === loser.id) { r[f.key] = winner.id; touched = true; }
           }
+          if (touched) this._bump(o.key);
         }
       }
       const loserEvents = (this.events[objKey] ?? {})[loser.id] ?? [];
       ((this.events[objKey] ??= {})[winner.id] ??= []).push(...loserEvents);
       for (const email of this.watchers(objKey, loser.id)) this.watchToggle(objKey, winner.id, email, true);
       loser._deletedAt = this._now().toISOString();
-      this._ev(objKey, winner.id, "updated", `Merged in ${loserRef || loser.id}`);
+      this._ev(objKey, winner.id, "updated", `Merged in ${this.relLabel(objKey, loser) || loser.id}`);
     }
     this._bump(objKey);
     return winner;
