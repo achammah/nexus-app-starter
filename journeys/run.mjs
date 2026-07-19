@@ -3194,6 +3194,117 @@ const journeys = [
       }
     },
   },
+  // --- lane: activities-tasks
+  {
+    name: "tasks-crud-page", feature: "Tasks page (buckets, filters, complete)",
+    async run(page) {
+      const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const mk = Date.now().toString().slice(-5);
+      try {
+        await page.goto(URLBASE + "/#/p/tasks");
+        await page.waitForSelector('[data-testid="tasks-new-title"]');
+        const createOne = async (title, due, assignee) => {
+          await page.fill('[data-testid="tasks-new-title"]', title);
+          await page.fill('[data-testid="tasks-new-due"]', due);
+          if (assignee) await page.selectOption('[data-testid="tasks-new-assignee"]', assignee);
+          await page.click('[data-testid="tasks-create"]');
+          await page.waitForFunction((t) => document.body.textContent?.includes(t), title);
+        };
+        await createOne(`Over ${mk}`, ymd(new Date(Date.now() - 864e5)), "Maya Verstraete");
+        await createOne(`Today ${mk}`, ymd(new Date()), "Jonas Peeters");
+        await createOne(`Later ${mk}`, ymd(new Date(Date.now() + 12 * 864e5)));
+        const inBucket = ([b, t]) => document.querySelector(`[data-testid="tasks-bucket-${b}"]`)?.textContent?.includes(t);
+        assert(await page.evaluate(inBucket, ["overdue", `Over ${mk}`]), "the overdue task lands in the Overdue bucket");
+        assert(await page.evaluate(inBucket, ["today", `Today ${mk}`]), "the due-today task lands in the Today bucket");
+        assert(await page.evaluate(inBucket, ["later", `Later ${mk}`]), "the far-out task lands in the Later bucket");
+        const all = (await (await fetch(URLBASE + "/api/tasks")).json()).tasks.filter((t) => t.title.endsWith(mk));
+        const overId = all.find((t) => t.title.startsWith("Over")).id;
+        await page.click(`[data-testid="task-done-${overId}"]`);
+        await page.waitForFunction((t) => document.querySelector('[data-testid="tasks-bucket-done"]')?.textContent?.includes(t), `Over ${mk}`);
+        assert(true, "completing a task visibly moves it to the Done bucket");
+        const after = (await (await fetch(URLBASE + "/api/tasks")).json()).tasks.find((t) => t.id === overId);
+        assert(after.status === "done" && !!after.doneAt, `the API shows status done with doneAt set (${after.doneAt})`);
+        await page.selectOption('[data-testid="tasks-filter-status"]', "done");
+        await page.waitForFunction((t) => !document.body.textContent?.includes(t), `Today ${mk}`);
+        assert(await page.evaluate((t) => document.body.textContent?.includes(t), `Over ${mk}`),
+          "the status filter visibly narrows the list to done tasks");
+      } finally {
+        // cleanup regardless of where a failure hit: everything this run created
+        const left = (await (await fetch(URLBASE + "/api/tasks")).json()).tasks.filter((t) => t.title.endsWith(mk));
+        for (const t of left) await fetch(URLBASE + `/api/tasks/${t.id}`, { method: "DELETE" }).catch(() => {});
+      }
+    },
+  },
+  {
+    name: "tasks-on-record", feature: "Tasks on records (link, complete, unlink)",
+    async run(page) {
+      const mk = "Rec task " + Date.now().toString().slice(-5);
+      try {
+        await page.goto(URLBASE + "/#/o/companies/r/co_1");
+        await page.waitForSelector('[data-testid="record-tasks"]');
+        await page.fill('[data-testid="rtask-title"]', mk);
+        await page.click('[data-testid="rtask-add"]');
+        await page.waitForFunction((t) => document.querySelector('[data-testid="record-tasks"]')?.textContent?.includes(t), mk);
+        assert(true, "a task added from the record shows in its tasks block");
+        const linked = (await (await fetch(URLBASE + "/api/tasks?record=companies:co_1")).json()).tasks;
+        const tk = linked.find((t) => t.title === mk);
+        assert(tk.links.some((l) => l.obj === "companies" && l.id === "co_1" && l.label), "the task carries the record link with a live label");
+        await page.goto(URLBASE + "/#/p/tasks");
+        await page.waitForSelector(`[data-testid="task-link-${tk.id}-co_1"]`);
+        assert(true, "the Tasks page shows the task with its record chip");
+        await page.goto(URLBASE + "/#/o/companies/r/co_1");
+        await page.waitForSelector(`[data-testid="rtask-done-${tk.id}"]`);
+        await page.click(`[data-testid="rtask-done-${tk.id}"]`);
+        await page.waitForFunction((t) => document.querySelector('[data-testid="timeline"]')?.textContent?.includes("Task done: " + t), mk);
+        assert(true, "completing from the record side stamps 'Task done' on the timeline");
+        await page.click(`[data-testid="rtask-unlink-${tk.id}"]`);
+        await page.waitForFunction((t) => !document.querySelector('[data-testid="record-tasks"]')?.textContent?.includes(t), mk);
+        assert(true, "unlink removes the task from the record block");
+        const still = (await (await fetch(URLBASE + "/api/tasks")).json()).tasks.find((t) => t.id === tk.id);
+        assert(!!still && still.links.length === 0, "the unlinked task survives on the Tasks page (not deleted)");
+      } finally {
+        const left = (await (await fetch(URLBASE + "/api/tasks")).json()).tasks.filter((t) => t.title === mk);
+        for (const t of left) await fetch(URLBASE + `/api/tasks/${t.id}`, { method: "DELETE" }).catch(() => {});
+      }
+    },
+  },
+  {
+    name: "tasks-assignee-mail", feature: "Task assignment mail",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5255", AUTH_MODE: "accounts", APP_SECRET: "journey-secret-16-chars-plus" },
+      });
+      const B = "http://localhost:5255";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctxA = await page.context().browser().newContext();
+        const pa = await ctxA.newPage();
+        await pa.request.post(B + "/api/auth/signup", { data: { email: "ada@fixture.example", name: "Ada", password: "assignee-pass-1" } });
+        const ctxB = await page.context().browser().newContext();
+        const pb = await ctxB.newPage();
+        await pb.request.post(B + "/api/auth/signup", { data: { email: "bob@fixture.example", name: "Bob", password: "assigner-pass-1" } });
+        const created = await (await pb.request.post(B + "/api/tasks", { data: { title: "Review the Q3 numbers", assignee: "Ada" } })).json();
+        assert(created.id && created.assignee === "Ada", "the task is created with its assignee");
+        let mail = [];
+        for (let i = 0; i < 15; i++) {
+          mail = (await (await pb.request.get(B + "/api/outbox")).json()).mail.filter((m) => m.kind === "task-assigned");
+          if (mail.length) break;
+          await new Promise((r) => setTimeout(r, 400));
+        }
+        assert(mail.some((m) => m.to === "ada@fixture.example" && m.text.includes("Review the Q3 numbers")),
+          "the assignee gets the assignment mail in the outbox");
+        assert(!mail.some((m) => m.to === "bob@fixture.example"), "the assigner is not mailed");
+        await ctxA.close(); await ctxB.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----

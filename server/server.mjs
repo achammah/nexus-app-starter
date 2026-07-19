@@ -25,6 +25,7 @@ import { can } from "./permissions.mjs";
 import { enqueue, startScheduler } from "./jobs.mjs";
 import { handleWebhooks, emitEvent } from "./webhooks.mjs";
 import { handleApiKeys, resolveApiKey } from "./apikeys.mjs";
+import { sendMail } from "./email.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DIST = path.join(ROOT, "dist");
@@ -68,6 +69,49 @@ async function readBody(req) {
    declared type so the type validators judge real values, and DROP keys that
    match no field (an unmapped column must never become a phantom property).
    Empty strings are omitted (an empty CSV cell is "no value", not ""). */
+/* local-clock yyyy-mm-dd (due dates are calendar days, not instants) */
+const ymdLocal = (d = new Date()) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const ymdPlusDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return ymdLocal(d); };
+
+/* Task validation. Link liveness is checked at WRITE time for links the task
+   does not already carry — a link whose record gets destroyed LATER stays on
+   the task (dangling, rendered degraded) and must never block a later patch
+   that merely keeps it (e.g. unlinking a sibling). */
+function validateTask(body, { partial = false, prior = [] } = {}) {
+  if ((!partial || body.title !== undefined) && !String(body.title ?? "").trim()) return "title required";
+  if (body.status !== undefined && !["todo", "doing", "done"].includes(body.status)) return "status must be todo|doing|done";
+  if (body.due !== undefined && body.due !== null && body.due !== "") {
+    const s = String(body.due);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || Number.isNaN(new Date(s).getTime())) return "due must be a yyyy-mm-dd date";
+  }
+  if (body.assignee !== undefined && body.assignee !== null && typeof body.assignee !== "string") return "assignee must be text";
+  if (body.links !== undefined) {
+    if (!Array.isArray(body.links)) return "links must be a list";
+    const kept = new Set(prior.map((l) => `${l.obj}:${l.id}`));
+    for (const l of body.links) {
+      const cfg = CONFIG.objects.find((o) => o.key === l?.obj);
+      if (!cfg) return `links: unknown object ${l?.obj}`;
+      if (!kept.has(`${l.obj}:${l.id}`) && !store.get(l.obj, l.id))
+        return `links: no live ${cfg.labelOne.toLowerCase()} ${l?.id}`;
+    }
+  }
+  return null;
+}
+
+/* task-assignment mail: fires only when the assignee resolves to a live account
+   user who isn't the actor (self-assignment stays silent). Route-side, never in
+   the store op — replay must not re-mail. */
+function mailTaskAssignee(task, session) {
+  const u = (store.users ?? []).find((x) => !x.deletedAt && x.name === task.assignee);
+  if (!u || u.email === session?.email) return;
+  sendMail(store, {
+    to: u.email, kind: "task-assigned",
+    subject: `Task assigned: ${task.title}`,
+    text: `${task.title}${task.due ? `\nDue: ${task.due}` : ""}\n\nOpen: /#/p/tasks\n\nYou get this because the task was assigned to you.`,
+  });
+}
+
 function coerceImportRow(cfg, raw) {
   const out = {};
   for (const f of cfg.fields) {
@@ -100,6 +144,7 @@ async function api(req, res, url, apiKey = null) {
     if (parts[1] === "teams" && !FEATURES.teams) return send(res, 404, { error: "teams disabled (FEATURE_TEAMS=0)" });
     if (parts[1] === "webhooks" && !FEATURES.webhooks) return send(res, 404, { error: "webhooks disabled (FEATURE_WEBHOOKS=0)" });
     if (parts[1] === "apikeys" && !FEATURES.apikeys) return send(res, 404, { error: "apikeys disabled (FEATURE_APIKEYS=0)" });
+    if (parts[1] === "tasks" && !FEATURES.tasks) return send(res, 404, { error: "tasks disabled (FEATURE_TASKS=0)" });
     if (await handleTeams(req, res, url, readBody, send, store, session)) return;
     if (await handleWebhooks(req, res, url, readBody, send, store, CONFIG)) return;
     if (parts[1] === "jobs" && req.method === "GET") {
@@ -128,6 +173,82 @@ async function api(req, res, url, apiKey = null) {
       if (!view) return send(res, 404, { error: "unknown view" });
       if (req.method === "PATCH") return send(res, 200, store.viewUpdate(view.id, await readBody(req)));
       if (req.method === "DELETE") { store.viewRemove(view.id); return send(res, 200, { ok: true }); }
+    }
+
+    if (parts[1] === "tasks") {
+      // any signed-in member manages tasks (auth off → owner); VIEWER is read-only
+      const denyWrite = () => {
+        if (role !== "viewer") return false;
+        send(res, 403, { error: "your role (viewer) cannot manage tasks" });
+        return true;
+      };
+      // labels resolve LIVE at read time (rename-safe); a destroyed/trashed
+      // record leaves label:null — the UIs render the link degraded
+      const enrich = (t) => ({
+        ...t,
+        links: t.links.map((l) => {
+          const cfg = CONFIG.objects.find((o) => o.key === l.obj);
+          const row = cfg ? store.get(l.obj, l.id) : null;
+          const primary = cfg?.fields.find((f) => f.primary) ?? cfg?.fields[0];
+          return { ...l, label: row ? String(row[primary.key] ?? l.id) : null, objLabel: cfg?.labelOne ?? l.obj };
+        }),
+      });
+      if (!parts[2]) {
+        if (req.method === "GET") {
+          let rows = [...(store.tasks ?? [])];
+          const q = url.searchParams;
+          if (q.get("status")) rows = rows.filter((t) => t.status === q.get("status"));
+          if (q.get("assignee")) rows = rows.filter((t) => t.assignee === q.get("assignee"));
+          if (q.get("record")) {
+            const [obj, ...rest] = q.get("record").split(":");
+            const rid = rest.join(":");
+            rows = rows.filter((t) => t.links.some((l) => l.obj === obj && l.id === rid));
+          }
+          const dueQ = q.get("due");
+          if (dueQ) {
+            const today = ymdLocal();
+            rows = rows.filter((t) => {
+              if (!t.due) return false;
+              if (dueQ === "overdue") return t.due < today && t.status !== "done";
+              if (dueQ === "today") return t.due === today;
+              if (dueQ === "week") return t.due >= today && t.due <= ymdPlusDays(7);
+              return true;
+            });
+          }
+          // me = the session's DIRECTORY name (assignees are names) — feeds my-tasks-first
+          const me = session?.email ? (store.userByEmail(session.email)?.name ?? null) : null;
+          return send(res, 200, { tasks: rows.map(enrich), me });
+        }
+        if (req.method === "POST") {
+          if (denyWrite()) return;
+          const body = await readBody(req);
+          const invalid = validateTask(body);
+          if (invalid) return send(res, 400, { error: invalid });
+          const t = store.taskAdd({
+            title: String(body.title).trim(), status: body.status, due: body.due,
+            assignee: body.assignee, links: body.links, createdBy: session?.email,
+          });
+          mailTaskAssignee(t, session);
+          return send(res, 201, enrich(t));
+        }
+      }
+      const task0 = (store.tasks ?? []).find((x) => x.id === parts[2]);
+      if (!task0) return send(res, 404, { error: "task not found" });
+      if (req.method === "PATCH") {
+        if (denyWrite()) return;
+        const patch = await readBody(req);
+        const invalid = validateTask(patch, { partial: true, prior: task0.links });
+        if (invalid) return send(res, 400, { error: invalid });
+        const prevAssignee = task0.assignee;
+        const t = store.taskUpdate(task0.id, patch);
+        if (t.assignee && t.assignee !== prevAssignee) mailTaskAssignee(t, session);
+        return send(res, 200, enrich(t));
+      }
+      if (req.method === "DELETE") {
+        if (denyWrite()) return;
+        store.taskRemove(task0.id);
+        return send(res, 200, { ok: true });
+      }
     }
 
     if (parts[1] === "users" && req.method === "GET") {

@@ -34,6 +34,17 @@ const dicts = {
     "dup.none": "No duplicates found.",
     "dup.review": "Review merge",
     "dup.panelTitle": "Possible duplicates",
+    "tasks.new": "New task",
+    "tasks.titlePlaceholder": "What needs doing?",
+    "tasks.create": "Create",
+    "tasks.add": "Add",
+    "tasks.none": "No tasks yet.",
+    "tasks.deleted": "(deleted)",
+    "tasks.bucket.overdue": "Overdue",
+    "tasks.bucket.today": "Today",
+    "tasks.bucket.week": "This week",
+    "tasks.bucket.later": "Later",
+    "tasks.bucket.done": "Done",
   },
 } as const;
 

@@ -1,8 +1,9 @@
 import * as React from "react";
-import { api, type AppConfig, type DupCandidate } from "./api";
+import { api, type AppConfig, type DupCandidate, type TaskItem } from "./api";
 import { useToast } from "./App";
 import { t } from "./i18n";
 import { RecordPage, type RelatedList } from "../ui/record-core/RecordPage";
+import { RecordTasksBlock } from "./pages/Tasks";
 import { formatCell } from "../ui/record-core/DataTable";
 import type { FileMeta, ObjectConfig, RecordRow, RelationItem, TimelineEvent } from "../ui/record-core/types";
 import { rowRefs } from "../ui/record-core/types";
@@ -38,6 +39,8 @@ export function RecordView({
   const [files, setFiles] = React.useState<FileMeta[]>([]);
   const [watchState, setWatchState] = React.useState<{ on: boolean; count: number }>({ on: false, count: 0 });
   const [mentionOptions, setMentionOptions] = React.useState<string[]>([]);
+  const [tasks, setTasks] = React.useState<TaskItem[]>([]);
+  const tasksOn = appConfig.features?.tasks !== false;
   const [fav, setFav] = React.useState(() => favHas(config.key, id));
   React.useEffect(() => setFav(favHas(config.key, id)), [config.key, id]);
   const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
@@ -47,7 +50,8 @@ export function RecordView({
     api.timeline(config.key, id).then(setTimeline).catch(() => {});
     api.files(config.key, id).then(setFiles).catch(() => {});
     api.duplicatesFor(config.key, id).then(setDups).catch(() => {});
-  }, [config.key, id]);
+    if (tasksOn) api.tasks({ record: `${config.key}:${id}` }).then((r) => setTasks(r.tasks)).catch(() => {});
+  }, [config.key, id, tasksOn]);
 
   React.useEffect(load, [load]);
   // live sync: another viewer's edits/comments/files appear without a manual reload
@@ -158,6 +162,7 @@ export function RecordView({
   };
 
   return (
+    <>
     <RecordPage
       config={config}
       row={row}
@@ -271,5 +276,16 @@ export function RecordView({
           .catch((e) => toast(`Enrich failed: ${e.message}`));
       }}
     />
+    {tasksOn && (
+      <RecordTasksBlock
+        objKey={config.key}
+        id={id}
+        tasks={tasks}
+        users={mentionOptions}
+        canManage={role !== "viewer"}
+        onChanged={load}
+      />
+    )}
+    </>
   );
 }

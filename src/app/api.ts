@@ -17,7 +17,7 @@ export interface AppConfig {
   /* server-set: seeded fictional rows are present (drives the Demo badge) */
   demo?: boolean;
   /* server-set: feature flags (one env flag gates nav + page + API) */
-  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean };
+  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean; tasks?: boolean };
   objects: ObjectConfig[];
 }
 
@@ -124,6 +124,13 @@ export const api = {
     j<{ results: ImportResult[]; totals: ImportTotals }>(`/api/objects/${obj}/import`, {
       method: "POST", body: JSON.stringify({ rows, preview }),
     }),
+  tasks: (q: Record<string, string> = {}) =>
+    j<{ tasks: TaskItem[]; me: string | null }>(`/api/tasks?` + new URLSearchParams(q)),
+  taskCreate: (body: { title: string; status?: string; due?: string | null; assignee?: string | null; links?: { obj: string; id: string }[] }) =>
+    j<TaskItem>("/api/tasks", { method: "POST", body: JSON.stringify(body) }),
+  taskPatch: (id: string, patch: Record<string, unknown>) =>
+    j<TaskItem>(`/api/tasks/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  taskDelete: (id: string) => j<{ ok: boolean }>(`/api/tasks/${id}`, { method: "DELETE" }),
   apiKeys: () => j<{ keys: ApiKeyMeta[] }>("/api/apikeys").then((r) => r.keys),
   apiKeyCreate: (name: string, role: string) =>
     j<ApiKeyMeta & { secret: string }>("/api/apikeys", { method: "POST", body: JSON.stringify({ name, role }) }),
@@ -138,6 +145,14 @@ export const api = {
 export interface DupCandidate { id: string; name: string; reasons: string[] }
 export interface DupGroup { ids: string[]; reasons: string[] }
 
+/* a link's label resolves LIVE server-side; null = the record no longer exists
+   (destroyed/trashed) — render degraded, never navigate */
+export interface TaskLink { obj: string; id: string; label: string | null; objLabel: string }
+export interface TaskItem {
+  id: string; title: string; status: "todo" | "doing" | "done";
+  due: string | null; assignee: string | null; links: TaskLink[];
+  createdBy: string | null; createdAt: string; doneAt: string | null;
+}
 export interface ImportResult { index: number; verdict: "created" | "restored" | "skipped" | "failed"; id?: string; reason?: string }
 export interface ImportTotals { created: number; restored: number; skipped: number; failed: number }
 export interface ApiKeyMeta {

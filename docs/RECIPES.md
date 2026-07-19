@@ -38,6 +38,16 @@ Relation fields persist target row IDS — single: `"co_1"` · many (`multiple: 
 1. `server/server.mjs` → extend the allowed-kind list in the `/activities` route.
 2. `src/ui/record-core/RecordPage.tsx` is the library copy — add the kind + icon in nexus-ui (`ACTIVITY_KINDS` + `evIcon`), then `npm run sync-ui`. Never edit `src/ui/` directly.
 
+## Track work with tasks
+
+Tasks are cross-record to-dos — title, status (`todo`/`doing`/`done`), optional due date and assignee (a users-directory name), and links to any number of records. They are a system entity like teams or webhooks: no config object, on by default, disabled entirely (nav + page + API) with `FEATURE_TASKS=0`.
+
+- **Tasks page** (`/#/p/tasks`): create inline, filter by status/assignee/overdue, grouped into Overdue / Today / This week / Later / Done buckets; your own tasks sort first when you're signed in.
+- **On a record**: the Tasks card lists the record's linked tasks; adding one there links it automatically. Completing a task stamps `Task done: …` on every linked record's timeline (creating a linked one stamps `Task added: …`). Unlinking removes it from the record but keeps the task.
+- **Assignment mail**: with accounts on, assigning a task to a signed-up user drops a `task-assigned` mail in the outbox (real mail once SMTP is wired) — self-assignment stays silent.
+- **API**: `GET/POST /api/tasks`, `PATCH/DELETE /api/tasks/:id` (filters: `status`, `assignee`, `record=<obj>:<id>`, `due=overdue|today|week`). Viewers read; every other role manages.
+- Destroying a record leaves its tasks intact: the dead link renders as an inert "(deleted)" chip and stops navigating.
+
 ## Boot as a different product
 `CONFIG_PATH=path/to/other.config.json npm run serve` — the config IS the app. Fullest reference shape: `journeys/fixtures/coverage.config.json` (a test fixture, not a template).
 
