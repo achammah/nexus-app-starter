@@ -2,7 +2,7 @@ import * as React from "react";
 import { api, type AppConfig } from "./api";
 import { useToast } from "./App";
 import { RecordPage, type RelatedList } from "../ui/record-core/RecordPage";
-import type { ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
+import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
 
 export function RecordView({
   appConfig,
@@ -23,11 +23,13 @@ export function RecordView({
   const [missing, setMissing] = React.useState(false);
   const [relationOptions, setRelationOptions] = React.useState<Record<string, string[]>>({});
   const [related, setRelated] = React.useState<RelatedList[]>([]);
+  const [files, setFiles] = React.useState<FileMeta[]>([]);
   const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
 
   const load = React.useCallback(() => {
     api.get(config.key, id).then(setRow).catch(() => setMissing(true));
     api.timeline(config.key, id).then(setTimeline).catch(() => {});
+    api.files(config.key, id).then(setFiles).catch(() => {});
   }, [config.key, id]);
 
   React.useEffect(load, [load]);
@@ -120,6 +122,39 @@ export function RecordView({
             load();
           })
           .catch((e) => toast(`Note failed: ${e.message}`));
+      }}
+      onLogActivity={(kind, text) => {
+        api
+          .addActivity(config.key, id, kind, text)
+          .then(() => {
+            toast(`${kind[0].toUpperCase()}${kind.slice(1)} logged`);
+            load();
+          })
+          .catch((e) => toast(`Log failed: ${e.message}`));
+      }}
+      files={{
+        list: files,
+        downloadHref: (fileId) => api.fileHref(config.key, id, fileId),
+        onUpload: (f) => {
+          api
+            .uploadFile(config.key, id, f)
+            .then(() => {
+              toast(`Uploaded ${f.name}`);
+              load();
+            })
+            .catch((e) => toast(`Upload failed: ${e.message}`));
+        },
+      }}
+      onEnrich={(fieldKey) => {
+        const label = config.fields.find((f) => f.key === fieldKey)?.primitive?.label ?? "primitive";
+        toast(`Running ${label}…`);
+        api
+          .enrich(config.key, id, fieldKey)
+          .then(() => {
+            toast("Enriched");
+            load();
+          })
+          .catch((e) => toast(`Enrich failed: ${e.message}`));
       }}
     />
   );

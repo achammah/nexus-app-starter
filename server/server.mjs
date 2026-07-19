@@ -85,6 +85,46 @@ async function api(req, res, url) {
         if (!text) return send(res, 400, { error: "text required" });
         return send(res, 201, store.addNote(objKey, id, text));
       }
+      if (parts[4] === "activities" && req.method === "POST") {
+        const { kind, text } = await readBody(req);
+        if (!["call", "email", "meeting"].includes(kind)) return send(res, 400, { error: "kind must be call|email|meeting" });
+        if (!text) return send(res, 400, { error: "text required" });
+        return send(res, 201, store.addActivity(objKey, id, kind, text));
+      }
+      if (parts[4] === "files") {
+        if (!parts[5]) {
+          if (req.method === "GET") return send(res, 200, { files: store.fileList(objKey, id) });
+          if (req.method === "POST") {
+            const { name, mime, data } = await readBody(req);
+            if (!name || typeof data !== "string") return send(res, 400, { error: "name + base64 data required" });
+            if (data.length > 7_000_000) return send(res, 413, { error: "file too large (5 MB max)" });
+            return send(res, 201, store.fileAdd(objKey, id, { name, mime: mime || "application/octet-stream", data }));
+          }
+        }
+        const f = store.fileGet(objKey, id, parts[5]);
+        if (!f) return send(res, 404, { error: "file not found" });
+        res.writeHead(200, {
+          "content-type": f.mime,
+          "content-disposition": `attachment; filename="${f.name.replaceAll('"', "")}"`,
+          "cache-control": "no-store",
+        });
+        return res.end(Buffer.from(f.data, "base64"));
+      }
+      /* AI-enrichment seam — MOCK: computes a labeled placeholder value for a field
+         whose config carries `primitive`. Prod: replace the mockValue line with a
+         platform call (task execute / workflow trigger) using primitive.id. */
+      if (parts[4] === "enrich" && req.method === "POST") {
+        const { field } = await readBody(req);
+        const f = cfg.fields.find((x) => x.key === field);
+        if (!f) return send(res, 400, { error: `unknown field ${field}` });
+        if (!f.primitive) return send(res, 400, { error: `field ${field} has no primitive configured` });
+        const row = store.get(objKey, id);
+        if (!row) return send(res, 404, { error: "not found" });
+        const namePrimary = cfg.fields.find((x) => x.primary) ?? cfg.fields[0];
+        const via = `${f.primitive.label ?? f.primitive.kind} (mock)`;
+        const mockValue = `(mock) ${f.label} for ${row[namePrimary.key] ?? id} — replace the /enrich mock in server/server.mjs with a real ${f.primitive.kind} call.`;
+        return send(res, 200, store.enrich(objKey, id, field, mockValue, via));
+      }
       if (req.method === "GET") {
         const row = store.get(objKey, id);
         return row ? send(res, 200, row) : send(res, 404, { error: "not found" });

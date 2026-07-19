@@ -33,11 +33,13 @@ import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
 
 export function ObjectView({
   config,
+  users = [],
   onOpen,
   onCountChange,
   viewIcons,
 }: {
   config: ObjectConfig;
+  users?: string[];
   onOpen: (id: string) => void;
   onCountChange: (key: string, n: number) => void;
   viewIcons: { table: React.ReactNode; kanban: React.ReactNode };
@@ -71,6 +73,12 @@ export function ObjectView({
     (saved as { selFilters?: Record<string, string[]> }).selFilters ?? {},
   );
   const [relOpts, setRelOpts] = React.useState<Record<string, string[]>>({});
+  // board can group by ANY select/user field (stageField is just the default)
+  const groupables = config.fields.filter((f) => f.type === "select" || f.type === "user");
+  const [groupBy, setGroupBy] = React.useState<string>(
+    (saved as { groupBy?: string }).groupBy ?? config.stageField ?? groupables[0]?.key ?? "",
+  );
+  const groupFieldDef = config.fields.find((f) => f.key === groupBy);
   const [creating, setCreating] = React.useState(false);
   const [draft, setDraft] = React.useState<Record<string, string>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
@@ -79,8 +87,8 @@ export function ObjectView({
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
 
   React.useEffect(() => {
-    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters }));
-  }, [config.key, q, view, hidden, sort, selFilters]);
+    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, groupBy }));
+  }, [config.key, q, view, hidden, sort, selFilters, groupBy]);
 
   // relation options for the create dialog (fetched once the dialog opens)
   React.useEffect(() => {
@@ -278,11 +286,32 @@ export function ObjectView({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-        {config.stageField && (
+        {groupables.length > 0 && (
           <div className="viewSwitch" data-testid="view-switch">
             <button data-active={view === "table"} onClick={() => setView("table")}>{viewIcons.table} Table</button>
             <button data-active={view === "kanban"} onClick={() => setView("kanban")}>{viewIcons.kanban} Board</button>
           </div>
+        )}
+        {view === "kanban" && groupables.length > 1 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" data-testid="group-by">
+                by {groupFieldDef?.label ?? groupBy}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {groupables.map((f) => (
+                <DropdownMenuCheckboxItem
+                  key={f.key}
+                  checked={groupBy === f.key}
+                  data-testid={`group-by-${f.key}`}
+                  onCheckedChange={() => setGroupBy(f.key)}
+                >
+                  {f.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         <Button variant="primary" size="md" icon={<Plus size={14} />} data-testid="new-record" onClick={() => setCreating(true)}>
           New {config.labelOne.toLowerCase()}
@@ -312,8 +341,15 @@ export function ObjectView({
         <div className="nxCard" style={{ padding: 40, textAlign: "center", color: "var(--nx-fg-faint)" }} data-testid="list-loading">
           Loading {config.label.toLowerCase()}…
         </div>
-      ) : view === "kanban" && config.stageField ? (
-        <KanbanBoard config={config} rows={visibleRows} onPatch={patch} onOpen={onOpen} />
+      ) : view === "kanban" && groupFieldDef ? (
+        <KanbanBoard
+          config={config}
+          rows={visibleRows}
+          onPatch={patch}
+          onOpen={onOpen}
+          groupField={groupBy}
+          groupOptions={groupFieldDef.type === "user" ? users : undefined}
+        />
       ) : (
         <DataTable
           config={config}

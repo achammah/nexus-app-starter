@@ -9,7 +9,12 @@
   "chat": {
     "embedUrl": ""
   },
-  "users": ["you", "Maya Verstraete", "Jonas Peeters", "Sofia Marchetti"],
+  "users": [
+    "you",
+    "Maya Verstraete",
+    "Jonas Peeters",
+    "Sofia Marchetti"
+  ],
   "objects": [
     {
       "key": "companies",
@@ -18,21 +23,119 @@
       "icon": "building-2",
       "defaultView": "table",
       "fields": [
-        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
-        { "key": "domain", "label": "Domain", "type": "url", "width": 180 },
-        { "key": "industry", "label": "Industry", "type": "select", "options": ["Software", "Retail", "Logistics", "Health", "Finance"], "width": 140 },
-        { "key": "employees", "label": "Employees", "type": "number", "width": 110 },
-        { "key": "city", "label": "City", "type": "text", "width": 140 }
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 220
+        },
+        {
+          "key": "domain",
+          "label": "Domain",
+          "type": "url",
+          "width": 180
+        },
+        {
+          "key": "industry",
+          "label": "Industry",
+          "type": "select",
+          "options": [
+            "Software",
+            "Retail",
+            "Logistics",
+            "Health",
+            "Finance"
+          ],
+          "width": 140
+        },
+        {
+          "key": "employees",
+          "label": "Employees",
+          "type": "number",
+          "width": 110
+        },
+        {
+          "key": "city",
+          "label": "City",
+          "type": "text",
+          "width": 140
+        },
+        {
+          "key": "about",
+          "label": "About",
+          "type": "text",
+          "primitive": {
+            "kind": "task",
+            "label": "Company research"
+          }
+        }
       ],
       "sampleRows": [
-        { "id": "co_1", "name": "Brightline Analytics", "domain": "brightline.example", "industry": "Software", "employees": 140, "city": "Ghent" },
-        { "id": "co_2", "name": "Nordwind Retail", "domain": "nordwind.example", "industry": "Retail", "employees": 900, "city": "Antwerp" },
-        { "id": "co_3", "name": "Cargolane", "domain": "cargolane.example", "industry": "Logistics", "employees": 320, "city": "Rotterdam" },
-        { "id": "co_4", "name": "Veldkliniek Group", "domain": "veldkliniek.example", "industry": "Health", "employees": 210, "city": "Leuven" },
-        { "id": "co_5", "name": "Meridian Capital", "domain": "meridian.example", "industry": "Finance", "employees": 75, "city": "Brussels" },
-        { "id": "co_6", "name": "Pixelforge Studio", "domain": "pixelforge.example", "industry": "Software", "employees": 28, "city": "Lille" },
-        { "id": "co_7", "name": "GreenCrate Foods", "domain": "greencrate.example", "industry": "Retail", "employees": 460, "city": "Utrecht" },
-        { "id": "co_8", "name": "Tidal Freight", "domain": "tidalfreight.example", "industry": "Logistics", "employees": 150, "city": "Hamburg" }
+        {
+          "id": "co_1",
+          "name": "Brightline Analytics",
+          "domain": "brightline.example",
+          "industry": "Software",
+          "employees": 140,
+          "city": "Ghent"
+        },
+        {
+          "id": "co_2",
+          "name": "Nordwind Retail",
+          "domain": "nordwind.example",
+          "industry": "Retail",
+          "employees": 900,
+          "city": "Antwerp"
+        },
+        {
+          "id": "co_3",
+          "name": "Cargolane",
+          "domain": "cargolane.example",
+          "industry": "Logistics",
+          "employees": 320,
+          "city": "Rotterdam"
+        },
+        {
+          "id": "co_4",
+          "name": "Veldkliniek Group",
+          "domain": "veldkliniek.example",
+          "industry": "Health",
+          "employees": 210,
+          "city": "Leuven"
+        },
+        {
+          "id": "co_5",
+          "name": "Meridian Capital",
+          "domain": "meridian.example",
+          "industry": "Finance",
+          "employees": 75,
+          "city": "Brussels"
+        },
+        {
+          "id": "co_6",
+          "name": "Pixelforge Studio",
+          "domain": "pixelforge.example",
+          "industry": "Software",
+          "employees": 28,
+          "city": "Lille"
+        },
+        {
+          "id": "co_7",
+          "name": "GreenCrate Foods",
+          "domain": "greencrate.example",
+          "industry": "Retail",
+          "employees": 460,
+          "city": "Utrecht"
+        },
+        {
+          "id": "co_8",
+          "name": "Tidal Freight",
+          "domain": "tidalfreight.example",
+          "industry": "Logistics",
+          "employees": 150,
+          "city": "Hamburg"
+        }
       ]
     },
     {
@@ -42,21 +145,107 @@
       "icon": "users",
       "defaultView": "table",
       "fields": [
-        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
-        { "key": "email", "label": "Email", "type": "email", "width": 220 },
-        { "key": "role", "label": "Role", "type": "text", "width": 160 },
-        { "key": "tags", "label": "Tags", "type": "multiselect", "options": ["Champion", "Decision maker", "Technical", "Finance", "Ops"], "width": 200 },
-        { "key": "company", "label": "Company", "type": "relation", "relation": "companies", "width": 180 }
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 200
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "type": "email",
+          "width": 220
+        },
+        {
+          "key": "role",
+          "label": "Role",
+          "type": "text",
+          "width": 160
+        },
+        {
+          "key": "tags",
+          "label": "Tags",
+          "type": "multiselect",
+          "options": [
+            "Champion",
+            "Decision maker",
+            "Technical",
+            "Finance",
+            "Ops"
+          ],
+          "width": 200
+        },
+        {
+          "key": "company",
+          "label": "Company",
+          "type": "relation",
+          "relation": "companies",
+          "width": 180
+        }
       ],
       "sampleRows": [
-        { "id": "pe_1", "name": "Maya Verstraete", "email": "maya@brightline.example", "role": "CTO", "tags": ["Champion", "Technical"], "company": "Brightline Analytics" },
-        { "id": "pe_2", "name": "Jonas Peeters", "email": "jonas@nordwind.example", "role": "Ops Director", "company": "Nordwind Retail" },
-        { "id": "pe_3", "name": "Lena Dubois", "email": "lena@cargolane.example", "role": "Head of Fleet", "company": "Cargolane" },
-        { "id": "pe_4", "name": "Karim El Amrani", "email": "karim@veldkliniek.example", "role": "CIO", "company": "Veldkliniek Group" },
-        { "id": "pe_5", "name": "Sofia Marchetti", "email": "sofia@meridian.example", "role": "Partner", "company": "Meridian Capital" },
-        { "id": "pe_6", "name": "Tom Janssens", "email": "tom@pixelforge.example", "role": "Founder", "company": "Pixelforge Studio" },
-        { "id": "pe_7", "name": "Anouk de Vries", "email": "anouk@greencrate.example", "role": "Buying Lead", "company": "GreenCrate Foods" },
-        { "id": "pe_8", "name": "Erik Lindqvist", "email": "erik@tidalfreight.example", "role": "COO", "company": "Tidal Freight" }
+        {
+          "id": "pe_1",
+          "name": "Maya Verstraete",
+          "email": "maya@brightline.example",
+          "role": "CTO",
+          "tags": [
+            "Champion",
+            "Technical"
+          ],
+          "company": "Brightline Analytics"
+        },
+        {
+          "id": "pe_2",
+          "name": "Jonas Peeters",
+          "email": "jonas@nordwind.example",
+          "role": "Ops Director",
+          "company": "Nordwind Retail"
+        },
+        {
+          "id": "pe_3",
+          "name": "Lena Dubois",
+          "email": "lena@cargolane.example",
+          "role": "Head of Fleet",
+          "company": "Cargolane"
+        },
+        {
+          "id": "pe_4",
+          "name": "Karim El Amrani",
+          "email": "karim@veldkliniek.example",
+          "role": "CIO",
+          "company": "Veldkliniek Group"
+        },
+        {
+          "id": "pe_5",
+          "name": "Sofia Marchetti",
+          "email": "sofia@meridian.example",
+          "role": "Partner",
+          "company": "Meridian Capital"
+        },
+        {
+          "id": "pe_6",
+          "name": "Tom Janssens",
+          "email": "tom@pixelforge.example",
+          "role": "Founder",
+          "company": "Pixelforge Studio"
+        },
+        {
+          "id": "pe_7",
+          "name": "Anouk de Vries",
+          "email": "anouk@greencrate.example",
+          "role": "Buying Lead",
+          "company": "GreenCrate Foods"
+        },
+        {
+          "id": "pe_8",
+          "name": "Erik Lindqvist",
+          "email": "erik@tidalfreight.example",
+          "role": "COO",
+          "company": "Tidal Freight"
+        }
       ]
     },
     {
@@ -67,22 +256,125 @@
       "defaultView": "kanban",
       "stageField": "stage",
       "fields": [
-        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
-        { "key": "stage", "label": "Stage", "type": "select", "options": ["New", "Qualified", "Proposal", "Won", "Lost"], "width": 130 },
-        { "key": "amount", "label": "Amount", "type": "currency", "width": 120 },
-        { "key": "closeDate", "label": "Close date", "type": "date", "width": 130 },
-        { "key": "company", "label": "Company", "type": "relation", "relation": "companies", "width": 180 },
-        { "key": "owner", "label": "Owner", "type": "user", "width": 150 }
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 220
+        },
+        {
+          "key": "stage",
+          "label": "Stage",
+          "type": "select",
+          "options": [
+            "New",
+            "Qualified",
+            "Proposal",
+            "Won",
+            "Lost"
+          ],
+          "width": 130
+        },
+        {
+          "key": "amount",
+          "label": "Amount",
+          "type": "currency",
+          "width": 120
+        },
+        {
+          "key": "closeDate",
+          "label": "Close date",
+          "type": "date",
+          "width": 130
+        },
+        {
+          "key": "company",
+          "label": "Company",
+          "type": "relation",
+          "relation": "companies",
+          "width": 180
+        },
+        {
+          "key": "owner",
+          "label": "Owner",
+          "type": "user",
+          "width": 150
+        }
       ],
       "sampleRows": [
-        { "id": "de_1", "name": "Brightline platform rollout", "stage": "Qualified", "amount": 48000, "closeDate": "2026-08-14", "company": "Brightline Analytics", "owner": "you" },
-        { "id": "de_2", "name": "Nordwind store copilot", "stage": "New", "amount": 32000, "closeDate": "2026-09-01", "company": "Nordwind Retail", "owner": "you" },
-        { "id": "de_3", "name": "Cargolane dispatch automation", "stage": "Proposal", "amount": 76000, "closeDate": "2026-08-05", "company": "Cargolane", "owner": "you" },
-        { "id": "de_4", "name": "Veldkliniek intake agent", "stage": "New", "amount": 21000, "closeDate": "2026-09-18", "company": "Veldkliniek Group", "owner": "you" },
-        { "id": "de_5", "name": "Meridian research assistant", "stage": "Won", "amount": 54000, "closeDate": "2026-06-30", "company": "Meridian Capital", "owner": "you" },
-        { "id": "de_6", "name": "Pixelforge support bot", "stage": "Qualified", "amount": 12000, "closeDate": "2026-08-22", "company": "Pixelforge Studio", "owner": "you" },
-        { "id": "de_7", "name": "GreenCrate supplier portal", "stage": "Proposal", "amount": 39000, "closeDate": "2026-08-29", "company": "GreenCrate Foods", "owner": "you" },
-        { "id": "de_8", "name": "Tidal customs copilot", "stage": "Lost", "amount": 18000, "closeDate": "2026-07-02", "company": "Tidal Freight", "owner": "you" }
+        {
+          "id": "de_1",
+          "name": "Brightline platform rollout",
+          "stage": "Qualified",
+          "amount": 48000,
+          "closeDate": "2026-08-14",
+          "company": "Brightline Analytics",
+          "owner": "you"
+        },
+        {
+          "id": "de_2",
+          "name": "Nordwind store copilot",
+          "stage": "New",
+          "amount": 32000,
+          "closeDate": "2026-09-01",
+          "company": "Nordwind Retail",
+          "owner": "Maya Verstraete"
+        },
+        {
+          "id": "de_3",
+          "name": "Cargolane dispatch automation",
+          "stage": "Proposal",
+          "amount": 76000,
+          "closeDate": "2026-08-05",
+          "company": "Cargolane",
+          "owner": "Jonas Peeters"
+        },
+        {
+          "id": "de_4",
+          "name": "Veldkliniek intake agent",
+          "stage": "New",
+          "amount": 21000,
+          "closeDate": "2026-09-18",
+          "company": "Veldkliniek Group",
+          "owner": "Sofia Marchetti"
+        },
+        {
+          "id": "de_5",
+          "name": "Meridian research assistant",
+          "stage": "Won",
+          "amount": 54000,
+          "closeDate": "2026-06-30",
+          "company": "Meridian Capital",
+          "owner": "you"
+        },
+        {
+          "id": "de_6",
+          "name": "Pixelforge support bot",
+          "stage": "Qualified",
+          "amount": 12000,
+          "closeDate": "2026-08-22",
+          "company": "Pixelforge Studio",
+          "owner": "Maya Verstraete"
+        },
+        {
+          "id": "de_7",
+          "name": "GreenCrate supplier portal",
+          "stage": "Proposal",
+          "amount": 39000,
+          "closeDate": "2026-08-29",
+          "company": "GreenCrate Foods",
+          "owner": "Jonas Peeters"
+        },
+        {
+          "id": "de_8",
+          "name": "Tidal customs copilot",
+          "stage": "Lost",
+          "amount": 18000,
+          "closeDate": "2026-07-02",
+          "company": "Tidal Freight",
+          "owner": "Sofia Marchetti"
+        }
       ]
     }
   ]

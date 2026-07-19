@@ -188,6 +188,9 @@ export function App() {
               })()
             ) : route.recordId ? (
               <RecordView
+                /* keyed per record: tab choice + draft text must never leak
+                   from one record's page into another's */
+                key={`${active.key}:${route.recordId}`}
                 appConfig={config}
                 config={active}
                 id={route.recordId}
@@ -198,6 +201,7 @@ export function App() {
               <ObjectView
                 key={active.key}
                 config={active}
+                users={config.users ?? []}
                 onOpen={(id) => route.go(`#/o/${active.key}/r/${id}`)}
                 onCountChange={onCount}
                 viewIcons={{ table: <Table2 size={13} />, kanban: <Kanban size={13} /> }}

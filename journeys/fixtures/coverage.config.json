@@ -17,14 +17,52 @@
       "icon": "building-2",
       "defaultView": "table",
       "fields": [
-        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
-        { "key": "domain", "label": "Domain", "type": "url", "width": 180 },
-        { "key": "industry", "label": "Industry", "type": "select", "options": ["Software", "Retail", "Logistics", "Health", "Finance"], "width": 140 }
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 220
+        },
+        {
+          "key": "domain",
+          "label": "Domain",
+          "type": "url",
+          "width": 180
+        },
+        {
+          "key": "industry",
+          "label": "Industry",
+          "type": "select",
+          "options": [
+            "Software",
+            "Retail",
+            "Logistics",
+            "Health",
+            "Finance"
+          ],
+          "width": 140
+        }
       ],
       "sampleRows": [
-        { "id": "co_1", "name": "Brightline Analytics", "domain": "brightline.example", "industry": "Software" },
-        { "id": "co_2", "name": "Nordwind Retail", "domain": "nordwind.example", "industry": "Retail" },
-        { "id": "co_3", "name": "Cargolane", "domain": "cargolane.example", "industry": "Logistics" }
+        {
+          "id": "co_1",
+          "name": "Brightline Analytics",
+          "domain": "brightline.example",
+          "industry": "Software"
+        },
+        {
+          "id": "co_2",
+          "name": "Nordwind Retail",
+          "domain": "nordwind.example",
+          "industry": "Retail"
+        },
+        {
+          "id": "co_3",
+          "name": "Cargolane",
+          "domain": "cargolane.example",
+          "industry": "Logistics"
+        }
       ]
     },
     {
@@ -34,16 +72,69 @@
       "icon": "briefcase",
       "defaultView": "table",
       "fields": [
-        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 240 },
-        { "key": "company", "label": "Company", "type": "relation", "relation": "companies", "width": 200 },
-        { "key": "location", "label": "Location", "type": "text", "width": 140 },
-        { "key": "status", "label": "Status", "type": "select", "options": ["Open", "On hold", "Filled"], "width": 110 },
-        { "key": "openings", "label": "Openings", "type": "number", "width": 100 }
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "text",
+          "primary": true,
+          "width": 240
+        },
+        {
+          "key": "company",
+          "label": "Company",
+          "type": "relation",
+          "relation": "companies",
+          "width": 200
+        },
+        {
+          "key": "location",
+          "label": "Location",
+          "type": "text",
+          "width": 140
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "Open",
+            "On hold",
+            "Filled"
+          ],
+          "width": 110
+        },
+        {
+          "key": "openings",
+          "label": "Openings",
+          "type": "number",
+          "width": 100
+        }
       ],
       "sampleRows": [
-        { "id": "jo_1", "title": "Senior Frontend Engineer", "company": "Brightline Analytics", "location": "Ghent", "status": "Open", "openings": 2 },
-        { "id": "jo_2", "title": "Supply Planner", "company": "Nordwind Retail", "location": "Antwerp", "status": "Open", "openings": 1 },
-        { "id": "jo_3", "title": "Dispatch Team Lead", "company": "Cargolane", "location": "Rotterdam", "status": "On hold", "openings": 1 }
+        {
+          "id": "jo_1",
+          "title": "Senior Frontend Engineer",
+          "company": "Brightline Analytics",
+          "location": "Ghent",
+          "status": "Open",
+          "openings": 2
+        },
+        {
+          "id": "jo_2",
+          "title": "Supply Planner",
+          "company": "Nordwind Retail",
+          "location": "Antwerp",
+          "status": "Open",
+          "openings": 1
+        },
+        {
+          "id": "jo_3",
+          "title": "Dispatch Team Lead",
+          "company": "Cargolane",
+          "location": "Rotterdam",
+          "status": "On hold",
+          "openings": 1
+        }
       ]
     },
     {
@@ -53,17 +144,86 @@
       "icon": "users",
       "defaultView": "table",
       "fields": [
-        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
-        { "key": "email", "label": "Email", "type": "email", "width": 220 },
-        { "key": "headline", "label": "Headline", "type": "text", "width": 240 },
-        { "key": "source", "label": "Source", "type": "select", "options": ["Inbound", "Sourced", "Referral", "Agency"], "width": 120 },
-        { "key": "location", "label": "Location", "type": "text", "width": 140 }
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 200
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "type": "email",
+          "width": 220
+        },
+        {
+          "key": "headline",
+          "label": "Headline",
+          "type": "text",
+          "width": 240
+        },
+        {
+          "key": "source",
+          "label": "Source",
+          "type": "select",
+          "options": [
+            "Inbound",
+            "Sourced",
+            "Referral",
+            "Agency"
+          ],
+          "width": 120
+        },
+        {
+          "key": "location",
+          "label": "Location",
+          "type": "text",
+          "width": 140
+        },
+        {
+          "key": "summary",
+          "label": "Summary",
+          "type": "text",
+          "primitive": {
+            "kind": "task",
+            "label": "Profile summary"
+          }
+        }
       ],
       "sampleRows": [
-        { "id": "ca_1", "name": "Nadia Haddad", "email": "nadia@example.test", "headline": "React + design systems", "source": "Sourced", "location": "Brussels" },
-        { "id": "ca_2", "name": "Pieter Bakker", "email": "pieter@example.test", "headline": "S&OP · retail supply", "source": "Inbound", "location": "Utrecht" },
-        { "id": "ca_3", "name": "Iris Novak", "email": "iris@example.test", "headline": "Ops lead, logistics", "source": "Referral", "location": "Rotterdam" },
-        { "id": "ca_4", "name": "Marco Costa", "email": "marco@example.test", "headline": "Fullstack TS", "source": "Agency", "location": "Lille" }
+        {
+          "id": "ca_1",
+          "name": "Nadia Haddad",
+          "email": "nadia@example.test",
+          "headline": "React + design systems",
+          "source": "Sourced",
+          "location": "Brussels"
+        },
+        {
+          "id": "ca_2",
+          "name": "Pieter Bakker",
+          "email": "pieter@example.test",
+          "headline": "S&OP \u00b7 retail supply",
+          "source": "Inbound",
+          "location": "Utrecht"
+        },
+        {
+          "id": "ca_3",
+          "name": "Iris Novak",
+          "email": "iris@example.test",
+          "headline": "Ops lead, logistics",
+          "source": "Referral",
+          "location": "Rotterdam"
+        },
+        {
+          "id": "ca_4",
+          "name": "Marco Costa",
+          "email": "marco@example.test",
+          "headline": "Fullstack TS",
+          "source": "Agency",
+          "location": "Lille"
+        }
       ]
     },
     {
@@ -74,19 +234,106 @@
       "defaultView": "kanban",
       "stageField": "stage",
       "fields": [
-        { "key": "name", "label": "Application", "type": "text", "primary": true, "width": 240 },
-        { "key": "candidate", "label": "Candidate", "type": "relation", "relation": "candidates", "width": 180 },
-        { "key": "job", "label": "Job", "type": "relation", "relation": "jobs", "width": 220 },
-        { "key": "stage", "label": "Stage", "type": "select", "options": ["Applied", "Screen", "Interview", "Offer", "Hired", "Rejected"], "width": 120 },
-        { "key": "fit", "label": "Fit score", "type": "number", "width": 100 },
-        { "key": "nextStep", "label": "Next step", "type": "date", "width": 130 }
+        {
+          "key": "name",
+          "label": "Application",
+          "type": "text",
+          "primary": true,
+          "width": 240
+        },
+        {
+          "key": "candidate",
+          "label": "Candidate",
+          "type": "relation",
+          "relation": "candidates",
+          "width": 180
+        },
+        {
+          "key": "job",
+          "label": "Job",
+          "type": "relation",
+          "relation": "jobs",
+          "width": 220
+        },
+        {
+          "key": "stage",
+          "label": "Stage",
+          "type": "select",
+          "options": [
+            "Applied",
+            "Screen",
+            "Interview",
+            "Offer",
+            "Hired",
+            "Rejected"
+          ],
+          "width": 120
+        },
+        {
+          "key": "fit",
+          "label": "Fit score",
+          "type": "number",
+          "width": 100
+        },
+        {
+          "key": "nextStep",
+          "label": "Next step",
+          "type": "date",
+          "width": 130
+        },
+        {
+          "key": "owner",
+          "label": "Owner",
+          "type": "user"
+        }
       ],
       "sampleRows": [
-        { "id": "ap_1", "name": "Nadia → Senior Frontend", "candidate": "Nadia Haddad", "job": "Senior Frontend Engineer", "stage": "Interview", "fit": 86, "nextStep": "2026-07-24" },
-        { "id": "ap_2", "name": "Pieter → Supply Planner", "candidate": "Pieter Bakker", "job": "Supply Planner", "stage": "Screen", "fit": 71, "nextStep": "2026-07-22" },
-        { "id": "ap_3", "name": "Iris → Dispatch Lead", "candidate": "Iris Novak", "job": "Dispatch Team Lead", "stage": "Applied", "fit": 64, "nextStep": "2026-07-28" },
-        { "id": "ap_4", "name": "Marco → Senior Frontend", "candidate": "Marco Costa", "job": "Senior Frontend Engineer", "stage": "Offer", "fit": 90, "nextStep": "2026-07-21" }
+        {
+          "id": "ap_1",
+          "name": "Nadia \u2192 Senior Frontend",
+          "candidate": "Nadia Haddad",
+          "job": "Senior Frontend Engineer",
+          "stage": "Interview",
+          "fit": 86,
+          "nextStep": "2026-07-24",
+          "owner": "you"
+        },
+        {
+          "id": "ap_2",
+          "name": "Pieter \u2192 Supply Planner",
+          "candidate": "Pieter Bakker",
+          "job": "Supply Planner",
+          "stage": "Screen",
+          "fit": 71,
+          "nextStep": "2026-07-22",
+          "owner": "Iris Lang"
+        },
+        {
+          "id": "ap_3",
+          "name": "Iris \u2192 Dispatch Lead",
+          "candidate": "Iris Novak",
+          "job": "Dispatch Team Lead",
+          "stage": "Applied",
+          "fit": 64,
+          "nextStep": "2026-07-28",
+          "owner": "Tomas Reyes"
+        },
+        {
+          "id": "ap_4",
+          "name": "Marco \u2192 Senior Frontend",
+          "candidate": "Marco Costa",
+          "job": "Senior Frontend Engineer",
+          "stage": "Offer",
+          "fit": 90,
+          "nextStep": "2026-07-21",
+          "owner": "you"
+        }
       ]
     }
+  ],
+  "users": [
+    "you",
+    "Iris Lang",
+    "Tomas Reyes"
   ]
 }

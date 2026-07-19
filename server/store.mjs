@@ -13,6 +13,7 @@ export class Store {
     this.rows = seeded.rows;           // { objectKey: RecordRow[] }
     this.events = seeded.events;       // { objectKey: { id: TimelineEvent[] } }
     this.state = [];                   // append-only [{key, value, ts}]
+    this.files = {};                   // { objectKey: { id: [{id,name,mime,size,ts,data}] } }
     this.n = 1000;
   }
 
@@ -79,8 +80,42 @@ export class Store {
     return this._ev(objKey, id, "note", text);
   }
 
-  _ev(objKey, id, kind, summary) {
-    const ev = { id: `ev_${++this.n}`, ts: new Date().toISOString(), kind, summary, actor: "you" };
+  addActivity(objKey, id, kind, text) {
+    return this._ev(objKey, id, "activity", text, kind);
+  }
+
+  fileAdd(objKey, id, { name, mime, data }) {
+    const size = Math.floor((data.length * 3) / 4); // decoded bytes from base64 length
+    const f = { id: `f_${++this.n}`, name, mime, size, ts: new Date().toISOString(), data };
+    (((this.files[objKey] ??= {})[id] ??= [])).push(f);
+    this._ev(objKey, id, "file", `Attached ${name}`);
+    const { data: _, ...meta } = f;
+    return meta;
+  }
+
+  fileList(objKey, id) {
+    return ((this.files[objKey] ?? {})[id] ?? []).map(({ data: _, ...meta }) => meta);
+  }
+
+  fileGet(objKey, id, fileId) {
+    return ((this.files[objKey] ?? {})[id] ?? []).find((f) => f.id === fileId) ?? null;
+  }
+
+  /* AI-enrichment seam: write a computed field value + a labeled timeline event.
+     The VALUE comes from the caller (the /enrich route — mock today, a platform
+     task/workflow call in prod); the store just persists both sides. */
+  enrich(objKey, id, fieldKey, value, viaLabel) {
+    const row = this.get(objKey, id);
+    if (!row) return null;
+    row[fieldKey] = value;
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    const f = cfg?.fields.find((x) => x.key === fieldKey);
+    this._ev(objKey, id, "updated", `Enriched ${f?.label ?? fieldKey} via ${viaLabel}`);
+    return row;
+  }
+
+  _ev(objKey, id, kind, summary, activity) {
+    const ev = { id: `ev_${++this.n}`, ts: new Date().toISOString(), kind, summary, actor: "you", ...(activity ? { activity } : {}) };
     ((this.events[objKey] ??= {})[id] ??= []).push(ev);
     return ev;
   }

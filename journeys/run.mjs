@@ -343,6 +343,17 @@ const journeys = [
         await p2.waitForSelector('[data-testid="field-candidate-value"]');
         const cand = await p2.textContent('[data-testid="field-candidate-value"]');
         assert(cand?.includes("Nadia"), "application record links its candidate via the relation picker");
+        // new-block coverage on SIBLING types: group-by picker (stage+owner groupables),
+        // enrich seam on a second object, files tab present on any record
+        await p2.goto("http://localhost:4700/#/o/applications");
+        await p2.waitForSelector('[data-testid="kanban-applications"]');
+        assert((await p2.locator('[data-testid="group-by"]').count()) === 1, "fixture board offers group-by (stage + owner user field)");
+        await p2.goto("http://localhost:4700/#/o/candidates");
+        await p2.waitForSelector('[data-testid="table-candidates"] tbody tr');
+        await p2.locator('[data-testid="table-candidates"] tbody tr .nxRowLink').first().click();
+        await p2.waitForSelector('[data-testid="enrich-summary"]');
+        assert(true, "fixture candidate record shows the enrich affordance from field.primitive");
+        assert((await p2.locator('[role="tab"]:has-text("Files")').count()) === 1, "fixture record has the Files tab");
         await p2.screenshot({ path: path.join(SHOTS, "journey-blocks-coverage.png"), fullPage: true });
         await ctx.close();
       } finally {
@@ -409,6 +420,100 @@ const journeys = [
       assert(v?.includes("20") && v?.includes("Aug"), `date persisted across reload (${v})`);
       const tl = await page.textContent('[data-testid="timeline"]');
       assert(tl?.includes("closeDate:"), "timeline records the date change");
+    },
+  },
+  {
+    name: "attachments", feature: "Attachments (files on records)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies/r/co_2");
+      await page.waitForSelector('[data-testid="record-co_2"]');
+      await page.click('[role="tab"]:has-text("Files")');
+      await page.setInputFiles('[data-testid="file-input"]', {
+        name: "meeting-notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello attachments block"),
+      });
+      await page.waitForSelector('[data-testid^="file-row-"]');
+      const rowText = await page.textContent('[data-testid^="file-row-"]');
+      assert(rowText.includes("meeting-notes.txt") && rowText.includes("B"), "uploaded file lists with name + size");
+      const href = await page.getAttribute('[data-testid^="file-dl-"]', "href");
+      const dl = await page.request.get(URLBASE + href);
+      assert(dl.ok() && (await dl.text()) === "hello attachments block", "download returns the exact uploaded bytes");
+      await page.click('[role="tab"]:has-text("Timeline")');
+      await page.waitForSelector('[data-testid="tl-ic-file"]');
+      const tl = await page.textContent('[data-testid="timeline"]');
+      assert(tl.includes("Attached meeting-notes.txt"), "timeline gains the attach event");
+    },
+  },
+  {
+    name: "activity-composer", feature: "Activity composer (call/email/meeting)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/deals/r/de_2");
+      await page.waitForSelector('[data-testid="activity-composer"]');
+      await page.click('[data-testid="act-kind-email"]');
+      await page.fill('[data-testid="act-input"]', "Sent pricing recap to Maya");
+      await page.click('[data-testid="act-log"]');
+      await page.waitForSelector('[data-testid="tl-ic-email"]');
+      const tl = await page.textContent('[data-testid="timeline"]');
+      assert(tl.includes("Sent pricing recap to Maya"), "logged email appears in the timeline with its kind icon");
+      await page.reload();
+      await page.waitForSelector('[data-testid="tl-ic-email"]');
+      assert(true, "activity survives reload");
+    },
+  },
+  {
+    name: "enrich-field", feature: "AI-enrichment seam (field.primitive)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies/r/co_3");
+      await page.waitForSelector('[data-testid="enrich-about"]');
+      await page.click('[data-testid="enrich-about"]');
+      await page.waitForFunction(
+        () => (document.querySelector('[data-testid="field-about"]')?.value ?? "").includes("(mock)"),
+      );
+      assert(true, "About fills from the enrich primitive (labeled mock)");
+      await page.reload();
+      await page.waitForFunction(
+        () => (document.querySelector('[data-testid="field-about"]')?.value ?? "").includes("(mock)"),
+      );
+      const tl = await page.textContent('[data-testid="timeline"]');
+      assert(tl.includes("Enriched About via Company research (mock)"), "timeline records the enrichment with its primitive label");
+    },
+  },
+  {
+    name: "board-group-by", feature: "Board group-by any field",
+    async run(page) {
+      // companies has NO stageField — the board now exists via its select field
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="view-switch"]');
+      await page.click('[data-testid="view-switch"] button:has-text("Board")');
+      await page.waitForSelector('[data-testid="kanban-companies"]');
+      const softCard = await page.locator('[data-testid="col-Software"] [data-testid="card-co_1"]').count();
+      assert(softCard === 1, "companies board groups by Industry (Brightline in Software)");
+      // deals has TWO groupables (stage + owner) → the group picker appears
+      await page.goto(URLBASE + "/#/o/deals");
+      await page.waitForSelector('[data-testid="kanban-deals"]');
+      // keyboard-select a menu item deterministically: ArrowDown until IT is
+      // highlighted (the first press can be swallowed during Radix focus transfer)
+      const pickGroup = async (key) => {
+        await page.click('[data-testid="group-by"]');
+        const item = page.locator(`[data-testid="group-by-${key}"]`);
+        await item.waitFor();
+        for (let i = 0; i < 8; i++) {
+          if ((await item.getAttribute("data-highlighted")) !== null) break;
+          await page.keyboard.press("ArrowDown");
+          await page.waitForTimeout(80);
+        }
+        await page.keyboard.press("Enter");
+      };
+      await pickGroup("owner");
+      await page.waitForSelector('[data-testid="col-you"]', { timeout: 6000 });
+      const youCards = await page.locator('[data-testid="col-you"] .nxKCard').count();
+      assert(youCards >= 1, `board regroups by Owner (user field; ${youCards} cards under 'you')`);
+      // RESTORE persisted view state (other journeys depend on defaults)
+      await pickGroup("stage");
+      await page.waitForSelector('[data-testid="col-New"]');
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="view-switch"]');
+      await page.click('[data-testid="view-switch"] button:has-text("Table")');
+      await page.waitForSelector('[data-testid="table-companies"]');
     },
   },
   {

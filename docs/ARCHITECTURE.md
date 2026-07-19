@@ -18,7 +18,9 @@ src/app/
 src/ui/                  SYNCED nexus-ui (tokens · shadcn bridge · vendored kit · primitives · record-core)
 src/lib/                 nexusClient · connectFlow · chatBridge (rung-3 seam)
 server/
-  server.mjs             zero-dep node: static dist + /api (objects CRUD+timeline+notes · app_state kv ·
+  server.mjs             zero-dep node: static dist + /api (objects CRUD+timeline+notes+activities ·
+                         files upload/list/download (base64, 5 MB cap) · /enrich (MOCK — the single
+                         swap-point for a real platform task/workflow via field.primitive) · app_state kv ·
                          healthz w/ VERSION) · JSON no-store · binds PORT+3000+8080 · placeholder page when
                          dist missing (a delivery failure must not read as a crash loop)
   store.mjs              in-memory store — the data-spine SHAPE (append-only app_state, latest-per-key);
@@ -35,3 +37,5 @@ docs/                    SPEC · DESIGN · feature-manifest · COVERAGE (+ this 
 **Data flow:** UI → relative `/api` (vite proxies in dev; same origin in prod) → store (mock) or warehouse (prod twin). **State:** records live server-side; `app_state` kv is the cross-session spine; UI-only prefs (saved views, theme) live in localStorage. **Routing:** hash-based, zero router deps; palette/relations hand off filters via `sessionStorage["nx-pending-q"]`.
 
 **Verification chain:** feature → manifest row → journey asserting its VISIBLE outcome → `npm run journeys` stamps → deploy gate reads the stamps. `npm run precheck` before every push.
+
+**AI-enrichment seam:** a field whose config carries `primitive: {kind: "task"|"workflow", id?, label?}` renders a sparkle affordance on the record page. Clicking it POSTs `/api/objects/:obj/:id/enrich {field}` — the server MOCK writes a clearly-labeled `(mock)` value + a timeline event. To go live, replace the `mockValue` line in `server/server.mjs` with a platform call using `primitive.id` (`src/lib/nexusClient` holds the client seam); the UI, config shape, and journey don't change.
