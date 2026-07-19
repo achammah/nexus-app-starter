@@ -9,6 +9,8 @@ export interface AppConfig {
   chat?: { embedUrl?: string };
   /* the app's people directory — `user`-type fields pick from this list */
   users?: string[];
+  /* server-set: seeded fictional rows are present (drives the Demo badge) */
+  demo?: boolean;
   objects: ObjectConfig[];
 }
 
@@ -17,7 +19,12 @@ async function j<T>(path: string, init?: RequestInit): Promise<T> {
   const t = setTimeout(() => ctrl.abort(), 15000);
   try {
     const res = await fetch(path, { ...init, signal: ctrl.signal, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
-    if (!res.ok) throw new Error(`${init?.method ?? "GET"} ${path} → ${res.status}`);
+    if (!res.ok) {
+      // surface the server's own message ("email must be a valid address"),
+      // not just a bare status code
+      const detail = await res.json().then((b) => (b as { error?: string }).error).catch(() => undefined);
+      throw new Error(detail ?? `${init?.method ?? "GET"} ${path} → ${res.status}`);
+    }
     return (await res.json()) as T;
   } finally {
     clearTimeout(t);

@@ -423,6 +423,65 @@ const journeys = [
     },
   },
   {
+    name: "field-validation", feature: "Field-type validation (config-implied)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/people/r/pe_1");
+      await page.waitForSelector('[data-testid="field-email"]');
+      const before = await page.inputValue('[data-testid="field-email"]');
+      await page.fill('[data-testid="field-email"]', "not-an-email");
+      await page.locator('[data-testid="field-email"]').blur();
+      await page.waitForFunction(
+        () => [...document.querySelectorAll('[data-testid="toast"]')].some((t) => t.textContent?.includes("valid email")),
+      );
+      assert(true, "server rejects a bad email with a human message (toast)");
+      await page.waitForFunction(
+        (prev) => document.querySelector('[data-testid="field-email"]')?.value === prev, before,
+      );
+      assert(true, "the field reverts to the stored value after the rejection");
+      const direct = await page.request.patch(URLBASE + "/api/objects/people/pe_1", { data: { email: "nope" } });
+      assert(direct.status() === 400, "the API itself 400s (not just the UI)");
+    },
+  },
+  {
+    name: "demo-badge", feature: "Demo-data badge",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="demo-badge"]');
+      const txt = await page.textContent('[data-testid="demo-badge"]');
+      assert(txt.includes("Demo"), "seeded fictional rows surface as a visible Demo badge");
+    },
+  },
+  {
+    name: "image-upload-downscale", feature: "Image downscale on upload",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies/r/co_4");
+      await page.waitForSelector('[data-testid="record-co_4"]');
+      await page.click('[role="tab"]:has-text("Files")');
+      await page.waitForSelector('[data-testid="file-input"]', { state: "attached" });
+      // build a 2400×1500 PNG in-page and hand it to the hidden input
+      await page.evaluate(async () => {
+        const c = document.createElement("canvas");
+        c.width = 2400; c.height = 1500;
+        const g = c.getContext("2d");
+        g.fillStyle = "#4455ff"; g.fillRect(0, 0, 2400, 1500);
+        g.fillStyle = "#ffaa00"; g.fillRect(200, 200, 900, 700);
+        const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+        const dt = new DataTransfer();
+        dt.items.add(new File([blob], "wide-photo.png", { type: "image/png" }));
+        const input = document.querySelector('[data-testid="file-input"]');
+        input.files = dt.files;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+      await page.waitForSelector('[data-testid^="file-row-"]');
+      const href = await page.getAttribute('[data-testid^="file-dl-"]', "href");
+      const dl = await page.request.get(URLBASE + href);
+      const buf = await dl.body();
+      // PNG IHDR: width = bytes 16-19 big-endian
+      const width = buf.readUInt32BE(16);
+      assert(width <= 1600 && width > 0, `stored image is downscaled (width ${width} ≤ 1600 from 2400)`);
+    },
+  },
+  {
     name: "attachments", feature: "Attachments (files on records)",
     async run(page) {
       await page.goto(URLBASE + "/#/o/companies/r/co_2");

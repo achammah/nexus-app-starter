@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Server (node)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/server/server.mjs",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Journeys",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/journeys/run.mjs",
+      "console": "integratedTerminal"
+    }
+  ]
+}

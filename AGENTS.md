@@ -1,6 +1,19 @@
 # AGENTS.md — how an agent builds on nexus-app-starter
 
-You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the strict deploy gate). Read order: this file → `starter.config.json` (what the app IS) → `docs/` contracts (SPEC · DESIGN · feature-manifest · COVERAGE) → `docs/ARCHITECTURE.md` (file map + data flow) → `src/ui/` docs via the library's own `AGENTS.md`/`docs/INDEX.md` (vendored copy of nexus-ui; catalog also at `src/ui/../..` in the library repo).
+**North star: the config IS the app. Prefer a config change over new code, a journey over a claim, and the smallest diff that ships the ask.**
+
+You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the strict deploy gate). Read order: this file → `starter.config.json` (what the app IS) → `docs/RECIPES.md` (exact files + order for common tasks) → `docs/` contracts (SPEC · DESIGN · feature-manifest · COVERAGE) → `docs/ARCHITECTURE.md` (file map + data flow) + `docs/DATA-MODEL.md` (generated ER view) → `src/ui/` docs via the library's own `AGENTS.md`/`docs/INDEX.md` (vendored copy of nexus-ui; catalog also at `src/ui/../..` in the library repo).
+
+## Commands (the sanctioned set — anything else, justify in your PR)
+| Command | Does |
+|---|---|
+| `npm run dev` | vite dev server + API proxy |
+| `npm run serve` | build-less server (serves last `dist/`) — pair with `CONFIG_PATH=` to boot another product |
+| `npm run build` | tsc + vite build |
+| `npm run journeys` | full journey suite; stamps manifest + `journeys/.last-pass` on all-green |
+| `npm run precheck` | tsc + build + journey-stamp freshness — run before EVERY push |
+| `npm run sync-ui` | pull the pinned nexus-ui copy into `src/ui/` |
+| `npm run model` | regenerate `docs/DATA-MODEL.md` from the config |
 
 ## The four gate artifacts (the deploy gate READS these)
 | File | Contract |

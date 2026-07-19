@@ -141,7 +141,19 @@ export function App() {
             </nav>
           </div>
           <div className="sideFoot">
-            <span>v0.1 · starter</span>
+            <span>v0.2 · starter</span>
+            {config.demo && (
+              <span
+                data-testid="demo-badge"
+                title="Seeded fictional rows — replace via starter.config.json or the API"
+                style={{
+                  font: "var(--nx-text-meta)", fontWeight: 600, borderRadius: 999, padding: "1px 8px",
+                  background: "var(--nx-warn-soft, var(--nx-accent-soft))", color: "var(--nx-warn, var(--nx-accent))",
+                }}
+              >
+                Demo data
+              </span>
+            )}
             {auth?.user && (
               <button
                 className="navItem"

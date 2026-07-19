@@ -50,7 +50,7 @@ async function readBody(req) {
 async function api(req, res, url) {
   const parts = url.pathname.split("/").filter(Boolean); // ["api", ...]
   try {
-    if (parts[1] === "config") return send(res, 200, CONFIG);
+    if (parts[1] === "config") return send(res, 200, { ...CONFIG, demo: store.demo });
     if (parts[1] === "healthz") return send(res, 200, { ok: true, version: VERSION, app: CONFIG.app.slug });
 
     if (parts[1] === "state") {
@@ -74,6 +74,8 @@ async function api(req, res, url) {
         }
         if (req.method === "POST") {
           const body = await readBody(req);
+          const invalid = store.validate(objKey, body);
+          if (invalid) return send(res, 400, { error: invalid });
           return send(res, 201, store.create(objKey, body));
         }
       }
@@ -131,6 +133,8 @@ async function api(req, res, url) {
       }
       if (req.method === "PATCH") {
         const patch = await readBody(req);
+        const invalid = store.validate(objKey, patch);
+        if (invalid) return send(res, 400, { error: invalid });
         const row = store.patch(objKey, id, patch);
         return row ? send(res, 200, row) : send(res, 404, { error: "not found" });
       }

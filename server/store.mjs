@@ -15,6 +15,8 @@ export class Store {
     this.state = [];                   // append-only [{key, value, ts}]
     this.files = {};                   // { objectKey: { id: [{id,name,mime,size,ts,data}] } }
     this.n = 1000;
+    // seeded fictional rows present → surfaces as a "Demo data" badge in the UI
+    this.demo = Object.values(this.rows).some((rows) => rows.length > 0);
   }
 
   list(objKey, q = {}) {
@@ -40,6 +42,35 @@ export class Store {
 
   get(objKey, id) {
     return (this.rows[objKey] ?? []).find((r) => r.id === id) ?? null;
+  }
+
+  /* Field-type-implied validation: the config declaring `type: "email"` IS the
+     validation rule — no parallel validation block to keep in sync. Returns an
+     error string or null. */
+  validate(objKey, patch) {
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    if (!cfg) return null;
+    for (const [k, v] of Object.entries(patch)) {
+      const f = cfg.fields.find((x) => x.key === k);
+      if (!f || v === null || v === undefined || v === "") continue;
+      if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v)))
+        return `${f.label} must be a valid email address`;
+      if (f.type === "url") {
+        // bare domains ("acme.example") are fine — probe with a scheme prefixed
+        const s = String(v);
+        const ok = [s, `https://${s}`].some((u) => { try { new URL(u); return u.includes("."); } catch { return false; } });
+        if (!ok) return `${f.label} must be a valid URL or domain`;
+      }
+      if ((f.type === "number" || f.type === "currency") && (typeof v !== "number" || Number.isNaN(v)))
+        return `${f.label} must be a number`;
+      if (f.type === "date" && Number.isNaN(new Date(String(v)).getTime()))
+        return `${f.label} must be a valid date`;
+      if (f.type === "select" && f.options && !f.options.includes(String(v)))
+        return `${f.label} must be one of: ${f.options.join(", ")}`;
+      if (f.type === "multiselect" && !Array.isArray(v))
+        return `${f.label} must be a list`;
+    }
+    return null;
   }
 
   create(objKey, body) {
