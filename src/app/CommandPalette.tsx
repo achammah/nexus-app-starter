@@ -9,6 +9,7 @@ import {
   CommandList,
 } from "../ui/components/ui/command";
 import { api, type AppConfig } from "./api";
+import { formatCell } from "../ui/record-core/DataTable";
 import { customPages } from "./pages";
 import { t } from "./i18n";
 import type { RecordRow } from "../ui/record-core/types";
@@ -53,7 +54,7 @@ export function CommandPalette({
           const primary = o.fields.find((f) => f.primary) ?? o.fields[0];
           try {
             const rows = await api.list(o.key, { q: q.trim() });
-            return rows.slice(0, 5).map((row) => ({ obj: o.key, row, name: String(row[primary.key] ?? row.id) }));
+            return rows.slice(0, 5).map((row) => ({ obj: o.key, row, name: formatCell(row[primary.key], primary.type) || String(row.id) }));
           } catch {
             return [];
           }

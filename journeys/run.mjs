@@ -1883,8 +1883,13 @@ const journeys = [
       const seeded = await page.inputValue("td[data-cell-focus] input").catch(() => page.inputValue("td input.nxCellEdit"));
       assert(seeded === "Z", `typing seeds the editor with the keystroke (${seeded})`);
       await page.keyboard.type("ulu");
+      const preCancel = await (await page.request.get(URLBASE + "/api/objects/companies")).json();
       await page.keyboard.press("Escape"); // cancel — no save
       await page.waitForFunction(() => !document.querySelector("td[data-cell-focus] input"));
+      await page.waitForTimeout(250);
+      const postCancel = await (await page.request.get(URLBASE + "/api/objects/companies")).json();
+      assert(JSON.stringify(preCancel.rows) === JSON.stringify(postCancel.rows),
+        "Escape-cancel writes NOTHING server-side (no race-commit through blur)");
       await page.keyboard.press("Escape"); // cell → row
       await page.waitForSelector("tr[data-row-focus]");
       await page.keyboard.press("Escape"); // selection clears first

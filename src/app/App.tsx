@@ -2,6 +2,7 @@ import * as React from "react";
 import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, Sun, Users, Table2, Kanban, X } from "lucide-react";
 import { api, type AppConfig } from "./api";
 import { favList, favToggle, type Fav } from "./favorites";
+import { formatCell } from "../ui/record-core/DataTable";
 import { Star } from "lucide-react";
 import { applySkin, type Skin } from "../ui/skins/skin";
 import { skinPresets } from "../ui/skins/presets";
@@ -328,7 +329,7 @@ export function App() {
       run: () => {
         const primary = recCfg?.fields.find((f) => f.primary) ?? recCfg?.fields[0];
         api.get(curRec.obj, curRec.id)
-          .then((r) => favToggle(curRec.obj, curRec.id, String(r[primary?.key ?? "id"] ?? curRec.id)))
+          .then((r) => favToggle(curRec.obj, curRec.id, (primary ? formatCell(r[primary.key], primary.type) : "") || String(curRec.id)))
           .catch(() => {});
       },
     });

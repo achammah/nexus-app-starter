@@ -2,6 +2,7 @@ import * as React from "react";
 import { api, type AppConfig } from "./api";
 import { useToast } from "./App";
 import { RecordPage, type RelatedList } from "../ui/record-core/RecordPage";
+import { formatCell } from "../ui/record-core/DataTable";
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
 import { usePollRev } from "./usePollRev";
 import { can, type Role } from "./permissions";
@@ -122,7 +123,7 @@ export function RecordView({
       pin={{
         on: fav,
         onToggle: () => {
-          const label = String(row[primary.key] ?? id);
+          const label = formatCell(row[primary.key], primary.type) || String(id);
           const on = favToggle(config.key, id, label);
           setFav(on);
           toast(on ? "Added to favorites" : "Removed from favorites");
