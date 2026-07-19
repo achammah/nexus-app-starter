@@ -17,6 +17,14 @@ const schema = z.object({
   // job seam knobs: recurring digest interval + its mail target (both optional)
   DIGEST_EVERY_MS: z.coerce.number().int().positive().optional(),
   DIGEST_TO: z.string().optional(),
+  // native warehouse persistence (the command-log data spine)
+  WAREHOUSE: z.enum(["bigquery"]).optional(),
+  WAREHOUSE_TOOL_ID: z.string().default("ad6256fb-9e6b-51c0-975d-e2124097082a"), // Google Cloud marketplace connector
+  WAREHOUSE_CREDENTIAL_ID: z.string().optional(),
+  BQ_PROJECT: z.string().optional(),
+  BQ_DATASET: z.string().default("nx_app"),
+  BQ_TABLE: z.string().default("events"),
+  BQ_LOCATION: z.string().default("EU"),
   // one flag gates nav + page + API together ("0"/"false" disables)
   FEATURE_TEAMS: z.string().optional(),
   FEATURE_WEBHOOKS: z.string().optional(),
@@ -36,6 +44,11 @@ if (!parsed.success) {
   process.exit(1);
 }
 export const env = parsed.data;
+
+if (env.WAREHOUSE === "bigquery" && !(env.NEXUS_API_KEY && env.WAREHOUSE_CREDENTIAL_ID)) {
+  console.error("[env] WAREHOUSE=bigquery needs NEXUS_API_KEY + WAREHOUSE_CREDENTIAL_ID (see .env.example)");
+  process.exit(1);
+}
 
 if ((env.AUTH_USERS || env.AUTH_MODE) && !env.APP_SECRET) {
   console.error("[env] AUTH_USERS/AUTH_MODE is set but APP_SECRET is missing — sessions cannot be signed. Set both or neither.");

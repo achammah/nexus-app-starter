@@ -46,7 +46,7 @@ export async function handleWebhooks(req, res, url, readBody, send, store, confi
         secret: crypto.randomBytes(24).toString("hex"),
         active: true, createdAt: new Date().toISOString(),
       };
-      (store.webhooks ??= []).push(hook);
+      store.webhookAdd(hook);
       // the ONLY response that ever carries the full secret
       send(res, 201, hook);
       return true;
@@ -74,22 +74,24 @@ export async function handleWebhooks(req, res, url, readBody, send, store, confi
 
   if (req.method === "PATCH") {
     const { active, events, url: target } = await readBody(req);
-    if (typeof active === "boolean") hook.active = active;
+    const patch = {};
+    if (typeof active === "boolean") patch.active = active;
     if (Array.isArray(events)) {
       const known = catalog(config);
       const chosen = events.filter((e) => known.includes(e));
-      if (chosen.length) hook.events = chosen;
+      if (chosen.length) patch.events = chosen;
     }
     if (target) {
-      try { new URL(String(target)); hook.url = String(target); } catch { send(res, 400, { error: "invalid URL" }); return true; }
+      try { new URL(String(target)); patch.url = String(target); } catch { send(res, 400, { error: "invalid URL" }); return true; }
     }
+    store.webhookUpdate(hook.id, patch);
     const { secret, ...safe } = hook;
     send(res, 200, { ...safe, secret: `…${secret.slice(-4)}` });
     return true;
   }
 
   if (req.method === "DELETE") {
-    store.webhooks = (store.webhooks ?? []).filter((w) => w.id !== hook.id);
+    store.webhookRemove(hook.id);
     send(res, 200, { ok: true });
     return true;
   }

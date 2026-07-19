@@ -48,7 +48,7 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
     if (!team) { send(res, 404, { error: "invalid join code" }); return true; }
     const existing = store.memberOf(team.id, me);
     if (existing?.status === "active") { send(res, 409, { error: "you are already a member" }); return true; }
-    if (existing) existing.status = "active";
+    if (existing) store.memberActivate(team.id, me);
     else store.memberAdd(team.id, me, "member", "active");
     store.teamEvent(team.id, "joined", `${me} joined via the team code`, me);
     send(res, 200, { ok: true, team: { slug: team.slug, name: team.name } });
@@ -72,7 +72,7 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
       send(res, 400, { error: "this invitation was revoked" });
       return true;
     }
-    m.status = "active";
+    store.memberActivate(teamId, me);
     store.teamEvent(teamId, "joined", `${me} accepted their invitation`, me);
     const team = (store.teams ?? []).find((x) => x.id === teamId);
     send(res, 200, { ok: true, team: team ? { slug: team.slug, name: team.name } : null });
@@ -110,7 +110,7 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
     store.memberAdd(team.id, norm, r, "pending");
     store.teamEvent(team.id, "invited", `${me} invited ${norm} as ${r}`, me);
     const t = store.tokenIssue({ kind: "team-invite", email: norm, ttlMinutes: 60 * 24 * 7, token: newCode() + newCode() });
-    t.teamId = team.id;
+    store.tokenBind(t.token, team.id);
     sendMail(store, { to: norm, kind: "team-invite", ...inviteMail(team.name, t.token) });
     send(res, 201, { ok: true, pending: norm, role: r });
     return true;

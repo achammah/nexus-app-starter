@@ -58,6 +58,11 @@ Set `AUTH_USERS` (`user:pass,user2:pass2`) + `APP_SECRET` (32+ chars) → the lo
 3. Per-object permissions in the config: `"permissions": { "admin": [...], "member": ["view","create","editOwn"], "viewer": ["view"] }` — omit the block and everything stays open. Roles: owner > admin > member > viewer. `editOwn`/`deleteOwn` grant the action only on rows the caller created (`_createdBy`). The server 403s uncovered actions; the UI hides their affordances (`src/app/permissions.ts` mirrors `server/permissions.mjs` — keep them in sync).
 4. Team-scoped data: `"teamScoped": true` on an object → rows belong to the creator's ACTIVE team (the sidebar switcher; `x-nx-team` header), other teams can't see or reach them, and the caller's PER-TEAM role governs. The team page also carries the audit trail (invites, joins, role changes, revocations); removing a pending member kills their invite token.
 
+## Go persistent (native warehouse spine)
+1. `.env`: `WAREHOUSE=bigquery` + `NEXUS_API_KEY` + `WAREHOUSE_CREDENTIAL_ID` (from `nexus tool credentials <toolId>` — tool-scoped, not the org-wide id). Optional: `BQ_DATASET`/`BQ_LOCATION` (location must match the dataset's region) / `BQ_PROJECT`.
+2. Boot — the server creates the dataset + `events` table, then REPLAYS the append-only command log over the deterministic seed: same ids, true timestamps, nothing lost across restarts. Unset `WAREHOUSE` and the in-memory mock serves the identical API.
+3. Semantics: single writer; the job queue + webhook delivery logs are operational state and stay in memory (a restart drops pending jobs). Files ride the log as base64 — move heavy attachment volumes to object storage before they matter.
+
 ## Point an AI assistant at the app (MCP)
 `claude mcp add my-app -- node scripts/mcp-server.mjs` (the app must be running; `NX_APP_URL` overrides the target). Read-only tools: `list_entities · describe_entity · query_records · get_record · get_timeline`. Claude Desktop config lives in the header of `scripts/mcp-server.mjs`.
 

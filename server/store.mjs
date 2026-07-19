@@ -7,6 +7,15 @@
 import { seed } from "./seed.mjs";
 
 export class Store {
+  /* Time is injectable: during warehouse replay (store-remote.mjs) _nowOverride pins
+     every timestamp to the ORIGINAL event's clock, so restored state renders true. */
+  _now() {
+    return this._nowOverride ? new Date(this._nowOverride) : new Date();
+  }
+  _nowMs() {
+    return this._nowOverride ? new Date(this._nowOverride).getTime() : Date.now();
+  }
+
   constructor(config) {
     this.config = config;
     const seeded = seed(config);
@@ -29,7 +38,7 @@ export class Store {
   userAdd({ email, name, hash }) {
     const u = {
       id: `u_${++this.n}`, email: email.toLowerCase(), name, hash,
-      verified: false, pwv: 0, createdAt: new Date().toISOString(), deletedAt: null,
+      verified: false, pwv: 0, createdAt: this._now().toISOString(), deletedAt: null,
     };
     (this.users ??= []).push(u);
     return u;
@@ -54,12 +63,12 @@ export class Store {
 
   userSoftDelete(email) {
     const u = this.userByEmail(email);
-    if (u) { u.deletedAt = new Date().toISOString(); u.email = `deleted:${Date.now()}:${u.email}`; }
+    if (u) { u.deletedAt = this._now().toISOString(); u.email = `deleted:${this._nowMs()}:${u.email}`; }
     return u;
   }
 
   tokenIssue({ kind, email, ttlMinutes, token }) {
-    const t = { token, kind, email: email.toLowerCase(), expires: Date.now() + ttlMinutes * 60_000 };
+    const t = { token, kind, email: email.toLowerCase(), expires: this._nowMs() + ttlMinutes * 60_000 };
     (this.tokens ??= []).push(t);
     return t;
   }
@@ -70,7 +79,7 @@ export class Store {
     const i = list.findIndex((t) => t.token === token && t.kind === kind);
     if (i === -1) return null;
     const [t] = list.splice(i, 1);
-    return t.expires > Date.now() ? t : null;
+    return t.expires > this._nowMs() ? t : null;
   }
 
   /* ---- teams: membership + invitations (records stay app-global; teams carry
@@ -80,7 +89,7 @@ export class Store {
     const base = String(name).toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replaceAll(/^-|-$/g, "") || "team";
     let slug = base;
     for (let i = 2; (this.teams ?? []).some((t) => t.slug === slug); i++) slug = `${base}-${i}`;
-    const team = { id: `t_${++this.n}`, slug, name, inviteCode, createdAt: new Date().toISOString() };
+    const team = { id: `t_${++this.n}`, slug, name, inviteCode, createdAt: this._now().toISOString() };
     (this.teams ??= []).push(team);
     this.memberAdd(team.id, ownerEmail, "owner", "active");
     return team;
@@ -100,7 +109,7 @@ export class Store {
   }
 
   memberAdd(teamId, email, role, status) {
-    const m = { teamId, email: email.toLowerCase(), role, status, addedAt: new Date().toISOString() };
+    const m = { teamId, email: email.toLowerCase(), role, status, addedAt: this._now().toISOString() };
     (this.members ??= []).push(m);
     return m;
   }
@@ -142,9 +151,41 @@ export class Store {
     return m && m.status === "active" ? m.role : null;
   }
 
+  memberActivate(teamId, email) {
+    const m = this.memberOf(teamId, email);
+    if (m) m.status = "active";
+    return m;
+  }
+
+  /* bind an issued token to a team (invitation tokens carry their team) */
+  tokenBind(token, teamId) {
+    const t = (this.tokens ?? []).find((x) => x.token === token);
+    if (t) t.teamId = teamId;
+    return t;
+  }
+
+  webhookAdd(hook) {
+    (this.webhooks ??= []).push(hook);
+    return hook;
+  }
+
+  webhookUpdate(id, patch) {
+    const hook = (this.webhooks ?? []).find((w) => w.id === id);
+    if (!hook) return null;
+    if (typeof patch.active === "boolean") hook.active = patch.active;
+    if (Array.isArray(patch.events) && patch.events.length) hook.events = patch.events;
+    if (patch.url) hook.url = patch.url;
+    return hook;
+  }
+
+  webhookRemove(id) {
+    this.webhooks = (this.webhooks ?? []).filter((w) => w.id !== id);
+    return true;
+  }
+
   /* team audit trail: who invited/joined/changed whom */
   teamEvent(teamId, kind, summary, actor) {
-    const ev = { id: `te_${++this.n}`, teamId, kind, summary, actor: actor ?? null, ts: new Date().toISOString() };
+    const ev = { id: `te_${++this.n}`, teamId, kind, summary, actor: actor ?? null, ts: this._now().toISOString() };
     (this.teamEvents ??= []).push(ev);
     return ev;
   }
@@ -173,7 +214,7 @@ export class Store {
   }
 
   outboxAdd({ to, subject, text, kind }) {
-    const m = { id: `m_${++this.n}`, to: to.toLowerCase(), subject, text, kind, ts: new Date().toISOString() };
+    const m = { id: `m_${++this.n}`, to: to.toLowerCase(), subject, text, kind, ts: this._now().toISOString() };
     (this.outbox ??= []).push(m);
     return m;
   }
@@ -287,7 +328,7 @@ export class Store {
 
   fileAdd(objKey, id, { name, mime, data }) {
     const size = Math.floor((data.length * 3) / 4); // decoded bytes from base64 length
-    const f = { id: `f_${++this.n}`, name, mime, size, ts: new Date().toISOString(), data };
+    const f = { id: `f_${++this.n}`, name, mime, size, ts: this._now().toISOString(), data };
     (((this.files[objKey] ??= {})[id] ??= [])).push(f);
     this._ev(objKey, id, "file", `Attached ${name}`);
     const { data: _, ...meta } = f;
@@ -316,7 +357,7 @@ export class Store {
   }
 
   _ev(objKey, id, kind, summary, activity) {
-    const ev = { id: `ev_${++this.n}`, ts: new Date().toISOString(), kind, summary, actor: "you", ...(activity ? { activity } : {}) };
+    const ev = { id: `ev_${++this.n}`, ts: this._now().toISOString(), kind, summary, actor: "you", ...(activity ? { activity } : {}) };
     ((this.events[objKey] ??= {})[id] ??= []).push(ev);
     this._bump(objKey); // every event-producing mutation is a live-sync signal
     return ev;
@@ -329,7 +370,7 @@ export class Store {
   }
 
   stateAppend(key, value) {
-    const e = { key, value, ts: new Date().toISOString() };
+    const e = { key, value, ts: this._now().toISOString() };
     this.state.push(e);
     return e;
   }

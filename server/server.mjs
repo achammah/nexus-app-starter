@@ -16,6 +16,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Store } from "./store.mjs";
+import { RemoteStore } from "./store-remote.mjs";
+import { bigqueryWarehouse } from "./warehouse.mjs";
 import { env, AUTH_ENABLED, FEATURES } from "./env.mjs";
 import { handleAuth, gate, readSession } from "./auth.mjs";
 import { handleTeams } from "./teams.mjs";
@@ -30,7 +32,10 @@ const CONFIG = JSON.parse(
   readFileSync(path.isAbsolute(cfgFile) ? cfgFile : path.join(ROOT, cfgFile), "utf8"),
 );
 const VERSION = readFileSync(path.join(ROOT, "VERSION"), "utf8").trim();
-const store = new Store(CONFIG);
+// WAREHOUSE=bigquery → the command-log spine (persistent, Nexus-native);
+// unset → the in-memory mock. Same contract either way.
+const store = env.WAREHOUSE === "bigquery" ? new RemoteStore(CONFIG, bigqueryWarehouse()) : new Store(CONFIG);
+if (store.ready) await store.ready; // replay the event log before serving
 startScheduler(store);
 
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json", ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2" };
