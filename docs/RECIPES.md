@@ -102,6 +102,10 @@ Tables carry a three-level focus model: ↑↓ (or j/k) move a row focus; `x` se
 
 Rows open in a right-edge panel over the list (set `"openIn": "page"` on an object to navigate instead). Related records stack onto the same panel — Escape steps back, then closes; the panel root rides the URL (`?peek=<id>`), so reload and share restore it; cmd/ctrl-click a row link for a real new tab. The header pages through the set you opened from (N of M, wrapping). In a relation picker, a search with no match offers "Create …" — the record is born with just a title, attached, and opened for progressive completion.
 
+## The panel: peek, search, actions
+
+The side panel is a page STACK, not just a record preview — record pages, a search page, and an actions page all push onto one navigation history with shared crumbs, back, and the layered Escape (clear text → step back → close; Backspace on an empty search also steps back). `/` (outside inputs, dialogs, and focused table cells) opens the search page: always-focused input, live results across every object (type labels when they span objects), ↑↓ + Enter pushes the hit onto the same panel so the list behind never navigates. The ⚡ button on a record peek — or Cmd/Ctrl+K while the panel is open — stacks the actions page: the same context actions the ⌘K palette shows (favorite, promote, new, trash…), plus "Search records". Search/actions pages are ephemeral: only a record root rides the URL, so reload lands on the record or closed.
+
 ## Recover deleted records (trash)
 
 Deleting is recoverable: rows get a `_deletedAt` stamp and move to the per-object Trash (toolbar icon next to New). Restore brings a row back intact; **Delete forever** is permanent and is its own permission — grant `destroy` (and optionally `destroyOwn`) in the object's `permissions` table; `restore` rides the `delete` grant. Owners always hold both. Set `TRASH_RETENTION_DAYS` to auto-destroy expired trash (a `trash-sweep` job runs on an interval; unset/0 keeps trash forever).
