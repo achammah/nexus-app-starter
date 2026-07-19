@@ -16,6 +16,8 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Store } from "./store.mjs";
+import { env } from "./env.mjs";
+import { handleAuth, gate } from "./auth.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DIST = path.join(ROOT, "dist");
@@ -102,6 +104,8 @@ async function api(req, res, url) {
 
 async function handler(req, res) {
   const url = new URL(req.url, "http://x");
+  if (await handleAuth(req, res, url, readBody, send)) return;
+  if (!gate(req, url)) return send(res, 401, { error: "unauthorized" });
   if (url.pathname.startsWith("/api/")) return api(req, res, url);
 
   // static: dist/ with SPA fallback; placeholder when dist is missing
@@ -123,7 +127,7 @@ async function handler(req, res) {
   }
 }
 
-const ports = [...new Set([Number(process.env.PORT) || 4000, 3000, 8080])];
+const ports = [...new Set([env.PORT, 3000, 8080])];
 for (const p of ports) {
   const srv = http.createServer(handler);
   srv.on("error", (e) => console.error(`[server] port ${p}: ${e.code}`));

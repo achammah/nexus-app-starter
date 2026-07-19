@@ -1,0 +1,7 @@
+# nexus-app-starter — agent entry points
+# Read order: AGENTS.md -> starter.config.json -> docs/ (SPEC, DESIGN, feature-manifest, COVERAGE, ARCHITECTURE)
+# Library docs (vendored): src/ui — its catalog: docs/INDEX.md + docs/catalog.json in the nexus-ui repo
+AGENTS.md
+docs/ARCHITECTURE.md
+docs/SPEC.md
+docs/feature-manifest.md

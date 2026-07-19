@@ -120,3 +120,44 @@ Call log:
 | theme-toggle | local | PASS | background flips (rgb(250, 250, 249) → rgb(22, 21, 19)); choice survives reload | .playwright-mcp/journey-theme-toggle.png | 2026-07-19T15:13:01.477Z |
 | state-kv | local | PASS | state append accepted; latest-per-key read returns the appended value | .playwright-mcp/journey-state-kv.png | 2026-07-19T15:13:01.477Z |
 | mobile-390 | local | PASS | no horizontal page scroll at 390px | .playwright-mcp/journey-mobile-390.png | 2026-07-19T15:13:01.477Z |
+| shell-loads | local | PASS | page title shows Companies (got "Companies"); nav click switches the page title to Deals | .playwright-mcp/journey-shell-loads.png | 2026-07-19T15:23:22.292Z |
+| table-renders-sorts | local | PASS | seeded rows render (8 ≥ 8); header sort (desc) reorders rows ("Brightline Analytics" → "Veldkliniek Group") | .playwright-mcp/journey-table-renders-sorts.png | 2026-07-19T15:23:22.292Z |
+| record-edit-persists | local | PASS | edited City survives reload (Ghent-89636); timeline shows the update event | .playwright-mcp/journey-record-edit-persists.png | 2026-07-19T15:23:22.292Z |
+| notes-add | local | PASS | added note appears in the list | .playwright-mcp/journey-notes-add.png | 2026-07-19T15:23:22.292Z |
+| stage-moves | local | PASS | 5 stage columns render (5); card visibly moved to the Qualified column | .playwright-mcp/journey-stage-moves.png | 2026-07-19T15:23:22.292Z |
+| kanban-true-drag | local | PASS | pointer drag visibly moves the card to Proposal; drag result PERSISTED across reload | .playwright-mcp/journey-kanban-true-drag.png | 2026-07-19T15:23:22.292Z |
+| create-record | local | PASS | record page opens on the new record; count incremented (8 → 9) | .playwright-mcp/journey-create-record.png | 2026-07-19T15:23:22.292Z |
+| cmdk-navigates | local | PASS | palette jump lands on the record (Cargolane dispatch automation) | .playwright-mcp/journey-cmdk-navigates.png | 2026-07-19T15:23:22.292Z |
+| views-persist | local | FAIL | assert failed: filter survives navigation () | .playwright-mcp/journey-views-persist.png | 2026-07-19T15:23:22.292Z |
+| relation-link | local | PASS | relation click lands filtered on the target (Brightline Analytics) | .playwright-mcp/journey-relation-link.png | 2026-07-19T15:23:22.292Z |
+| bulk-delete-csv | local | PASS | CSV downloads (companies-2026-07-19.csv); review surface names the exact records; count returns to 8 after reviewed delete | .playwright-mcp/journey-bulk-delete-csv.png | 2026-07-19T15:23:22.292Z |
+| kit-demo-page | local | PASS | zod validation error renders on empty submit; chart renders an svg on the token palette; sheet opens as a side panel; accordion expands | .playwright-mcp/journey-kit-demo-page.png | 2026-07-19T15:23:22.292Z |
+| chat-dock-config | local | PASS | dock renders NOTHING while chat.embedUrl is unconfigured (deterministic) | .playwright-mcp/journey-chat-dock-config.png | 2026-07-19T15:23:22.292Z |
+| search-filters | local | PASS | filter narrows to the matching row (Brightline Analytics) | .playwright-mcp/journey-search-filters.png | 2026-07-19T15:23:22.292Z |
+| theme-toggle | local | PASS | background flips (rgb(250, 250, 249) → rgb(22, 21, 19)); choice survives reload | .playwright-mcp/journey-theme-toggle.png | 2026-07-19T15:23:22.292Z |
+| state-kv | local | PASS | state append accepted; latest-per-key read returns the appended value | .playwright-mcp/journey-state-kv.png | 2026-07-19T15:23:22.292Z |
+| big-list-virtualized | local | PASS | DOM renders a WINDOW, not all rows (26 < 110 of 128+); scrolling reaches the LAST row (window follows scroll) | .playwright-mcp/journey-big-list-virtualized.png | 2026-07-19T15:23:22.292Z |
+| auth-flow | local | FAIL | page.waitForSelector: Timeout 8000ms exceeded.
+Call log:
+[2m  - waiting for locator('[data-testid="login-card"]') to be visible[22m
+ | .playwright-mcp/journey-auth-flow.png | 2026-07-19T15:23:22.292Z |
+| mobile-390 | local | PASS | no horizontal page scroll at 390px | .playwright-mcp/journey-mobile-390.png | 2026-07-19T15:23:22.292Z |
+| shell-loads | local | PASS | page title shows Companies (got "Companies"); nav click switches the page title to Deals | .playwright-mcp/journey-shell-loads.png | 2026-07-19T15:26:51.104Z |
+| table-renders-sorts | local | PASS | seeded rows render (8 ≥ 8); header sort (desc) reorders rows ("Brightline Analytics" → "Veldkliniek Group") | .playwright-mcp/journey-table-renders-sorts.png | 2026-07-19T15:26:51.104Z |
+| record-edit-persists | local | PASS | edited City survives reload (Ghent-06245); timeline shows the update event | .playwright-mcp/journey-record-edit-persists.png | 2026-07-19T15:26:51.104Z |
+| notes-add | local | PASS | added note appears in the list | .playwright-mcp/journey-notes-add.png | 2026-07-19T15:26:51.104Z |
+| stage-moves | local | PASS | 5 stage columns render (5); card visibly moved to the Qualified column | .playwright-mcp/journey-stage-moves.png | 2026-07-19T15:26:51.104Z |
+| kanban-true-drag | local | PASS | pointer drag visibly moves the card to Proposal; drag result PERSISTED across reload | .playwright-mcp/journey-kanban-true-drag.png | 2026-07-19T15:26:51.104Z |
+| create-record | local | PASS | record page opens on the new record; count incremented (8 → 9) | .playwright-mcp/journey-create-record.png | 2026-07-19T15:26:51.104Z |
+| cmdk-navigates | local | PASS | palette jump lands on the record (Cargolane dispatch automation) | .playwright-mcp/journey-cmdk-navigates.png | 2026-07-19T15:26:51.104Z |
+| views-persist | local | PASS | filter survives navigation (restored to 'maya'); restored filter is APPLIED (1 row) | .playwright-mcp/journey-views-persist.png | 2026-07-19T15:26:51.104Z |
+| relation-link | local | PASS | relation click lands filtered on the target (Brightline Analytics) | .playwright-mcp/journey-relation-link.png | 2026-07-19T15:26:51.104Z |
+| bulk-delete-csv | local | PASS | CSV downloads (companies-2026-07-19.csv); review surface names the exact records; count returns to 8 after reviewed delete | .playwright-mcp/journey-bulk-delete-csv.png | 2026-07-19T15:26:51.104Z |
+| kit-demo-page | local | PASS | zod validation error renders on empty submit; chart renders an svg on the token palette; sheet opens as a side panel; accordion expands | .playwright-mcp/journey-kit-demo-page.png | 2026-07-19T15:26:51.104Z |
+| chat-dock-config | local | PASS | dock renders NOTHING while chat.embedUrl is unconfigured (deterministic) | .playwright-mcp/journey-chat-dock-config.png | 2026-07-19T15:26:51.104Z |
+| search-filters | local | PASS | filter narrows to the matching row (Brightline Analytics) | .playwright-mcp/journey-search-filters.png | 2026-07-19T15:26:51.104Z |
+| theme-toggle | local | PASS | background flips (rgb(250, 250, 249) → rgb(22, 21, 19)); choice survives reload | .playwright-mcp/journey-theme-toggle.png | 2026-07-19T15:26:51.104Z |
+| state-kv | local | PASS | state append accepted; latest-per-key read returns the appended value | .playwright-mcp/journey-state-kv.png | 2026-07-19T15:26:51.104Z |
+| big-list-virtualized | local | PASS | DOM renders a WINDOW, not all rows (26 < 110 of 128+); scrolling reaches the LAST row (window follows scroll) | .playwright-mcp/journey-big-list-virtualized.png | 2026-07-19T15:26:51.104Z |
+| auth-flow | local | PASS | API is GATED without a session (401); wrong password shows a visible error; correct password enters the app shell; session cookie unlocks the API | .playwright-mcp/journey-auth-flow.png | 2026-07-19T15:26:51.104Z |
+| mobile-390 | local | PASS | no horizontal page scroll at 390px | .playwright-mcp/journey-mobile-390.png | 2026-07-19T15:26:51.104Z |

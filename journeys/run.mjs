@@ -123,6 +123,33 @@ const journeys = [
     },
   },
   {
+    name: "kanban-true-drag", feature: "Deals board (kanban)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/deals");
+      await page.waitForSelector('[data-testid="kanban-deals"]');
+      const card = page.locator('[data-testid="card-de_4"]');
+      const target = page.locator('[data-testid="col-Proposal"]');
+      const cb = await card.boundingBox();
+      const tb = await target.boundingBox();
+      if (!cb || !tb) throw new Error("boxes not measurable");
+      await page.mouse.move(cb.x + cb.width / 2, cb.y + cb.height / 2);
+      await page.mouse.down();
+      for (let i = 1; i <= 14; i++) {
+        await page.mouse.move(
+          cb.x + cb.width / 2 + ((tb.x + tb.width / 2 - cb.x - cb.width / 2) * i) / 14,
+          cb.y + cb.height / 2 + ((tb.y + 60 - cb.y - cb.height / 2) * i) / 14,
+        );
+      }
+      await page.mouse.up();
+      await page.waitForSelector('[data-testid="col-Proposal"] [data-testid="card-de_4"]', { timeout: 6000 });
+      assert(true, "pointer drag visibly moves the card to Proposal");
+      await page.reload();
+      await page.waitForSelector('[data-testid="kanban-deals"]');
+      const still = await page.locator('[data-testid="col-Proposal"] [data-testid="card-de_4"]').count();
+      assert(still === 1, "drag result PERSISTED across reload");
+    },
+  },
+  {
     name: "create-record", feature: "Create record",
     async run(page) {
       await page.goto(URLBASE + "/#/o/companies");
@@ -162,13 +189,18 @@ const journeys = [
       await page.fill('[data-testid="list-search"]', "maya");
       await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-people"] tbody tr').length === 1);
       await page.click('[data-testid="nav-deals"]');
-      await page.waitForSelector(".pageHead");
+      await page.waitForFunction(() => document.querySelector(".pageTitle")?.textContent?.includes("Deals"));
       await page.click('[data-testid="nav-people"]');
-      await page.waitForSelector('[data-testid="list-search"]');
-      const v = await page.inputValue('[data-testid="list-search"]');
-      assert(v === "maya", `filter survives navigation (${v})`);
-      const n = await page.locator('[data-testid="table-people"] tbody tr').count();
-      assert(n === 1, "restored filter is APPLIED (1 row)");
+      // wait for the DESTINATION's committed value — the outgoing page's input matches
+      // the same testid for one frame (measured: "" immediately, restored ~300ms later)
+      await page.waitForFunction(
+        () => document.querySelector('[data-testid="list-search"]')?.value === "maya",
+        null,
+        { timeout: 6000 },
+      );
+      assert(true, "filter survives navigation (restored to 'maya')");
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-people"] tbody tr').length === 1);
+      assert(true, "restored filter is APPLIED (1 row)");
       await page.fill('[data-testid="list-search"]', "");
     },
   },
@@ -278,6 +310,72 @@ const journeys = [
       assert(w.ok(), "state append accepted");
       const r = await (await page.request.get(URLBASE + "/api/state")).json();
       assert(r[key] === 42, "latest-per-key read returns the appended value");
+    },
+  },
+  {
+    name: "big-list-virtualized", feature: "Virtualized big lists",
+    async run(page) {
+      for (let i = 0; i < 120; i++) {
+        const r = await page.request.post(URLBASE + "/api/objects/people", {
+          data: { name: `Bulk Person ${i}`, email: `bulk${i}@example.test`, role: "Tester", company: "Cargolane" },
+        });
+        if (!r.ok()) throw new Error(`seed create failed at ${i}`);
+      }
+      await page.goto(URLBASE + "/#/o/people");
+      await page.waitForFunction(() => Number(document.querySelector('[data-testid="row-count"]')?.textContent) >= 128);
+      const dom = await page.locator('[data-testid="table-people"] tbody tr:not([aria-hidden])').count();
+      assert(dom < 110, `DOM renders a WINDOW, not all rows (${dom} < 110 of 128+)`);
+      await page.evaluate(() => {
+        const el = document.querySelector('[data-testid="table-people"]');
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+      await page.waitForFunction(() =>
+        document.querySelector('[data-testid="table-people"]')?.textContent?.includes("Bulk Person 119"));
+      assert(true, "scrolling reaches the LAST row (window follows scroll)");
+    },
+  },
+  {
+    name: "auth-flow", feature: "Auth seam (login gate)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const authProc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: {
+          ...process.env,
+          PORT: "4600",
+          AUTH_USERS: "maya@example.test:journey-pass-1",
+          APP_SECRET: "journey-secret-0123456789",
+        },
+      });
+      try {
+        for (let i = 0; i < 20; i++) {
+          try {
+            const r = await fetch("http://localhost:4600/api/healthz", { signal: AbortSignal.timeout(1500) });
+            if (r.ok) break;
+          } catch { /* booting */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const bare = await page.request.get("http://localhost:4600/api/objects/companies");
+        assert(bare.status() === 401, `API is GATED without a session (${bare.status()})`);
+        const authed = await page.context().browser().newContext();
+        const p2 = await authed.newPage();
+        await p2.goto("http://localhost:4600/");
+        await p2.waitForSelector('[data-testid="login-card"]', { timeout: 8000 });
+        await p2.fill('[data-testid="login-email"]', "maya@example.test");
+        await p2.fill('[data-testid="login-password"]', "wrong-pass");
+        await p2.click('[data-testid="login-submit"]');
+        await p2.waitForSelector('[data-testid="login-error"]');
+        assert(true, "wrong password shows a visible error");
+        await p2.fill('[data-testid="login-password"]', "journey-pass-1");
+        await p2.click('[data-testid="login-submit"]');
+        await p2.waitForSelector('[data-testid="nav"]', { timeout: 8000 });
+        assert(true, "correct password enters the app shell");
+        const gated = await p2.request.get("http://localhost:4600/api/objects/companies");
+        assert(gated.ok(), "session cookie unlocks the API");
+        await authed.close();
+      } finally {
+        authProc.kill();
+      }
     },
   },
   {

@@ -6,6 +6,7 @@ import "../ui/primitives/primitives.css";
 import "../ui/record-core/record-core.css";
 import "./app.css";
 import { App } from "./App";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 // Theme boot: stored choice wins, else the OS preference — ALWAYS stamped on <html>
 // so both the token overrides and shadcn's `dark:` variant key off one source.
@@ -19,6 +20,8 @@ document.documentElement.dataset.theme =
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </React.StrictMode>,
 );

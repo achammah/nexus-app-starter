@@ -6,6 +6,7 @@ import { RecordView } from "./RecordView";
 import { customPages } from "./pages";
 import { CommandPalette } from "./CommandPalette";
 import { ChatDock } from "./ChatDock";
+import { Login } from "./Login";
 import { Button } from "../ui/primitives/Button";
 import { Tip } from "../ui/primitives/fields";
 
@@ -41,7 +42,17 @@ export function App() {
   const [counts, setCounts] = React.useState<Record<string, number>>({});
   const [err, setErr] = React.useState<string | null>(null);
   const [toasts, setToasts] = React.useState<Toast[]>([]);
+  // auth gate: null = probing · {enabled,user} = known
+  const [auth, setAuth] = React.useState<{ enabled: boolean; user: string | null } | null>(null);
   const route = useHashRoute();
+
+  const probeAuth = React.useCallback(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then(setAuth)
+      .catch(() => setAuth({ enabled: false, user: null }));
+  }, []);
+  React.useEffect(probeAuth, [probeAuth]);
 
   const toast = React.useCallback((text: string) => {
     const id = Date.now() + Math.random();
@@ -78,6 +89,8 @@ export function App() {
     localStorage.setItem("nx-theme", next);
   };
 
+  if (auth?.enabled && !auth.user && config)
+    return <Login appName={config.app.name} onDone={probeAuth} />;
   if (err)
     return (
       <div style={{ display: "grid", placeItems: "center", height: "100vh", color: "var(--nx-danger)" }}>
@@ -129,6 +142,16 @@ export function App() {
           </div>
           <div className="sideFoot">
             <span>v0.1 · starter</span>
+            {auth?.user && (
+              <button
+                className="navItem"
+                style={{ width: "auto", marginLeft: "auto", padding: "2px 8px" }}
+                data-testid="logout"
+                onClick={() => fetch("/api/auth/logout", { method: "POST" }).then(probeAuth)}
+              >
+                Sign out
+              </button>
+            )}
           </div>
         </aside>
 
