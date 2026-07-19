@@ -25,6 +25,21 @@ Rules for building a feature lane in this repo. Deviations need a maintainer go 
 - **T2 — final.** `npm run build` clean; `npm run journeys` fully green in YOUR worktree (paste the tail); manifest + docs rows in; then `git push -u origin feat/<lane>` and `gh pr create` with the checklist below in the body. Report the PR URL.
 - Blocked, or a decision touches an invariant / another lane's files: STOP and ask the maintainer. Never guess on irreversible calls.
 
+## Full-suite runs on a shared machine
+
+Journeys you add bind inside your port band — but the BASE suite boots fixed ports (the :4000 main app, 4600–4915 fixture servers), so two full-suite runs at once cross-kill each other's servers. Two rules:
+
+1. Pin the main app into your band for suite runs: `PORT=<band-port> JOURNEY_URL=http://localhost:<band-port> npm run journeys`.
+2. Full-suite runs take the machine lock first:
+   ```bash
+   while ! mkdir /tmp/nx-suite-lock 2>/dev/null; do
+     [ -n "$(find /tmp/nx-suite-lock -maxdepth 0 -mmin +15 2>/dev/null)" ] && rmdir /tmp/nx-suite-lock && continue
+     sleep 10
+   done
+   trap 'rmdir /tmp/nx-suite-lock 2>/dev/null' EXIT
+   ```
+   Run the suite, let the trap release. A lock older than 15 minutes is stale — steal it.
+
 ## PR checklist (goes in the PR body)
 
 - [ ] All journeys green locally (count + tail pasted)
