@@ -55,6 +55,19 @@ export const api = {
     j<RecordRow>(`/api/objects/${obj}`, { method: "POST", body: JSON.stringify(body) }),
   remove: (obj: string, id: string) =>
     j<{ ok: boolean }>(`/api/objects/${obj}/${id}`, { method: "DELETE" }),
+  trash: (obj: string) => j<{ rows: RecordRow[] }>(`/api/objects/${obj}/trash`).then((r) => r.rows),
+  restore: (obj: string, id: string) =>
+    j<RecordRow>(`/api/objects/${obj}/${id}/restore`, { method: "POST", body: "{}" }),
+  destroy: (obj: string, id: string) =>
+    j<{ ok: boolean }>(`/api/objects/${obj}/${id}/destroy`, { method: "DELETE" }),
+  mergePreview: (obj: string, ids: string[], winnerId: string) =>
+    j<{ fields: { key: string; label: string; value: unknown; source: string }[] }>(`/api/objects/${obj}/merge`, {
+      method: "POST", body: JSON.stringify({ ids, winnerId, preview: true }),
+    }),
+  merge: (obj: string, ids: string[], winnerId: string) =>
+    j<{ row: RecordRow; merged: number }>(`/api/objects/${obj}/merge`, {
+      method: "POST", body: JSON.stringify({ ids, winnerId }),
+    }),
   rev: (obj: string) => j<{ rev: number }>(`/api/objects/${obj}/rev`),
   teams: () => j<{ teams: { slug: string; name: string; role: string }[]; role: string }>("/api/teams"),
   teamCreate: (name: string) => j<{ slug: string; name: string }>("/api/teams", { method: "POST", body: JSON.stringify({ name }) }),

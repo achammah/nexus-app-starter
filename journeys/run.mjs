@@ -1805,6 +1805,238 @@ const journeys = [
       await page.setViewportSize({ width: 1280, height: 800 });
     },
   },
+  {
+    name: "trash-restore-destroy", feature: "Trash (soft delete, restore, permanent destroy)",
+    async run(page) {
+      const mk = await page.request.post(URLBASE + "/api/objects/companies", {
+        data: { name: "Trashable Co", industry: "Software" },
+      });
+      const row = await mk.json();
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="list-search"]');
+      await page.fill('[data-testid="list-search"]', "Trashable");
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 1);
+      await page.click('tbody tr:first-child [role="checkbox"]');
+      await page.click('[data-testid="bulk-delete"]');
+      await page.waitForSelector('[data-testid="bulk-confirm"]');
+      await page.click('[data-testid="bulk-confirm-go"]');
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 0);
+      assert(true, "deleted row leaves the live list");
+      // trash dialog: the row is RECOVERABLE
+      await page.click('[data-testid="trash-open"]');
+      await page.waitForSelector(`[data-testid="trash-row-${row.id}"]`);
+      assert(true, "trash lists the deleted record");
+      await page.click(`[data-testid="trash-restore-${row.id}"]`);
+      await page.waitForFunction((rid) => !document.querySelector(`[data-testid="trash-row-${rid}"]`), row.id);
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 1);
+      const name = await page.textContent("tbody tr:first-child .nxRowLink");
+      assert(name?.includes("Trashable Co"), "restore brings the record back intact");
+      // destroy: gone from trash AND from the world
+      await page.request.delete(URLBASE + `/api/objects/companies/${row.id}`);
+      await page.click('[data-testid="trash-open"]');
+      await page.waitForSelector(`[data-testid="trash-destroy-${row.id}"]`);
+      await page.click(`[data-testid="trash-destroy-${row.id}"]`);
+      await page.waitForSelector('[data-testid="trash-empty-state"]', { timeout: 6000 }).catch(() => {});
+      const gone = await page.locator(`[data-testid="trash-row-${row.id}"]`).count();
+      assert(gone === 0, "destroy removes the record from the trash permanently");
+      await page.keyboard.press("Escape");
+      const after = await (await page.request.get(URLBASE + `/api/objects/companies/${row.id}`)).status();
+      assert(after === 404, "destroyed record 404s");
+      await page.fill('[data-testid="list-search"]', "");
+    },
+  },
+  {
+    name: "unique-resurrect", feature: "Unique collision restores the trashed twin (upsert semantic)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4905", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:4905";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        // live collision still rejects
+        const dup = await page.request.post(B + "/api/objects/vendors", { data: { name: "Copycat", code: "V-001" } });
+        assert(dup.status() === 400, "unique collision with a LIVE row still 400s");
+        // trash V-001, then re-create the same code → the trashed row comes back with the new data
+        const trash = await page.request.delete(B + "/api/objects/vendors/ve_1");
+        assert(trash.ok(), "trash the unique holder");
+        const re = await page.request.post(B + "/api/objects/vendors", { data: { name: "Brightline Reborn", code: "V-001" } });
+        assert(re.status() === 200, `resurrect answers 200, not 201 (${re.status()})`);
+        const body = await re.json();
+        assert(body.id === "ve_1" && body._resurrected === true, "SAME record id returns, flagged _resurrected");
+        assert(body.name === "Brightline Reborn", "incoming data lands on the resurrected row");
+        const trashLeft = await (await page.request.get(B + "/api/objects/vendors/trash")).json();
+        assert(!trashLeft.rows.some((r) => r.id === "ve_1"), "resurrected row left the trash");
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "merge-records", feature: "Merge duplicates (winner priority, relations re-pointed)",
+    async run(page) {
+      const a = await (await page.request.post(URLBASE + "/api/objects/companies", { data: { name: "Mergeling A", industry: "Software" } })).json();
+      const b = await (await page.request.post(URLBASE + "/api/objects/companies", { data: { name: "Mergeling B", industry: "Software", domain: "mergeling-b.example" } })).json();
+      const pat = await (await page.request.post(URLBASE + "/api/objects/people", { data: { name: "Merge Pat", email: "pat@merge.test", role: "Tester", company: "Mergeling B" } })).json();
+      try {
+        await page.goto(URLBASE + "/#/o/companies");
+        await page.waitForSelector('[data-testid="list-search"]');
+        await page.fill('[data-testid="list-search"]', "Mergeling");
+        await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 2);
+        await page.click('tbody tr:nth-child(1) [role="checkbox"]');
+        await page.click('tbody tr:nth-child(2) [role="checkbox"]');
+        await page.waitForSelector('[data-testid="bulk-merge"]');
+        await page.click('[data-testid="bulk-merge"]');
+        await page.waitForSelector('[data-testid="merge-dialog"]');
+        // pick A as the winner; the preview must show B's website flowing in
+        await page.click(`[data-testid="merge-winner-${a.id}"]`);
+        await page.waitForSelector('[data-testid="merge-final-domain"]');
+        const site = await page.textContent('[data-testid="merge-final-domain"]');
+        assert(site?.includes("mergeling-b.example"), "preview: winner's empty domain fills from the loser");
+        const badge = await page.textContent('[data-testid="merge-preview"]');
+        assert(badge?.includes("from Mergeling B"), "preview labels WHERE each inherited value comes from");
+        await page.click('[data-testid="merge-go"]');
+        await page.waitForSelector('[data-testid="toast"]');
+        await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 1);
+        assert(true, "one survivor remains in the live list");
+        const survivor = await (await page.request.get(URLBASE + `/api/objects/companies/${a.id}`)).json();
+        assert(survivor.domain === "mergeling-b.example", "winner absorbed the loser's field");
+        const patAfter = await (await page.request.get(URLBASE + `/api/objects/people/${pat.id}`)).json();
+        assert(patAfter.company === "Mergeling A", `relations re-point to the winner (${patAfter.company})`);
+        const trashRows = await (await page.request.get(URLBASE + "/api/objects/companies/trash")).json();
+        assert(trashRows.rows.some((r) => r.id === b.id), "loser lands in the trash, not the void");
+      } finally {
+        await page.request.delete(URLBASE + `/api/objects/people/${pat.id}`);
+        await page.request.delete(URLBASE + `/api/objects/people/${pat.id}/destroy`);
+        await page.request.delete(URLBASE + `/api/objects/companies/${a.id}`);
+        await page.request.delete(URLBASE + `/api/objects/companies/${a.id}/destroy`);
+        await page.request.delete(URLBASE + `/api/objects/companies/${b.id}/destroy`);
+        await page.fill('[data-testid="list-search"]', "").catch(() => {});
+      }
+    },
+  },
+  {
+    name: "favorites-shelf", feature: "Favorites (personal pin shelf)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="table-companies"] tbody tr');
+      await page.click("tbody tr:first-child .nxRowLink");
+      await page.waitForSelector('[data-testid="fav-toggle"]');
+      const title = (await page.textContent('[data-testid="record-name"]'))?.trim();
+      await page.click('[data-testid="fav-toggle"]');
+      await page.waitForSelector('[data-testid="fav-shelf"]');
+      const shelf = await page.textContent('[data-testid="fav-shelf"]');
+      assert(shelf?.includes(title ?? "∅"), `sidebar shelf lists the pinned record (${title})`);
+      // jump from anywhere back to the record via the shelf
+      await page.goto(URLBASE + "/#/o/people");
+      await page.waitForSelector('[data-testid="fav-shelf"] button');
+      await page.click('[data-testid="fav-shelf"] button');
+      await page.waitForSelector('[data-testid="fav-toggle"]');
+      const back = (await page.textContent('[data-testid="record-name"]'))?.trim();
+      assert(back === title, "shelf link deep-links back to the record");
+      await page.click('[data-testid="fav-toggle"]');
+      await page.waitForFunction(() => !document.querySelector('[data-testid="fav-shelf"]'));
+      assert(true, "unpinning clears the shelf");
+    },
+  },
+  {
+    name: "trash-permission-split", feature: "Destroy is a separate grant (delete ≠ destroy)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: {
+          ...process.env, PORT: "4910", AUTH_MODE: "accounts",
+          APP_SECRET: "journey-secret-16-chars-plus", CONFIG_PATH: "journeys/fixtures/perms.config.json",
+        },
+      });
+      const B = "http://localhost:4910";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        // separate CONTEXTS — sessions are cookies; two pages in one context share them
+        const ctxE = await page.context().browser().newContext();
+        const ctxD = await page.context().browser().newContext();
+        // erin: owner (creates a team) — full lifecycle
+        const pe = await ctxE.newPage();
+        await pe.request.post(B + "/api/auth/signup", { data: { email: "erin@fixture.example", name: "Erin", password: "owner-pass-1234" } });
+        await pe.request.post(B + "/api/teams", { data: { name: "Ops" } });
+        // dana: invited as ADMIN → delete yes, destroy NO (not granted to admin)
+        const pd = await ctxD.newPage();
+        await pd.request.post(B + "/api/auth/signup", { data: { email: "dana@fixture.example", name: "Dana", password: "admin-pass-1234" } });
+        await pe.request.post(B + "/api/teams/ops/invites", { data: { email: "dana@fixture.example", role: "admin" } });
+        const outbox = await (await pe.request.get(B + "/api/outbox")).json();
+        const invite = outbox.mail.find((m) => m.to === "dana@fixture.example" && m.kind === "team-invite");
+        const token = invite.text.match(/Token:\n([^\n]+)/)?.[1];
+        const acc = await pd.request.post(B + "/api/teams/accept", { data: { token } });
+        assert(acc.ok(), "dana accepts the admin invite");
+        // erin trashes a seeded row
+        const del = await pe.request.delete(B + "/api/objects/accounts/ac_1");
+        assert(del.ok(), "owner trashes a record");
+        // dana (admin): restore allowed (rides delete), destroy DENIED
+        const destroyTry = await pd.request.delete(B + "/api/objects/accounts/ac_1/destroy");
+        assert(destroyTry.status() === 403, `admin cannot destroy (${destroyTry.status()})`);
+        await pd.goto(B + "/#/o/accounts");
+        await pd.waitForSelector('[data-testid="trash-open"]');
+        await pd.click('[data-testid="trash-open"]');
+        await pd.waitForSelector('[data-testid="trash-restore-ac_1"]');
+        assert((await pd.locator('[data-testid="trash-destroy-ac_1"]').count()) === 0, "admin UI hides the destroy button");
+        // owner: destroy visible AND effective
+        await pe.goto(B + "/#/o/accounts");
+        await pe.waitForSelector('[data-testid="trash-open"]');
+        await pe.click('[data-testid="trash-open"]');
+        await pe.waitForSelector('[data-testid="trash-destroy-ac_1"]');
+        await pe.click('[data-testid="trash-destroy-ac_1"]');
+        await pe.waitForFunction(() => !document.querySelector('[data-testid="trash-row-ac_1"]'));
+        assert(true, "owner destroys permanently");
+        await ctxE.close();
+        await ctxD.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "trash-retention", feature: "Trash retention sweep (TRASH_RETENTION_DAYS)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        // ~1.7s retention, sweep cadence clamps to 1s — journey-fast, same code path as 30 days
+        env: { ...process.env, PORT: "4915", CONFIG_PATH: "journeys/fixtures/coverage.config.json", TRASH_RETENTION_DAYS: "0.00002" },
+      });
+      const B = "http://localhost:4915";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const row = await (await page.request.post(B + "/api/objects/companies", { data: { name: "Expiring Co" } })).json();
+        await page.request.delete(B + "/api/objects/companies/" + row.id);
+        const t0 = await (await page.request.get(B + "/api/objects/companies/trash")).json();
+        assert(t0.rows.some((r) => r.id === row.id), "trashed row sits in the trash");
+        let sweptAway = false;
+        for (let i = 0; i < 30; i++) {
+          const t = await (await page.request.get(B + "/api/objects/companies/trash")).json();
+          if (!t.rows.some((r) => r.id === row.id)) { sweptAway = true; break; }
+          await new Promise((r) => setTimeout(r, 500));
+        }
+        assert(sweptAway, "retention sweep destroys expired trash on its own");
+        const jobs = await (await page.request.get(B + "/api/jobs")).json();
+        assert(jobs.jobs.some((j) => j.type === "trash-sweep" && j.status === "done"), "the sweep ran as a visible job");
+      } finally {
+        proc.kill();
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----

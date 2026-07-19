@@ -263,7 +263,7 @@ export class Store {
   }
 
   list(objKey, q = {}) {
-    let rows = [...(this.rows[objKey] ?? [])];
+    let rows = (this.rows[objKey] ?? []).filter((r) => !r._deletedAt);
     if (q.filterField && q.filterValue !== undefined) {
       const op = q.filterOp || "eq";
       rows = rows.filter((r) => {
@@ -284,7 +284,15 @@ export class Store {
   }
 
   get(objKey, id) {
+    return (this.rows[objKey] ?? []).find((r) => r.id === id && !r._deletedAt) ?? null;
+  }
+
+  getAny(objKey, id) {
     return (this.rows[objKey] ?? []).find((r) => r.id === id) ?? null;
+  }
+
+  trashList(objKey) {
+    return (this.rows[objKey] ?? []).filter((r) => r._deletedAt);
   }
 
   /* Field-type-implied validation: the config declaring `type: "email"` IS the
@@ -299,7 +307,7 @@ export class Store {
       if (f && f.isActive === false) return `${f.label} is deactivated`;
       if (!f || v === null || v === undefined || v === "") continue;
       if (f.unique) {
-        const dup = (this.rows[objKey] ?? []).find((r) => r.id !== excludeId && String(r[k] ?? "") === String(v));
+        const dup = (this.rows[objKey] ?? []).find((r) => !r._deletedAt && r.id !== excludeId && String(r[k] ?? "") === String(v));
         if (dup) return `${f.label} must be unique — "${v}" already exists`;
       }
       if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v)))
@@ -354,14 +362,120 @@ export class Store {
     return row;
   }
 
+  /* deletion is RECOVERABLE: a _deletedAt stamp hides the row everywhere while
+     data + timeline survive; destroyRow is the separate, permanent operation */
   remove(objKey, id) {
+    const row = this.get(objKey, id);
+    if (!row) return false;
+    row._deletedAt = this._now().toISOString();
+    this._ev(objKey, id, "updated", "Moved to trash");
+    return true;
+  }
+
+  restoreRow(objKey, id) {
+    const row = this.getAny(objKey, id);
+    if (!row || !row._deletedAt) return null;
+    delete row._deletedAt;
+    this._ev(objKey, id, "updated", "Restored from trash");
+    return row;
+  }
+
+  destroyRow(objKey, id) {
     const rows = this.rows[objKey] ?? [];
     const i = rows.findIndex((r) => r.id === id);
     if (i === -1) return false;
     rows.splice(i, 1);
     delete (this.events[objKey] ?? {})[id];
+    delete (this.files[objKey] ?? {})[id];
     this._bump(objKey);
     return true;
+  }
+
+  /* upsert semantic: an incoming value matching a TRASHED row's unique field
+     RESURRECTS that row (import/re-sync friendly) instead of colliding */
+  uniqueResurrectMatch(objKey, body) {
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    for (const f of cfg?.fields ?? []) {
+      if (!f.unique) continue;
+      const v = body[f.key];
+      if (v === undefined || v === null || v === "") continue;
+      const hit = (this.rows[objKey] ?? []).find((r) => r._deletedAt && String(r[f.key] ?? "") === String(v));
+      if (hit) return hit;
+    }
+    return null;
+  }
+
+  /* merge plan: winner keeps its values on conflict, absorbs the losers'
+     non-empty fields into its own empties. Pure — used by preview AND commit,
+     so what the dialog shows is exactly what lands. */
+  mergePlan(objKey, ids, winnerId) {
+    const winner = this.get(objKey, winnerId);
+    if (!winner) return null;
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    const primary = cfg.fields.find((f) => f.primary) ?? cfg.fields[0];
+    const losers = ids.filter((x) => x !== winnerId).map((x) => this.get(objKey, x)).filter(Boolean);
+    const empty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
+    const fields = [];
+    const finalRow = { ...winner };
+    for (const f of cfg.fields) {
+      if (f.key === "id") continue;
+      let value = winner[f.key];
+      let source = "winner";
+      if (empty(value)) {
+        const donor = losers.find((l) => !empty(l[f.key]));
+        if (donor) { value = donor[f.key]; source = String(donor[primary.key] ?? donor.id); }
+      }
+      finalRow[f.key] = value;
+      if (!empty(value)) fields.push({ key: f.key, label: f.label, value, source });
+    }
+    return { winner, losers, fields, finalRow, primaryKey: primary.key };
+  }
+
+  /* merge: apply the plan — winner absorbs, relations elsewhere re-point from each
+     loser's primary value to the winner's, timeline + watchers travel, losers land
+     in the trash with a pointer note. ONE logged op — replays atomically. */
+  mergeRows(objKey, ids, winnerId) {
+    const plan = this.mergePlan(objKey, ids, winnerId);
+    if (!plan) return null;
+    const { winner, losers, finalRow, primaryKey } = plan;
+    Object.assign(winner, finalRow);
+    const winnerRef = String(winner[primaryKey] ?? "");
+    for (const loser of losers) {
+      const loserRef = String(loser[primaryKey] ?? "");
+      if (loserRef && loserRef !== winnerRef) {
+        for (const o of this.config.objects) {
+          for (const f of o.fields) {
+            if (f.type !== "relation" || f.relation !== objKey) continue;
+            for (const r of this.rows[o.key] ?? []) {
+              if (String(r[f.key] ?? "") === loserRef) r[f.key] = winnerRef;
+            }
+          }
+        }
+      }
+      const loserEvents = (this.events[objKey] ?? {})[loser.id] ?? [];
+      ((this.events[objKey] ??= {})[winner.id] ??= []).push(...loserEvents);
+      for (const email of this.watchers(objKey, loser.id)) this.watchToggle(objKey, winner.id, email, true);
+      loser._deletedAt = this._now().toISOString();
+      this._ev(objKey, winner.id, "updated", `Merged in ${loserRef || loser.id}`);
+    }
+    this._bump(objKey);
+    return winner;
+  }
+
+  /* retention: permanently destroy trashed rows older than N days (jobs.mjs
+     sweeps on an interval). Individual destroys are what gets logged — the
+     sweep itself is not an op, so replay stays deterministic. */
+  trashSweep(days) {
+    const cutoff = Date.now() - days * 86_400_000;
+    let n = 0;
+    for (const o of this.config.objects) {
+      for (const row of [...(this.rows[o.key] ?? [])]) {
+        if (row._deletedAt && Date.parse(row._deletedAt) < cutoff) {
+          if (this.destroyRow(o.key, row.id)) n++;
+        }
+      }
+    }
+    return n;
   }
 
   timeline(objKey, id) {

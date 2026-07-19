@@ -6,7 +6,7 @@ import crypto from "node:crypto";
 import { enqueue } from "./jobs.mjs";
 
 export const catalog = (config) => [
-  ...config.objects.flatMap((o) => [`${o.key}.created`, `${o.key}.updated`, `${o.key}.deleted`]),
+  ...config.objects.flatMap((o) => [`${o.key}.created`, `${o.key}.updated`, `${o.key}.deleted`, `${o.key}.restored`, `${o.key}.destroyed`]),
   "*",
 ];
 

@@ -77,6 +77,12 @@ export const handlers = {
     }
     return { notified: targets.length };
   },
+
+  /* retention sweep — permanently destroys trashed rows past TRASH_RETENTION_DAYS */
+  async "trash-sweep"(store, { days }) {
+    const destroyed = store.trashSweep(days);
+    return { destroyed };
+  },
 };
 
 export function enqueue(store, type, payload = {}, { runAt, idempotencyKey } = {}) {
@@ -116,6 +122,10 @@ export function startScheduler(store) {
       }
     }
     // interval jobs re-arm themselves (DIGEST_EVERY_MS keeps the demo observable)
+    if (env.TRASH_RETENTION_DAYS > 0 && !(store.jobs ?? []).some((j) => j.type === "trash-sweep" && (j.status === "queued" || j.status === "running"))) {
+      const cadence = Math.min(Math.max(env.TRASH_RETENTION_DAYS * 86_400_000 / 2, 1000), 6 * 3600_000);
+      enqueue(store, "trash-sweep", { days: env.TRASH_RETENTION_DAYS }, { runAt: Date.now() + cadence, idempotencyKey: "trash-sweep-interval" });
+    }
     if (env.DIGEST_EVERY_MS && !(store.jobs ?? []).some((j) => j.type === "digest" && (j.status === "queued" || j.status === "running"))) {
       enqueue(store, "digest", {}, { runAt: Date.now() + Number(env.DIGEST_EVERY_MS), idempotencyKey: "digest-interval" });
     }

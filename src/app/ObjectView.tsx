@@ -1,5 +1,5 @@
 import * as React from "react";
-import { BarChart3, Bookmark, Columns3, Download, Pencil, Plus, Search, Sigma, Trash2, X } from "lucide-react";
+import { ArchiveRestore, BarChart3, Bookmark, Columns3, Download, GitMerge, Pencil, Plus, Search, Sigma, Trash2, X } from "lucide-react";
 import type { SortingState } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -56,6 +56,8 @@ export function ObjectView({
   const canCreate = can(role, config, "create");
   const canEdit = can(role, config, "edit");
   const canDelete = can(role, config, "delete");
+  const canRestore = can(role, config, "restore");
+  const canDestroy = can(role, config, "destroy");
   const canExport = can(role, config, "export");
   // Saved view v0: q + view kind persist per object (localStorage) and restore on
   // mount; a palette/relation jump can hand off a pending query via sessionStorage.
@@ -116,6 +118,10 @@ export function ObjectView({
   const [draft, setDraft] = React.useState<Record<string, string>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
+  // trash dialog: null = closed; rows load on open
+  const [trash, setTrash] = React.useState<RecordRow[] | null>(null);
+  // merge dialog: pick a winner among the selected, preview, commit
+  const [merging, setMerging] = React.useState<{ ids: string[]; winnerId: string; fields: { key: string; label: string; value: unknown; source: string }[] | null } | null>(null);
   const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
 
@@ -267,6 +273,46 @@ export function ObjectView({
     setSelection({});
     toast(t("bulk.deleted", { n }));
     load();
+  };
+
+  const openTrash = () => {
+    api.trash(config.key).then(setTrash).catch((e) => toast(e.message));
+  };
+  const restoreRow = (id: string) => {
+    api.restore(config.key, id).then(() => {
+      toast(`${config.labelOne} restored`);
+      openTrash();
+      load();
+    }).catch((e) => toast(`Restore failed: ${e.message}`));
+  };
+  const destroyRow = (id: string) => {
+    api.destroy(config.key, id).then(() => {
+      toast("Permanently deleted");
+      openTrash();
+    }).catch((e) => toast(`Destroy failed: ${e.message}`));
+  };
+
+  const openMerge = () => {
+    const ids = selectedIds.slice(0, 10);
+    setMerging({ ids, winnerId: ids[0], fields: null });
+    api.mergePreview(config.key, ids, ids[0]).then((r) => {
+      setMerging((m) => (m && m.winnerId === ids[0] ? { ...m, fields: r.fields } : m));
+    }).catch((e) => toast(e.message));
+  };
+  const pickWinner = (id: string) => {
+    setMerging((m) => (m ? { ...m, winnerId: id, fields: null } : m));
+    api.mergePreview(config.key, merging?.ids ?? [], id).then((r) => {
+      setMerging((m) => (m && m.winnerId === id ? { ...m, fields: r.fields } : m));
+    }).catch((e) => toast(e.message));
+  };
+  const commitMerge = () => {
+    if (!merging) return;
+    api.merge(config.key, merging.ids, merging.winnerId).then((r) => {
+      toast(`Merged ${r.merged} into one`);
+      setMerging(null);
+      setSelection({});
+      load();
+    }).catch((e) => toast(`Merge failed: ${e.message}`));
   };
 
   const create = () => {
@@ -503,6 +549,7 @@ export function ObjectView({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        <Button size="md" variant="ghost" icon={<ArchiveRestore size={14} />} data-testid="trash-open" onClick={openTrash} aria-label="Open trash" />
         {canCreate && (
         <Button variant="primary" size="md" icon={<Plus size={14} />} data-testid="new-record" onClick={() => setCreating(true)}>
           New {config.labelOne.toLowerCase()}
@@ -528,6 +575,11 @@ export function ObjectView({
           {canEdit && (
           <Button size="sm" icon={<Pencil size={13} />} data-testid="bulk-edit" onClick={() => setBulkEdit({ field: "", value: "", running: false, done: 0 })}>
             Edit
+          </Button>
+          )}
+          {canEdit && canDelete && selectedIds.length >= 2 && selectedIds.length <= 10 && (
+          <Button size="sm" icon={<GitMerge size={13} />} data-testid="bulk-merge" onClick={openMerge}>
+            Merge
           </Button>
           )}
           {canDelete && (
@@ -574,6 +626,93 @@ export function ObjectView({
           selection={selection}
           onSelectionChange={setSelection}
         />
+      )}
+
+      {trash !== null && (
+        <Dialog
+          open
+          onOpenChange={(v) => { if (!v) setTrash(null); }}
+          title={`Trash — ${config.label.toLowerCase()}`}
+        >
+          <div data-testid="trash-dialog">
+          {trash.length === 0 ? (
+            <div style={{ padding: 16, color: "var(--nx-fg-faint)" }} data-testid="trash-empty-state">
+              Trash is empty. Deleted {config.label.toLowerCase()} land here and can be restored.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 6, maxHeight: 380, overflowY: "auto" }}>
+              {trash.map((r) => (
+                <div key={r.id} data-testid={`trash-row-${r.id}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: "var(--nx-radius-s)", background: "var(--nx-bg-raised)" }}>
+                  <span style={{ flex: 1, fontWeight: 500 }}>{String(r[primary.key] ?? r.id)}</span>
+                  <span style={{ color: "var(--nx-fg-faint)", fontSize: 12 }}>
+                    deleted {String(r._deletedAt ?? "").slice(0, 10)}
+                  </span>
+                  {canRestore && (
+                    <Button size="sm" icon={<ArchiveRestore size={12} />} data-testid={`trash-restore-${r.id}`} onClick={() => restoreRow(r.id)}>
+                      Restore
+                    </Button>
+                  )}
+                  {canDestroy && (
+                    <Button size="sm" variant="danger" data-testid={`trash-destroy-${r.id}`} onClick={() => destroyRow(r.id)}>
+                      Delete forever
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          </div>
+        </Dialog>
+      )}
+
+      {merging && (
+        <Dialog open onOpenChange={(v) => { if (!v) setMerging(null); }} title={`Merge ${merging.ids.length} ${config.label.toLowerCase()}`}>
+          <div style={{ display: "grid", gap: 12 }} data-testid="merge-dialog">
+            <div style={{ display: "grid", gap: 4 }}>
+              <div style={{ fontSize: 12, color: "var(--nx-fg-faint)" }}>Keep as the surviving record:</div>
+              {merging.ids.map((mid) => {
+                const r = rows?.find((x) => x.id === mid);
+                return (
+                  <label key={mid} style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
+                    <input
+                      type="radio"
+                      name="merge-winner"
+                      checked={merging.winnerId === mid}
+                      data-testid={`merge-winner-${mid}`}
+                      onChange={() => pickWinner(mid)}
+                    />
+                    <span>{String(r?.[primary.key] ?? mid)}</span>
+                  </label>
+                );
+              })}
+            </div>
+            <div data-testid="merge-preview">
+              {merging.fields === null ? (
+                <div style={{ color: "var(--nx-fg-faint)", fontSize: 12 }}>Computing preview…</div>
+              ) : (
+                <table style={{ width: "100%", fontSize: 12.5, borderCollapse: "collapse" }}>
+                  <tbody>
+                    {merging.fields.map((f) => (
+                      <tr key={f.key} style={{ borderTop: "1px solid var(--nx-border)" }}>
+                        <td style={{ padding: "5px 8px", color: "var(--nx-fg-faint)", whiteSpace: "nowrap" }}>{f.label}</td>
+                        <td style={{ padding: "5px 8px" }} data-testid={`merge-final-${f.key}`}>{String(f.value)}</td>
+                        <td style={{ padding: "5px 8px", textAlign: "right" }}>
+                          {f.source !== "winner" && <Badge>{`from ${f.source}`}</Badge>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <Button onClick={() => setMerging(null)}>Cancel</Button>
+              <Button variant="primary" data-testid="merge-go" disabled={merging.fields === null} onClick={commitMerge}>
+                Merge — losers go to trash
+              </Button>
+            </div>
+          </div>
+        </Dialog>
       )}
 
       <AlertDialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>

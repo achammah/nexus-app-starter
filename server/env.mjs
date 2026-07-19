@@ -16,6 +16,8 @@ const schema = z.object({
   SMTP_URL: z.string().optional(),
   // job seam knobs: recurring digest interval + its mail target (both optional)
   DIGEST_EVERY_MS: z.coerce.number().int().positive().optional(),
+  // trash retention in DAYS (fractional ok); 0/unset = keep trashed rows forever
+  TRASH_RETENTION_DAYS: z.coerce.number().nonnegative().optional(),
   DIGEST_TO: z.string().optional(),
   // native warehouse persistence (the command-log data spine)
   WAREHOUSE: z.enum(["bigquery"]).optional(),

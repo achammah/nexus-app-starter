@@ -5,7 +5,7 @@
 import type { ObjectConfig } from "../ui/record-core/types";
 
 export type Role = "owner" | "admin" | "member" | "viewer";
-export type Action = "view" | "create" | "edit" | "delete" | "export";
+export type Action = "view" | "create" | "edit" | "delete" | "restore" | "destroy" | "export";
 
 export function can(
   role: Role | undefined,
@@ -20,5 +20,7 @@ export function can(
   const granted = table[role] ?? [];
   if (granted.includes(action)) return true;
   if ((action === "edit" || action === "delete") && ctx.own && granted.includes(`${action}Own`)) return true;
+  if (action === "restore" && (granted.includes("delete") || (ctx.own && granted.includes("deleteOwn")))) return true;
+  if (action === "destroy" && ctx.own && granted.includes("destroyOwn")) return true;
   return false;
 }

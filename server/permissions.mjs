@@ -9,7 +9,7 @@
    The client twin (src/app/permissions.ts) implements the same contract for
    affordance hiding — the SERVER is the actual gate; journeys assert both. */
 
-export const ACTIONS = ["view", "create", "edit", "delete", "export"];
+export const ACTIONS = ["view", "create", "edit", "delete", "restore", "destroy", "export"];
 export const ROLES = ["owner", "admin", "member", "viewer"];
 
 export function can(role, objectCfg, action, ctx = {}) {
@@ -20,5 +20,9 @@ export function can(role, objectCfg, action, ctx = {}) {
   if (granted.includes(action)) return true;
   // own-row grants: editOwn/deleteOwn apply when the caller created the row
   if ((action === "edit" || action === "delete") && ctx.own && granted.includes(`${action}Own`)) return true;
+  // trash split: restore rides the delete grant (undoing what you may do);
+  // destroy is PERMANENT and must be granted explicitly
+  if (action === "restore" && (granted.includes("delete") || (ctx.own && granted.includes("deleteOwn")))) return true;
+  if (action === "destroy" && ctx.own && granted.includes("destroyOwn")) return true;
   return false;
 }

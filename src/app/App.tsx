@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Building2, Handshake, LayoutGrid, Moon, Sun, Users, Table2, Kanban } from "lucide-react";
 import { api, type AppConfig } from "./api";
+import { favList, type Fav } from "./favorites";
+import { Star } from "lucide-react";
 import { applySkin, type Skin } from "../ui/skins/skin";
 import { skinPresets } from "../ui/skins/presets";
 import { ObjectView } from "./ObjectView";
@@ -52,6 +54,17 @@ function resolveSkin(c: AppConfig | null): Skin | undefined {
 export function App() {
   const [config, setConfig] = React.useState<AppConfig | null>(null);
   const [counts, setCounts] = React.useState<Record<string, number>>({});
+  // favorites shelf: device-local pins; re-reads on the nx-favs event
+  const [favs, setFavs] = React.useState<Fav[]>(() => favList());
+  React.useEffect(() => {
+    const onFavs = () => setFavs(favList());
+    window.addEventListener("nx-favs", onFavs);
+    window.addEventListener("storage", onFavs);
+    return () => {
+      window.removeEventListener("nx-favs", onFavs);
+      window.removeEventListener("storage", onFavs);
+    };
+  }, []);
   const [err, setErr] = React.useState<string | null>(null);
   const [toasts, setToasts] = React.useState<Toast[]>([]);
   // auth gate: null = probing · {enabled,accounts,user} = known
@@ -232,6 +245,24 @@ export function App() {
               ))}
             </nav>
           </div>
+          {favs.length > 0 && (
+            <div className="sideSection" data-testid="fav-shelf">
+              <span className="nxMicro">Favorites</span>
+              <nav className="sideNav">
+                {favs.map((f) => (
+                  <button
+                    key={`${f.obj}:${f.id}`}
+                    className={`navItem ${route.recordId === f.id ? "navItem--active" : ""}`}
+                    data-testid={`fav-link-${f.id}`}
+                    onClick={() => route.go(`#/o/${f.obj}/r/${f.id}`)}
+                  >
+                    <span className="navIcon"><Star size={13} /></span>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label}</span>
+                  </button>
+                ))}
+              </nav>
+            </div>
+          )}
           <div className="sideFoot">
             <span>v0.2 · starter</span>
             {config.demo && (

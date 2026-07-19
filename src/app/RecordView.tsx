@@ -5,6 +5,7 @@ import { RecordPage, type RelatedList } from "../ui/record-core/RecordPage";
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
 import { usePollRev } from "./usePollRev";
 import { can, type Role } from "./permissions";
+import { favHas, favToggle } from "./favorites";
 
 export function RecordView({
   appConfig,
@@ -33,6 +34,8 @@ export function RecordView({
   const [files, setFiles] = React.useState<FileMeta[]>([]);
   const [watchState, setWatchState] = React.useState<{ on: boolean; count: number }>({ on: false, count: 0 });
   const [mentionOptions, setMentionOptions] = React.useState<string[]>([]);
+  const [fav, setFav] = React.useState(() => favHas(config.key, id));
+  React.useEffect(() => setFav(favHas(config.key, id)), [config.key, id]);
   const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
 
   const load = React.useCallback(() => {
@@ -116,6 +119,15 @@ export function RecordView({
       userOptions={appConfig.users ?? []}
       readOnly={readOnly}
       mentionOptions={mentionOptions}
+      pin={{
+        on: fav,
+        onToggle: () => {
+          const label = String(row[primary.key] ?? id);
+          const on = favToggle(config.key, id, label);
+          setFav(on);
+          toast(on ? "Added to favorites" : "Removed from favorites");
+        },
+      }}
       watch={sessionUser ? {
         on: watchState.on,
         count: watchState.count,

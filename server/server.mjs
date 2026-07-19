@@ -156,6 +156,17 @@ async function api(req, res, url) {
         if (req.method === "POST") {
           if (deny("create")) return;
           const body = await readBody(req);
+          // upsert semantic: a unique value colliding with a TRASHED row silently
+          // restores that row and applies the incoming data (import/re-sync friendly)
+          const zombie = store.uniqueResurrectMatch(objKey, body);
+          if (zombie) {
+            const invalid = store.validate(objKey, body, zombie.id);
+            if (invalid) return send(res, 400, { error: invalid });
+            store.restoreRow(objKey, zombie.id);
+            const row = store.patch(objKey, zombie.id, body);
+            emitEvent(store, `${objKey}.restored`, { row });
+            return send(res, 200, { ...row, _resurrected: true });
+          }
           const invalid = store.validate(objKey, body);
           if (invalid) return send(res, 400, { error: invalid });
           const created = store.create(objKey, body, { createdBy: session?.email, teamId: teamCtx?.id });
@@ -164,10 +175,37 @@ async function api(req, res, url) {
         }
       }
 
+      if (parts[3] === "trash" && !parts[4]) {
+        if (req.method === "GET") {
+          if (deny("view")) return;
+          let rows = store.trashList(objKey);
+          if (scoped) rows = rows.filter((r) => !r._team || r._team === teamCtx.id);
+          return send(res, 200, { rows });
+        }
+      }
+
+      if (parts[3] === "merge" && !parts[4] && req.method === "POST") {
+        if (deny("edit") || deny("delete")) return;
+        const { ids, winnerId, preview } = await readBody(req);
+        if (!Array.isArray(ids) || ids.length < 2) return send(res, 400, { error: "pick at least two records to merge" });
+        if (ids.length > 10) return send(res, 400, { error: "merge at most 10 records at a time" });
+        if (!ids.includes(winnerId)) return send(res, 400, { error: "winnerId must be one of ids" });
+        const missing = ids.find((x) => !store.get(objKey, x));
+        if (missing) return send(res, 404, { error: `record ${missing} not found` });
+        if (preview) {
+          const plan = store.mergePlan(objKey, ids, winnerId);
+          return send(res, 200, { fields: plan.fields, winnerId });
+        }
+        const winner = store.mergeRows(objKey, ids, winnerId);
+        emitEvent(store, `${objKey}.updated`, { row: winner });
+        for (const id of ids) if (id !== winnerId) emitEvent(store, `${objKey}.deleted`, { id });
+        return send(res, 200, { row: winner, merged: ids.length - 1 });
+      }
+
       if (parts[3] === "rev") return send(res, 200, { rev: store.rev(objKey) });
 
       const id = parts[3];
-      const row0 = store.get(objKey, id);
+      const row0 = store.getAny(objKey, id);
       if (scoped && row0?._team && row0._team !== teamCtx.id) return send(res, 404, { error: "not found" });
       const own = !!(row0 && session?.email && row0._createdBy === session.email);
       if (parts[4] === "timeline") {
@@ -244,6 +282,20 @@ async function api(req, res, url) {
         const via = `${f.primitive.label ?? f.primitive.kind} (mock)`;
         const mockValue = `(mock) ${f.label} for ${row[namePrimary.key] ?? id} — replace the /enrich mock in server/server.mjs with a real ${f.primitive.kind} call.`;
         return send(res, 200, store.enrich(objKey, id, field, mockValue, via));
+      }
+      if (parts[4] === "restore" && req.method === "POST") {
+        if (deny("restore", { own })) return;
+        const row = store.restoreRow(objKey, id);
+        if (!row) return send(res, 404, { error: "not in trash" });
+        emitEvent(store, `${objKey}.restored`, { row });
+        return send(res, 200, row);
+      }
+      if (parts[4] === "destroy" && req.method === "DELETE") {
+        if (deny("destroy", { own })) return;
+        if (!row0) return send(res, 404, { error: "not found" });
+        store.destroyRow(objKey, id);
+        emitEvent(store, `${objKey}.destroyed`, { id });
+        return send(res, 200, { ok: true });
       }
       if (req.method === "GET") {
         if (deny("view")) return;

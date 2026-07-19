@@ -67,3 +67,7 @@ Default view: kanban · stage field: `stage`
 | `owner` | user |  |
 
 Users directory: `you`, `Maya Verstraete`, `Jonas Peeters`, `Sofia Marchetti` (drives `user`-type fields).
+
+## Record lifecycle
+
+`DELETE /api/objects/:key/:id` is a SOFT delete — the row gains `_deletedAt` and disappears from lists, gets, search, and boards while keeping its data and timeline. `GET /api/objects/:key/trash` lists trashed rows; `POST …/:id/restore` clears the stamp; `DELETE …/:id/destroy` removes the row, its timeline, and its files permanently. Merge (`POST /api/objects/:key/merge`) folds duplicates into a chosen winner and trashes the losers. Webhook events: `<key>.deleted` (trash), `<key>.restored`, `<key>.destroyed`.
