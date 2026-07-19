@@ -269,6 +269,65 @@ export class Store {
     return true;
   }
 
+  /* ---- tasks: cross-record to-dos (status, due, assignee, record links) ----
+     System entity like teams/webhooks — config-less, replay-logged. Timeline
+     coupling lives INSIDE the ops so warehouse replay reconstructs the record
+     events; rev bumps ride along so open record pages live-refresh their tasks
+     (_ev bumps on add/done; link-only changes bump explicitly). */
+
+  taskAdd({ title, status, due, assignee, links, createdBy }) {
+    const t = {
+      id: `tk_${++this.n}`,
+      title: String(title),
+      status: ["todo", "doing", "done"].includes(status) ? status : "todo",
+      due: due || null,
+      assignee: assignee || null,
+      links: (links ?? []).map((l) => ({ obj: l.obj, id: l.id })),
+      createdBy: createdBy ?? null,
+      createdAt: this._now().toISOString(),
+      doneAt: null,
+    };
+    if (t.status === "done") t.doneAt = this._now().toISOString();
+    (this.tasks ??= []).push(t);
+    for (const l of t.links) this._ev(l.obj, l.id, "updated", `Task added: ${t.title}`);
+    return t;
+  }
+
+  taskUpdate(id, patch) {
+    const t = (this.tasks ?? []).find((x) => x.id === id);
+    if (!t) return null;
+    // live-sync: every object linked BEFORE or AFTER the patch refetches
+    const touched = new Set(t.links.map((l) => l.obj));
+    if (patch.title !== undefined) t.title = String(patch.title);
+    if (patch.due !== undefined) t.due = patch.due || null;
+    if (patch.assignee !== undefined) t.assignee = patch.assignee || null;
+    if (Array.isArray(patch.links)) {
+      t.links = patch.links.map((l) => ({ obj: l.obj, id: l.id }));
+      for (const l of t.links) touched.add(l.obj);
+    }
+    if (patch.status !== undefined && patch.status !== t.status) {
+      const was = t.status;
+      t.status = ["todo", "doing", "done"].includes(patch.status) ? patch.status : t.status;
+      if (t.status === "done" && was !== "done") {
+        t.doneAt = this._now().toISOString();
+        for (const l of t.links) this._ev(l.obj, l.id, "updated", `Task done: ${t.title}`);
+      } else if (was === "done" && t.status !== "done") {
+        t.doneAt = null;
+      }
+    }
+    for (const k of touched) this._bump(k);
+    return t;
+  }
+
+  taskRemove(id) {
+    const list = this.tasks ?? [];
+    const i = list.findIndex((x) => x.id === id);
+    if (i === -1) return false;
+    const [t] = list.splice(i, 1);
+    for (const l of t.links) this._bump(l.obj);
+    return true;
+  }
+
   /* ---- record subscriptions (watchers) ---- */
 
   watchToggle(objectKey, id, email, on) {

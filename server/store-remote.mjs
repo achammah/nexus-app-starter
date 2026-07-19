@@ -26,6 +26,7 @@ const LOGGED_OPS = [
   "apiKeyAdd", "apiKeyRevoke",
   "restoreRow", "destroyRow", "mergeRows",
   "viewAdd", "viewUpdate", "viewRemove",
+  "taskAdd", "taskUpdate", "taskRemove",
   "outboxAdd",
 ];
 
