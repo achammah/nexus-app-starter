@@ -254,6 +254,7 @@ export function App() {
                    from one record's page into another's */
                 key={`${active.key}:${route.recordId}`}
                 role={auth?.role}
+                sessionUser={auth?.user}
                 appConfig={config}
                 config={active}
                 id={route.recordId}

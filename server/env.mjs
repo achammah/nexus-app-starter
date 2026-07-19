@@ -14,6 +14,9 @@ const schema = z.object({
   // (needs APP_SECRET; mail goes to the dev outbox until SMTP_URL is wired)
   AUTH_MODE: z.enum(["accounts"]).optional(),
   SMTP_URL: z.string().optional(),
+  // job seam knobs: recurring digest interval + its mail target (both optional)
+  DIGEST_EVERY_MS: z.coerce.number().int().positive().optional(),
+  DIGEST_TO: z.string().optional(),
   APP_SECRET: z.string().min(16, "APP_SECRET must be ≥16 chars").optional(),
   // Nexus platform (server-side only — never reaches the browser)
   NEXUS_API_KEY: z.string().startsWith("nxs_").optional(),

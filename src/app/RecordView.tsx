@@ -11,6 +11,7 @@ export function RecordView({
   config,
   id,
   role,
+  sessionUser,
   onBack,
   go,
 }: {
@@ -18,6 +19,7 @@ export function RecordView({
   config: ObjectConfig;
   id: string;
   role?: Role;
+  sessionUser?: string | null;
   onBack: () => void;
   go: (hash: string) => void;
 }) {
@@ -29,6 +31,8 @@ export function RecordView({
   const [relationOptions, setRelationOptions] = React.useState<Record<string, string[]>>({});
   const [related, setRelated] = React.useState<RelatedList[]>([]);
   const [files, setFiles] = React.useState<FileMeta[]>([]);
+  const [watchState, setWatchState] = React.useState<{ on: boolean; count: number }>({ on: false, count: 0 });
+  const [mentionOptions, setMentionOptions] = React.useState<string[]>([]);
   const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
 
   const load = React.useCallback(() => {
@@ -40,6 +44,10 @@ export function RecordView({
   React.useEffect(load, [load]);
   // live sync: another viewer's edits/comments/files appear without a manual reload
   usePollRev(config.key, load);
+  React.useEffect(() => {
+    api.usersDirectory().then(setMentionOptions).catch(() => {});
+    if (sessionUser) api.watchers(config.key, id).then((w) => setWatchState({ on: w.me, count: w.count })).catch(() => {});
+  }, [config.key, id, sessionUser]);
 
   // Relation OPTIONS: target object → its primary values (feeds the pickers).
   React.useEffect(() => {
@@ -105,6 +113,16 @@ export function RecordView({
       related={related}
       userOptions={appConfig.users ?? []}
       readOnly={readOnly}
+      mentionOptions={mentionOptions}
+      watch={sessionUser ? {
+        on: watchState.on,
+        count: watchState.count,
+        onToggle: (next) =>
+          api.watch(config.key, id, next).then((r) => {
+            setWatchState({ on: r.me, count: r.watchers });
+            toast(next ? "Watching this record" : "Stopped watching");
+          }).catch((e) => toast(e.message)),
+      } : undefined}
       onOpenRelation={(target, value) => {
         sessionStorage.setItem("nx-pending-q", value);
         go(`#/o/${target}`);

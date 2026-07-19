@@ -525,6 +525,132 @@ const journeys = [
     },
   },
   {
+    name: "webhook-delivery", feature: "Webhooks (typed catalog, signed, logged)",
+    async run(page) {
+      const http = await import("node:http");
+      const crypto = await import("node:crypto");
+      const got = [];
+      const recv = http.createServer((rq, rs) => {
+        let b = "";
+        rq.on("data", (c) => (b += c));
+        rq.on("end", () => { got.push({ headers: rq.headers, body: b }); rs.end("ok"); });
+      });
+      await new Promise((r) => recv.listen(4795, r));
+      try {
+        await page.goto(URLBASE + "/#/p/webhooks");
+        await page.waitForSelector('[data-testid="wh-url"]');
+        await page.fill('[data-testid="wh-url"]', "http://localhost:4795/hook");
+        await page.click('[data-testid="wh-ev-companies-created"]');
+        await page.click('[data-testid="wh-create"]');
+        await page.waitForSelector('[data-testid="wh-secret"]');
+        const secret = (await page.textContent('[data-testid="wh-secret"]')).trim();
+        assert(secret.length >= 32, "signing secret is shown exactly once at creation");
+        // an out-of-band writer creates a company → the subscribed endpoint gets a signed POST
+        await page.request.post(URLBASE + "/api/objects/companies", { data: { name: "Hooked Systems" } });
+        for (let i = 0; i < 20 && got.length === 0; i++) await page.waitForTimeout(400);
+        assert(got.length >= 1, "the endpoint received the delivery (job queue tick)");
+        const hit = got[0];
+        const sig = String(hit.headers["x-nx-signature"] ?? "").replace("sha256=", "");
+        const expect = crypto.createHmac("sha256", secret).update(hit.body).digest("hex");
+        assert(sig === expect, "HMAC signature verifies against the once-shown secret");
+        assert(hit.headers["x-nx-event"] === "companies.created" && hit.body.includes("Hooked Systems"),
+          "payload carries the typed event + the row");
+        // the delivery log shows it in the UI
+        const hookId = (await (await page.request.get(URLBASE + "/api/webhooks")).json()).webhooks[0].id;
+        await page.click(`[data-testid="wh-deliveries-${hookId}"]`);
+        await page.waitForSelector('[data-testid="wh-delivery-list"]');
+        const logTxt = await page.textContent('[data-testid="wh-delivery-list"]');
+        assert(logTxt.includes("delivered") && logTxt.includes("companies.created"), "delivery log row is visible");
+        // cleanup: remove the hook + the created row so later journeys see baseline state
+        await page.request.fetch(URLBASE + `/api/webhooks/${hookId}`, { method: "DELETE" });
+        const rows = (await (await page.request.get(URLBASE + "/api/objects/companies")).json()).rows;
+        const mine = rows.find((r) => r.name === "Hooked Systems");
+        if (mine) await page.request.fetch(URLBASE + `/api/objects/companies/${mine.id}`, { method: "DELETE" });
+      } finally {
+        recv.close();
+      }
+    },
+  },
+  {
+    name: "watch-notify-mention", feature: "Record subscriptions (@mentions notify watchers)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4685", AUTH_MODE: "accounts", APP_SECRET: "journey-secret-16-chars-plus" },
+      });
+      const B = "http://localhost:4685";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctxA = await page.context().browser().newContext();
+        const pa = await ctxA.newPage();
+        await pa.request.post(B + "/api/auth/signup", { data: { email: "ada@fixture.example", name: "Ada", password: "watcher-pass-1" } });
+        // ada watches a record from the UI
+        await pa.goto(B + "/#/o/companies/r/co_1");
+        await pa.waitForSelector('[data-testid="watch-toggle"]');
+        await pa.click('[data-testid="watch-toggle"]');
+        await pa.waitForFunction(() => document.querySelector('[data-testid="watch-toggle"]')?.textContent?.includes("Watching"));
+        assert(true, "watch toggle arms from the record header");
+        // the @-autocomplete offers directory names while typing
+        await pa.click('[role="tab"]:has-text("Notes")');
+        await pa.fill('[data-testid="note-input"]', "Loop in @A");
+        await pa.waitForSelector('[data-testid="mention-ada"]');
+        await pa.click('[data-testid="mention-ada"]');
+        const v = await pa.inputValue('[data-testid="note-input"]');
+        assert(v.includes("@Ada"), `mention autocomplete inserts the name (${v})`);
+        // bob posts a note mentioning Ada → the watcher gets mail, the actor doesn't
+        const ctxB = await page.context().browser().newContext();
+        const pb = await ctxB.newPage();
+        await pb.request.post(B + "/api/auth/signup", { data: { email: "bob@fixture.example", name: "Bob", password: "author-pass-12" } });
+        await pb.request.post(B + "/api/objects/companies/co_1/notes", { data: { text: "@Ada please review the contract" } });
+        let mail = [];
+        for (let i = 0; i < 15; i++) {
+          mail = (await (await pb.request.get(B + "/api/outbox")).json()).mail.filter((m) => m.kind === "record-activity");
+          if (mail.length) break;
+          await new Promise((r) => setTimeout(r, 400));
+        }
+        assert(mail.some((m) => m.to === "ada@fixture.example" && m.text.includes("please review")),
+          "the watcher gets the activity mail");
+        assert(!mail.some((m) => m.to === "bob@fixture.example"), "the actor is not notified about their own note");
+        await ctxA.close(); await ctxB.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "jobs-digest", feature: "Job seam (queue + recurring digest)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4695", DIGEST_EVERY_MS: "1200" },
+      });
+      const B = "http://localhost:4695";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        let digest = null;
+        for (let i = 0; i < 20; i++) {
+          const state = await (await fetch(B + "/api/state")).json();
+          if (state["digest:latest"]) { digest = state["digest:latest"]; break; }
+          await new Promise((r) => setTimeout(r, 500));
+        }
+        assert(digest && digest.counts && digest.counts.companies === 8,
+          `the recurring digest job computed rollups into app_state (companies=${digest?.counts?.companies})`);
+        const jobs = (await (await fetch(B + "/api/jobs")).json()).jobs;
+        assert(jobs.some((j) => j.type === "digest" && j.status === "done"), "the job log shows the digest run as done");
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
     name: "teams-invite-join", feature: "Teams (invitations, join code, roles)",
     async run(page) {
       const { spawn } = await import("node:child_process");

@@ -56,6 +56,20 @@ export const api = {
   teamJoin: (code: string) => j<{ ok: boolean; team: { slug: string; name: string } }>("/api/teams/join", { method: "POST", body: JSON.stringify({ code }) }),
   teamSetRole: (slug: string, email: string, role: string) =>
     j<{ ok: boolean }>(`/api/teams/${slug}/members`, { method: "PATCH", body: JSON.stringify({ email, role }) }),
+  usersDirectory: () => j<{ users: string[] }>("/api/users").then((r) => r.users),
+  watchers: (obj: string, id: string) => j<{ count: number; me: boolean }>(`/api/objects/${obj}/${id}/watchers`),
+  watch: (obj: string, id: string, on: boolean) =>
+    j<{ ok: boolean; watchers: number; me: boolean }>(`/api/objects/${obj}/${id}/watch`, { method: "POST", body: JSON.stringify({ on }) }),
+  webhooks: () => j<{ webhooks: { id: string; url: string; events: string[]; active: boolean; secret: string }[] }>("/api/webhooks"),
+  webhookCatalog: () => j<{ events: string[] }>("/api/webhooks/catalog").then((r) => r.events),
+  webhookCreate: (url: string, events: string[]) =>
+    j<{ id: string; secret: string }>("/api/webhooks", { method: "POST", body: JSON.stringify({ url, events }) }),
+  webhookPatch: (id: string, body: { active?: boolean }) =>
+    j<{ id: string }>(`/api/webhooks/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  webhookTest: (id: string) => j<{ ok: boolean }>(`/api/webhooks/${id}/test`, { method: "POST", body: "{}" }),
+  webhookDeliveries: (id: string) =>
+    j<{ deliveries: { id: string; event: string; status: string; code: number; ts: string }[] }>(`/api/webhooks/${id}/deliveries`),
+  jobs: () => j<{ jobs: { id: string; type: string; status: string }[] }>("/api/jobs"),
   teamRemove: (slug: string, email: string) =>
     j<{ ok: boolean }>(`/api/teams/${slug}/members?email=${encodeURIComponent(email)}`, { method: "DELETE" }),
   timeline: (obj: string, id: string) =>

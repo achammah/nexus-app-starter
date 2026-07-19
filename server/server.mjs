@@ -20,6 +20,8 @@ import { env, AUTH_ENABLED } from "./env.mjs";
 import { handleAuth, gate, readSession } from "./auth.mjs";
 import { handleTeams } from "./teams.mjs";
 import { can } from "./permissions.mjs";
+import { enqueue, startScheduler } from "./jobs.mjs";
+import { handleWebhooks, emitEvent } from "./webhooks.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DIST = path.join(ROOT, "dist");
@@ -29,6 +31,7 @@ const CONFIG = JSON.parse(
 );
 const VERSION = readFileSync(path.join(ROOT, "VERSION"), "utf8").trim();
 const store = new Store(CONFIG);
+startScheduler(store);
 
 const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json", ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2" };
 
@@ -41,6 +44,11 @@ function send(res, code, body, type = "application/json") {
     : type === "text/html" ? "no-cache" : "public, max-age=60";
   res.writeHead(code, { "content-type": type, "cache-control": cache });
   res.end(data);
+}
+
+function notifyWatchers(objKey, id, summary, session) {
+  if (store.watchers(objKey, id).length === 0) return;
+  enqueue(store, "notify-subscribers", { objectKey: objKey, id, summary, actor: session?.email ?? null });
 }
 
 async function readBody(req) {
@@ -57,9 +65,19 @@ async function api(req, res, url) {
 
     const session = AUTH_ENABLED ? readSession(req, store) : null;
     if (await handleTeams(req, res, url, readBody, send, store, session)) return;
+    if (await handleWebhooks(req, res, url, readBody, send, store, CONFIG)) return;
+    if (parts[1] === "jobs" && req.method === "GET") {
+      const rows = [...(store.jobs ?? [])].reverse().slice(0, 50).map(({ payload, result, ...j }) => j);
+      return send(res, 200, { jobs: rows });
+    }
     // role for permission checks: auth off → owner-equivalent (open); on → from teams
     const role = AUTH_ENABLED ? store.roleFor(session?.email) : "owner";
     if (parts[1] === "healthz") return send(res, 200, { ok: true, version: VERSION, app: CONFIG.app.slug });
+
+    if (parts[1] === "users" && req.method === "GET") {
+      const names = (store.users ?? []).filter((u) => !u.deletedAt).map((u) => u.name);
+      return send(res, 200, { users: names.length ? names : (CONFIG.users ?? []) });
+    }
 
     if (parts[1] === "outbox") {
       // dev mail transport (server/email.mjs) — gone once SMTP_URL is set
@@ -98,7 +116,9 @@ async function api(req, res, url) {
           const body = await readBody(req);
           const invalid = store.validate(objKey, body);
           if (invalid) return send(res, 400, { error: invalid });
-          return send(res, 201, store.create(objKey, body));
+          const created = store.create(objKey, body);
+          emitEvent(store, `${objKey}.created`, { row: created });
+          return send(res, 201, created);
         }
       }
 
@@ -113,14 +133,23 @@ async function api(req, res, url) {
         if (deny("edit")) return;
         const { text } = await readBody(req);
         if (!text) return send(res, 400, { error: "text required" });
-        return send(res, 201, store.addNote(objKey, id, text));
+        const note = store.addNote(objKey, id, text);
+        // @mentions: match account users by name → auto-subscribe + notify them
+        for (const u of store.users ?? []) {
+          if (u.deletedAt || !text.includes(`@${u.name}`)) continue;
+          store.watchToggle(objKey, id, u.email, true);
+        }
+        notifyWatchers(objKey, id, `Note: ${String(text).slice(0, 140)}`, session);
+        return send(res, 201, note);
       }
       if (parts[4] === "activities" && req.method === "POST") {
         if (deny("edit")) return;
         const { kind, text } = await readBody(req);
         if (!["call", "email", "meeting"].includes(kind)) return send(res, 400, { error: "kind must be call|email|meeting" });
         if (!text) return send(res, 400, { error: "text required" });
-        return send(res, 201, store.addActivity(objKey, id, kind, text));
+        const act = store.addActivity(objKey, id, kind, text);
+        notifyWatchers(objKey, id, `${kind[0].toUpperCase()}${kind.slice(1)} logged: ${String(text).slice(0, 140)}`, session);
+        return send(res, 201, act);
       }
       if (parts[4] === "files") {
         if (!parts[5]) {
@@ -144,6 +173,16 @@ async function api(req, res, url) {
           "cache-control": "no-store",
         });
         return res.end(Buffer.from(f.data, "base64"));
+      }
+      if (parts[4] === "watch" && req.method === "POST") {
+        if (!session?.email) return send(res, 400, { error: "watching needs accounts (AUTH_MODE=accounts) and a session" });
+        const { on } = await readBody(req);
+        store.watchToggle(objKey, id, session.email, on !== false);
+        return send(res, 200, { ok: true, watchers: store.watchers(objKey, id).length, me: on !== false });
+      }
+      if (parts[4] === "watchers" && req.method === "GET") {
+        const emails = store.watchers(objKey, id);
+        return send(res, 200, { count: emails.length, me: session?.email ? emails.includes(session.email) : false });
       }
       /* AI-enrichment seam — MOCK: computes a labeled placeholder value for a field
          whose config carries `primitive`. Prod: replace the mockValue line with a
@@ -172,11 +211,17 @@ async function api(req, res, url) {
         const invalid = store.validate(objKey, patch);
         if (invalid) return send(res, 400, { error: invalid });
         const row = store.patch(objKey, id, patch);
+        if (row) {
+          emitEvent(store, `${objKey}.updated`, { row, patch });
+          notifyWatchers(objKey, id, `${Object.keys(patch).join(", ")} updated`, session);
+        }
         return row ? send(res, 200, row) : send(res, 404, { error: "not found" });
       }
       if (req.method === "DELETE") {
         if (deny("delete")) return;
-        return store.remove(objKey, id) ? send(res, 200, { ok: true }) : send(res, 404, { error: "not found" });
+        const removed = store.remove(objKey, id);
+        if (removed) emitEvent(store, `${objKey}.deleted`, { id });
+        return removed ? send(res, 200, { ok: true }) : send(res, 404, { error: "not found" });
       }
     }
     return send(res, 404, { error: "no route" });

@@ -136,6 +136,25 @@ export class Store {
     return mine.sort((a, b) => ranks[b.role] - ranks[a.role])[0].role;
   }
 
+  /* ---- record subscriptions (watchers) ---- */
+
+  watchToggle(objectKey, id, email, on) {
+    const norm = String(email).toLowerCase();
+    let sub = (this.subscribers ??= []).find((s) => s.objectKey === objectKey && s.id === id);
+    if (!sub) {
+      sub = { objectKey, id, emails: [] };
+      this.subscribers.push(sub);
+    }
+    const has = sub.emails.includes(norm);
+    if (on && !has) sub.emails.push(norm);
+    if (!on && has) sub.emails = sub.emails.filter((e) => e !== norm);
+    return sub;
+  }
+
+  watchers(objectKey, id) {
+    return (this.subscribers ?? []).find((s) => s.objectKey === objectKey && s.id === id)?.emails ?? [];
+  }
+
   outboxAdd({ to, subject, text, kind }) {
     const m = { id: `m_${++this.n}`, to: to.toLowerCase(), subject, text, kind, ts: new Date().toISOString() };
     (this.outbox ??= []).push(m);
