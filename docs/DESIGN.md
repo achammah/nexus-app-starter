@@ -1,6 +1,6 @@
 # DESIGN — visual lock
 
-**Status: DEFAULT CANVAS (starter-shipped).** This is the starter's own locked baseline — a cloned app REPLACES this file at P0.5: render the three `boards/` directions with the app's real nouns, the user PICKS, the chosen tokens + board snapshot land here. Frontend work before that pick inherits this canvas knowingly.
+**Status: DEFAULT CANVAS (starter-shipped).** This is the starter's own locked baseline — a cloned app REPLACES this file at project start: render the three `boards/` directions with the app's real nouns, the user PICKS, the chosen tokens + board snapshot land here. Frontend work before that pick inherits this canvas knowingly.
 
 ## Locked tokens (v0.1 default)
 - Palette: warm near-neutrals (`#fafaf9` ground / `#1c1b19` ink, hue-biased, never pure grey) · single accent `--nx-accent: #4f46e5` (indigo) · semantic ok/warn/danger kept separate from the accent.
@@ -12,7 +12,7 @@
 
 ## Anti-references (what this canvas is NOT)
 - No purple-to-blue gradient heroes, no cream+serif+terracotta default, no emoji as section markers, no rounded-everything.
-- Never a donor product's look: a fork's identity is not a direction (P0.5).
+- Never a donor product's look: a fork's identity is not a direction.
 
 ## Boards
-`boards/direction-{a,b,c}.html` — token-variant one-screen boards used by P0.5 serve-then-link picks.
+`boards/direction-{a,b,c}.html` — token-variant one-screen boards — serve them, pick one, lock it here.

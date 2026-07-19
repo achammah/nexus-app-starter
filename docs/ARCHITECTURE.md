@@ -30,7 +30,7 @@ journeys/run.mjs         the verification harness: boots the server if needed, d
                          user, asserts VISIBLE outcomes, screenshots each, writes docs/COVERAGE.md rows,
                          stamps manifest Last-verified, writes journeys/.last-pass on all-green
 scripts/                 sync-ui · precheck (tsc+build+stamp) · register-as-tool
-boards/                  P0.5 direction boards (serve-then-link pick)
+boards/                  design direction boards (serve, pick one, lock in docs/DESIGN.md)
 docs/                    SPEC · DESIGN · feature-manifest · COVERAGE (+ this file) — the gate artifacts
 ```
 

@@ -1,4 +1,4 @@
-/* i18n scaffold — every NEW string is born here (ux-canon: count defs × languages;
+/* i18n scaffold — every NEW string is born here (UI copy lives in dicts; record
    DATA stays in its own language). v0 ships `en`; add a locale by adding a dict and
    the switch re-renders the active view (wire a selector when a 2nd locale lands). */
 

@@ -3,10 +3,16 @@
 Task cookbook. Each recipe names the files touched and the order of operations. If a recipe and the code disagree, the code won; fix the recipe in the same commit.
 
 ## Add an entity
+Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:currency,stage:select:Draft|Sent|Paid,owner:user"` — writes the config entry (board on the first select, seeded rows, `npm run model` refresh). By hand:
 1. `starter.config.json` → append to `objects[]`: `key/label/labelOne/icon`, `fields[]`, optional `stageField` (a select field's key → enables the board), `defaultView`, and demo data (`sampleRows` with stable ids, or `seedCount`). Relation targets must be listed BEFORE the objects that point at them.
-2. Nothing else — tables/board/record page/pickers/filters/nav derive from config.
-3. `docs/feature-manifest.md` → one row. `journeys/run.mjs` → one journey asserting a VISIBLE outcome.
+2. Nothing else — tables/board/chart/record page/pickers/filters/nav derive from config.
+3. `docs/feature-manifest.md` → one row. A journey asserting a VISIBLE outcome (`npm run generate journey <name> -- --feature "<row>"` scaffolds one under `journeys/extra/`).
 4. `npm run journeys`.
+
+## Scaffold a page or journey
+- `npm run generate page Reports` → `src/app/pages/Reports.tsx` from `scripts/templates/page.tsx.tpl` (edit the template once — every later generate uses your version) + auto-registered at the `// generate:pages` marker.
+- `npm run generate journey invoice-flow -- --feature "Invoices board"` → `journeys/extra/invoice-flow.mjs` skeleton, auto-loaded by the runner.
+- All subcommands are flag-driven (no prompts) so an agent can run them headlessly; `--dry` on `object` prints the JSON without writing.
 
 ## Add a field to an existing entity
 1. `starter.config.json` → append to that object's `fields[]`. Types: `text · number · select · date · currency · email · url · relation · user · multiselect`.

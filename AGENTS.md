@@ -14,12 +14,13 @@ You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the st
 | `npm run precheck` | tsc + build + journey-stamp freshness — run before EVERY push |
 | `npm run sync-ui` | pull the pinned nexus-ui copy into `src/ui/` |
 | `npm run model` | regenerate `docs/DATA-MODEL.md` from the config |
+| `npm run generate` | scaffold an object / page / journey (non-interactive; see docs/RECIPES.md) |
 
 ## The four gate artifacts (the deploy gate READS these)
 | File | Contract |
 |---|---|
 | `docs/SPEC.md` | one row per user ASK, appended THE TURN it arrives (user's words + status asked→built→journey-green + evidence + source) |
-| `docs/DESIGN.md` | the P0.5 design lock — replace the default canvas after the direction pick (boards in `boards/`); tokens live in `src/ui/tokens/tokens.css` |
+| `docs/DESIGN.md` | the design lock — replace the default canvas after picking a direction (boards in `boards/`); tokens live in `src/ui/tokens/tokens.css` |
 | `docs/feature-manifest.md` | one row per feature: primitive id (or `mock`/`local`) + exact click path + VISIBLE proof; `Last verified` is written by the journey runner, never by hand |
 | `journeys/.last-pass` | stamped ONLY by an all-green `npm run journeys` |
 
@@ -38,5 +39,5 @@ You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the st
 ## Invariants
 - `src/ui/` is a SYNCED COPY of nexus-ui (`npm run sync-ui`; version in `src/ui/.ui-version`) — fix library issues in the library, then re-sync; never fork the copy.
 - Server API JSON is `no-store` (a cached list = moved cards rendering in the old column — measured).
-- Irreversible/bulk actions ship WITH a review surface naming their targets (see ObjectView's delete flow) — the pattern is binding (ux-canon).
+- Irreversible/bulk actions ship WITH a review surface naming their targets (see ObjectView's delete flow) — the pattern is binding.
 - Every interactive element gets a `data-testid`; journeys assert on those.

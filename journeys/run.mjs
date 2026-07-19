@@ -11,9 +11,9 @@
    Env: JOURNEY_URL (default http://localhost:4000) · JOURNEY_SURFACE label (local|hosted). */
 
 import { spawn } from "node:child_process";
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const URLBASE = process.env.JOURNEY_URL || "http://localhost:4000";
@@ -423,6 +423,120 @@ const journeys = [
     },
   },
   {
+    name: "chart-view", feature: "Chart view (group + measure)",
+    async run(page) {
+      const pickMenu = async (trigger, item) => {
+        await page.click(`[data-testid="${trigger}"]`);
+        const it = page.locator(`[data-testid="${item}"]`);
+        await it.waitFor();
+        for (let i = 0; i < 8; i++) {
+          if ((await it.getAttribute("data-highlighted")) !== null) break;
+          await page.keyboard.press("ArrowDown");
+          await page.waitForTimeout(80);
+        }
+        await page.keyboard.press("Enter");
+      };
+      // companies: count per industry, no stageField needed
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="view-switch"]');
+      await page.click('[data-testid="view-switch"] button:has-text("Chart")');
+      await page.waitForSelector('[data-testid="chart-companies"]');
+      const soft = await page.getAttribute('[data-testid="bar-Software"]', "data-value");
+      assert(Number(soft) >= 1, `companies chart bars by Industry (Software=${soft})`);
+      // deals: switch measure to Σ Amount → New column sums 32000+21000
+      await page.goto(URLBASE + "/#/o/deals");
+      await page.waitForSelector('[data-testid="kanban-deals"]');
+      await page.click('[data-testid="view-switch"] button:has-text("Chart")');
+      await page.waitForSelector('[data-testid="chart-deals"]');
+      await pickMenu("measure-by", "measure-amount");
+      // order-independent: expected sums computed from the live API, not seed memory
+      const deals = (await (await page.request.get(URLBASE + "/api/objects/deals")).json()).rows;
+      const sums = {};
+      for (const d of deals) sums[d.stage] = (sums[d.stage] ?? 0) + (d.amount ?? 0);
+      const stage = Object.keys(sums).find((s) => sums[s] > 0);
+      await page.waitForFunction(
+        ([s, v]) => document.querySelector(`[data-testid="bar-${s}"]`)?.dataset.value === String(v),
+        [stage, sums[stage]],
+      );
+      assert(true, `deals chart sums Amount per stage (${stage}=${sums[stage]})`);
+      // RESTORE persisted state for later journeys
+      await pickMenu("measure-by", "measure-count");
+      await page.click('[data-testid="view-switch"] button:has-text("Board")');
+      await page.waitForSelector('[data-testid="kanban-deals"]');
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.click('[data-testid="view-switch"] button:has-text("Table")');
+      await page.waitForSelector('[data-testid="table-companies"]');
+    },
+  },
+  {
+    name: "live-sync", feature: "Live sync (cross-viewer updates)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="table-companies"] tbody tr');
+      const before = await (await page.request.get(URLBASE + "/api/objects/companies/co_5")).json();
+      // an OUT-OF-BAND writer (another viewer / an agent) edits the row
+      // (assert on the NAME cell — button text; input cells hold values, not textContent)
+      await page.request.patch(URLBASE + "/api/objects/companies/co_5", { data: { name: "Meridian LIVE-SYNC" } });
+      // NO reload — the rev poll must pick it up
+      await page.waitForFunction(
+        () => document.querySelector('[data-testid="table-companies"]')?.textContent?.includes("Meridian LIVE-SYNC"),
+        undefined,
+        { timeout: 10000 },
+      );
+      assert(true, "another writer's edit appears in the open table without a reload (rev poll)");
+      await page.request.patch(URLBASE + "/api/objects/companies/co_5", { data: { name: before.name } });
+      await page.waitForFunction(
+        (nm) => document.querySelector('[data-testid="table-companies"]')?.textContent?.includes(nm),
+        before.name,
+        { timeout: 10000 },
+      );
+    },
+  },
+  {
+    name: "generator-litmus", feature: "Generator CLI (object scaffolding)",
+    async run(page) {
+      const { execFileSync } = await import("node:child_process");
+      const { mkdtempSync, copyFileSync } = await import("node:fs");
+      const os = await import("node:os");
+      const tmp = mkdtempSync(path.join(os.tmpdir(), "nx-gen-"));
+      const cfgPath = path.join(tmp, "gen.config.json");
+      copyFileSync(path.join(ROOT, "journeys", "fixtures", "coverage.config.json"), cfgPath);
+      execFileSync("node", [
+        path.join(ROOT, "scripts", "generate.mjs"), "object", "Gadget",
+        "--key", "gadgets",
+        "--fields", "name:text:primary,status:select:Prototype|Testing|Shipped,owner:user",
+        "--seed", "4", "--config", cfgPath,
+      ]);
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4800", CONFIG_PATH: cfgPath },
+      });
+      try {
+        for (let i = 0; i < 20; i++) {
+          try {
+            const r = await fetch("http://localhost:4800/api/healthz", { signal: AbortSignal.timeout(1500) });
+            if (r.ok) break;
+          } catch { /* booting */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto("http://localhost:4800/");
+        await p2.waitForSelector('[data-testid="nav-gadgets"]');
+        await p2.click('[data-testid="nav-gadgets"]');
+        await p2.waitForSelector('[data-testid="kanban-gadgets"]');
+        const cards = await p2.locator('[data-testid="kanban-gadgets"] .nxKCard').count();
+        assert(cards === 4, `generated object boots live: board + ${cards} seeded rows (config → app, one command)`);
+        const proto = await p2.locator('[data-testid="col-Prototype"]').count();
+        assert(proto === 1, "generated select options became board columns");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
     name: "field-validation", feature: "Field-type validation (config-implied)",
     async run(page) {
       await page.goto(URLBASE + "/#/o/people/r/pe_1");
@@ -775,6 +889,16 @@ const journeys = [
   },
 ];
 
+/* ---- generated journeys (scripts/generate.mjs journey <name>) ----
+   each journeys/extra/*.mjs default-exports [{name, feature, run(page, ctx)}] */
+const extraDir = path.join(ROOT, "journeys", "extra");
+if (existsSync(extraDir)) {
+  for (const f of readdirSync(extraDir).filter((x) => x.endsWith(".mjs")).sort()) {
+    const mod = await import(pathToFileURL(path.join(extraDir, f)).href);
+    journeys.push(...(mod.default ?? []));
+  }
+}
+
 /* ---- harness self-check: a bogus selector MUST fail (wrong-slug protection) ---- */
 const selfCheck = {
   name: "harness-selfcheck", feature: null,
@@ -802,7 +926,7 @@ for (const j of [selfCheck, ...journeys]) {
   const t0 = Date.now();
   let verdict = "PASS", detail = "";
   try {
-    await j.run(page);
+    await j.run(page, { URLBASE, assert, ROOT }); // ctx arg: generated journeys use it; built-ins close over the same
     detail = curChecks.map((c) => c.label).join("; ");
   } catch (e) {
     verdict = "FAIL";
@@ -819,13 +943,16 @@ if (serverProc) serverProc.kill();
 const failed = results.filter((r) => r.verdict === "FAIL");
 const now = new Date().toISOString();
 
-/* ---- COVERAGE.md rows ---- */
+/* ---- COVERAGE.md: latest run only (a growing history is noise; git has the past) ---- */
 const covPath = path.join(ROOT, "docs", "COVERAGE.md");
 const rows = results
   .filter((r) => r.feature !== null)
   .map((r) => `| ${r.name} | ${SURFACE} | ${r.verdict} | ${r.detail.replaceAll("|", "/").slice(0, 160)} | .playwright-mcp/journey-${r.name}.png | ${now} |`)
   .join("\n");
-appendFileSync(covPath, rows + "\n");
+writeFileSync(
+  covPath,
+  `# Coverage — latest \`npm run journeys\` run\n\nWritten by the journey runner; one verdict row per journey, latest run only.\n\n| Journey | Surface | Verdict | Checks | Screenshot | At |\n|---|---|---|---|---|---|\n${rows}\n`,
+);
 
 /* ---- manifest Last verified ---- */
 const manPath = path.join(ROOT, "docs", "feature-manifest.md");

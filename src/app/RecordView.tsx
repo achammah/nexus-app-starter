@@ -3,6 +3,7 @@ import { api, type AppConfig } from "./api";
 import { useToast } from "./App";
 import { RecordPage, type RelatedList } from "../ui/record-core/RecordPage";
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
+import { usePollRev } from "./usePollRev";
 
 export function RecordView({
   appConfig,
@@ -33,6 +34,8 @@ export function RecordView({
   }, [config.key, id]);
 
   React.useEffect(load, [load]);
+  // live sync: another viewer's edits/comments/files appear without a manual reload
+  usePollRev(config.key, load);
 
   // Relation OPTIONS: target object → its primary values (feeds the pickers).
   React.useEffect(() => {

@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const cfgPath = process.env.CONFIG_PATH || "starter.config.json";
-const CONFIG = JSON.parse(readFileSync(path.join(ROOT, cfgPath), "utf8"));
+const CONFIG = JSON.parse(readFileSync(path.isAbsolute(cfgPath) ? cfgPath : path.join(ROOT, cfgPath), "utf8"));
 
 const lines = ["erDiagram"];
 for (const o of CONFIG.objects) {

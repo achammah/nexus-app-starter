@@ -1,5 +1,5 @@
 /* UI data client — RELATIVE /api only (dev: vite proxy; prod: same origin), one code
-   path across surfaces (dev-loop rule). Every fetch: timeout + non-2xx throw. */
+   path across surfaces. Every fetch: timeout + non-2xx throw. */
 
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
 
@@ -42,6 +42,7 @@ export const api = {
     j<RecordRow>(`/api/objects/${obj}`, { method: "POST", body: JSON.stringify(body) }),
   remove: (obj: string, id: string) =>
     j<{ ok: boolean }>(`/api/objects/${obj}/${id}`, { method: "DELETE" }),
+  rev: (obj: string) => j<{ rev: number }>(`/api/objects/${obj}/rev`),
   timeline: (obj: string, id: string) =>
     j<{ events: TimelineEvent[] }>(`/api/objects/${obj}/${id}/timeline`).then((r) => r.events),
   addNote: (obj: string, id: string, text: string) =>

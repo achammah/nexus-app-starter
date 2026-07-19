@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Columns3, Download, Plus, Search, Trash2 } from "lucide-react";
+import { BarChart3, Columns3, Download, Plus, Search, Trash2 } from "lucide-react";
 import type { SortingState } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -25,7 +25,9 @@ import {
 } from "../ui/components/ui/alert-dialog";
 import { DataTable } from "../ui/record-core/DataTable";
 import { KanbanBoard } from "../ui/record-core/KanbanBoard";
+import { ChartView } from "../ui/record-core/ChartView";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
+import { usePollRev } from "./usePollRev";
 
 /* ObjectView — the list surface: view bar (search · filter chip · count · view switch ·
    New) + table or kanban. GLANCE → ZOOM → ACT: status visible per row, one click to
@@ -51,7 +53,7 @@ export function ObjectView({
     try {
       return JSON.parse(localStorage.getItem("nx-view-" + config.key) ?? "{}") as {
         q?: string;
-        view?: "table" | "kanban";
+        view?: "table" | "kanban" | "chart";
         hidden?: string[];
         sort?: SortingState;
       };
@@ -66,7 +68,7 @@ export function ObjectView({
   }, []);
   const [rows, setRows] = React.useState<RecordRow[] | null>(null);
   const [q, setQ] = React.useState(pendingQ ?? saved.q ?? "");
-  const [view, setView] = React.useState<"table" | "kanban">(saved.view ?? config.defaultView);
+  const [view, setView] = React.useState<"table" | "kanban" | "chart">(saved.view ?? config.defaultView);
   const [hidden, setHidden] = React.useState<string[]>(saved.hidden ?? []);
   const [sort, setSort] = React.useState<SortingState>(saved.sort ?? []);
   const [selFilters, setSelFilters] = React.useState<Record<string, string[]>>(
@@ -79,6 +81,12 @@ export function ObjectView({
     (saved as { groupBy?: string }).groupBy ?? config.stageField ?? groupables[0]?.key ?? "",
   );
   const groupFieldDef = config.fields.find((f) => f.key === groupBy);
+  // chart measure: "count" or a numeric field key to SUM per group
+  const numericFields = config.fields.filter((f) => f.type === "number" || f.type === "currency");
+  const [measure, setMeasure] = React.useState<string>(
+    (saved as { measure?: string }).measure ?? "count",
+  );
+  const measureDef = numericFields.find((f) => f.key === measure);
   const [creating, setCreating] = React.useState(false);
   const [draft, setDraft] = React.useState<Record<string, string>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
@@ -87,8 +95,8 @@ export function ObjectView({
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
 
   React.useEffect(() => {
-    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, groupBy }));
-  }, [config.key, q, view, hidden, sort, selFilters, groupBy]);
+    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, groupBy, measure }));
+  }, [config.key, q, view, hidden, sort, selFilters, groupBy, measure]);
 
   // relation options for the create dialog (fetched once the dialog opens)
   React.useEffect(() => {
@@ -128,6 +136,8 @@ export function ObjectView({
   }, [config.key, q, onCountChange, toast]);
 
   React.useEffect(load, [load]);
+  // live sync: refetch when ANOTHER viewer/writer mutates this object (rev poll)
+  usePollRev(config.key, load);
   React.useEffect(() => {
     const on = (e: Event) => setQ(String((e as CustomEvent).detail ?? ""));
     window.addEventListener("nx-search", on);
@@ -290,9 +300,38 @@ export function ObjectView({
           <div className="viewSwitch" data-testid="view-switch">
             <button data-active={view === "table"} onClick={() => setView("table")}>{viewIcons.table} Table</button>
             <button data-active={view === "kanban"} onClick={() => setView("kanban")}>{viewIcons.kanban} Board</button>
+            <button data-active={view === "chart"} onClick={() => setView("chart")}><BarChart3 size={13} /> Chart</button>
           </div>
         )}
-        {view === "kanban" && groupables.length > 1 && (
+        {view === "chart" && numericFields.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" data-testid="measure-by">
+                {measureDef ? `Σ ${measureDef.label}` : "Count"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuCheckboxItem
+                checked={!measureDef}
+                data-testid="measure-count"
+                onCheckedChange={() => setMeasure("count")}
+              >
+                Count
+              </DropdownMenuCheckboxItem>
+              {numericFields.map((f) => (
+                <DropdownMenuCheckboxItem
+                  key={f.key}
+                  checked={measure === f.key}
+                  data-testid={`measure-${f.key}`}
+                  onCheckedChange={() => setMeasure(f.key)}
+                >
+                  Σ {f.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+        {(view === "kanban" || view === "chart") && groupables.length > 1 && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button size="sm" variant="ghost" data-testid="group-by">
@@ -341,6 +380,14 @@ export function ObjectView({
         <div className="nxCard" style={{ padding: 40, textAlign: "center", color: "var(--nx-fg-faint)" }} data-testid="list-loading">
           Loading {config.label.toLowerCase()}…
         </div>
+      ) : view === "chart" && groupFieldDef ? (
+        <ChartView
+          config={config}
+          rows={visibleRows}
+          groupField={groupBy}
+          groupOptions={groupFieldDef.type === "user" ? users : undefined}
+          measure={measureDef ? measure : "count"}
+        />
       ) : view === "kanban" && groupFieldDef ? (
         <KanbanBoard
           config={config}

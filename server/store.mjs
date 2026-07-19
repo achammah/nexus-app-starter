@@ -2,7 +2,7 @@
    Contract mirrored by prod: swap this module for a warehouse-backed client and the
    /api surface (and therefore the UI + journeys) does not change.
    app_state: APPEND-ONLY history + latest-per-key reads — append-only is what makes
-   a clobber recoverable (R#50 write-guard trio lives in the prod twin). */
+   a clobber recoverable; keep that property in any production twin. */
 
 import { seed } from "./seed.mjs";
 
@@ -14,9 +14,18 @@ export class Store {
     this.events = seeded.events;       // { objectKey: { id: TimelineEvent[] } }
     this.state = [];                   // append-only [{key, value, ts}]
     this.files = {};                   // { objectKey: { id: [{id,name,mime,size,ts,data}] } }
+    this.revs = {};                    // { objectKey: n } — bumped on ANY mutation (live-sync poll target)
     this.n = 1000;
     // seeded fictional rows present → surfaces as a "Demo data" badge in the UI
     this.demo = Object.values(this.rows).some((rows) => rows.length > 0);
+  }
+
+  rev(objKey) {
+    return this.revs[objKey] ?? 0;
+  }
+
+  _bump(objKey) {
+    this.revs[objKey] = (this.revs[objKey] ?? 0) + 1;
   }
 
   list(objKey, q = {}) {
@@ -100,6 +109,7 @@ export class Store {
     if (i === -1) return false;
     rows.splice(i, 1);
     delete (this.events[objKey] ?? {})[id];
+    this._bump(objKey);
     return true;
   }
 
@@ -148,6 +158,7 @@ export class Store {
   _ev(objKey, id, kind, summary, activity) {
     const ev = { id: `ev_${++this.n}`, ts: new Date().toISOString(), kind, summary, actor: "you", ...(activity ? { activity } : {}) };
     ((this.events[objKey] ??= {})[id] ??= []).push(ev);
+    this._bump(objKey); // every event-producing mutation is a live-sync signal
     return ev;
   }
 

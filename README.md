@@ -33,10 +33,10 @@ npm run dev           # vite dev server (5173) + API (4000)
 - **Zero-dep server** (`server/`): static + `/api` (records, timeline, notes, `app_state` kv — the data-spine SHAPE; swap `store.mjs` for the warehouse client, the UI doesn't change). API JSON is `no-store` — never browser-cached.
 - **Nexus wiring** (`src/lib/`): platform client (`api-key` header, server-side only), in-app vendor connect flow (platform credentials, popup + poll), warehouse `app_state` twin stubs; `scripts/register-as-tool.mjs` for archetype 1/2 close-out.
 - **Journeys harness** (`journeys/run.mjs`): user-level assertions on VISIBLE outcomes; writes `docs/COVERAGE.md`, updates the manifest's `Last verified`, stamps `journeys/.last-pass` (all-green only). Includes a harness self-check (a bogus selector must fail).
-- **Docs contracts** (`docs/`): `SPEC.md` (append-per-ask requirement contract) · `DESIGN.md` (P0.5 design lock; ships as the default canvas) · `feature-manifest.md` · `COVERAGE.md` — the four artifacts the deploy gate reads.
-- **Direction boards** (`boards/`): three rendered token directions for the P0.5 serve-then-link pick.
+- **Docs contracts** (`docs/`): `SPEC.md` (requirement log — one row per ask) · `DESIGN.md` (the app's design lock; ships as the default canvas) · `feature-manifest.md` · `COVERAGE.md` — the four artifacts the deploy gate reads.
+- **Direction boards** (`boards/`): three rendered token directions — serve them, pick one, lock it in `docs/DESIGN.md`.
 - **`.nexus-starter`** marker: arms the strict deploy gate for starter-born repos.
 
 ## Lifecycle
 
-Clone → rename + edit `starter.config.json` → P0.5 pick a direction (boards) → build on the record-core → `npm run journeys` green → deploy (`git push` fires the auto-build; `skills/shared/scripts/deploy_watch.sh` drives it to verified-served). Full lifecycle + provenance rules: the org doctrine's `nexus-app-builder/references/starter-guide.md` and `PROVENANCE.md` here (binding).
+Clone → rename + edit `starter.config.json` → pick a design direction (`boards/`, lock it in `docs/DESIGN.md`) → build on the record-core → `npm run journeys` green → deploy (`git push` fires the auto-build). Provenance rules: `PROVENANCE.md` (binding).

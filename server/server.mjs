@@ -21,8 +21,9 @@ import { handleAuth, gate } from "./auth.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DIST = path.join(ROOT, "dist");
+const cfgFile = env.CONFIG_PATH || "starter.config.json";
 const CONFIG = JSON.parse(
-  readFileSync(path.join(ROOT, env.CONFIG_PATH || "starter.config.json"), "utf8"),
+  readFileSync(path.isAbsolute(cfgFile) ? cfgFile : path.join(ROOT, cfgFile), "utf8"),
 );
 const VERSION = readFileSync(path.join(ROOT, "VERSION"), "utf8").trim();
 const store = new Store(CONFIG);
@@ -33,7 +34,7 @@ function send(res, code, body, type = "application/json") {
   const data = type === "application/json" ? JSON.stringify(body) : body;
   // API JSON is NEVER browser-cacheable: a max-age here serves stale lists/timelines
   // for 60s after every write — the "moved card still in the old column" class
-  // (dev-loop cache discipline; measured by the starter's own journey run).
+  // (measured by this repo's own journey suite).
   const cache = type === "application/json" ? "no-store"
     : type === "text/html" ? "no-cache" : "public, max-age=60";
   res.writeHead(code, { "content-type": type, "cache-control": cache });
@@ -79,6 +80,8 @@ async function api(req, res, url) {
           return send(res, 201, store.create(objKey, body));
         }
       }
+
+      if (parts[3] === "rev") return send(res, 200, { rev: store.rev(objKey) });
 
       const id = parts[3];
       if (parts[4] === "timeline") return send(res, 200, { events: store.timeline(objKey, id) });

@@ -11,7 +11,8 @@
     "journeys": "node journeys/run.mjs",
     "sync-ui": "node scripts/sync-ui.mjs",
     "precheck": "node scripts/precheck.mjs",
-    "model": "node scripts/gen-model.mjs"
+    "model": "node scripts/gen-model.mjs",
+    "generate": "node scripts/generate.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

@@ -29,4 +29,5 @@ export const customPages: PageDef[] = [
   // The kit demo proves this registry AND shows the deep component families live.
   // Real apps replace it with their own pages (or delete it).
   { key: "kit", label: "Kit demo", icon: <Boxes size={15} />, component: KitDemo },
+  // generate:pages — scripts/generate.mjs appends registrations above this line; keep it.
 ];

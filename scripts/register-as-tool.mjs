@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Archetype 1/2 close-out: register this app as a Nexus CUSTOM_MANIFEST tool, then
-   verify with ONE real execute (R#27 — registration without an executed action is
+   verify with ONE real execute (registration without an executed action is
    not "wired"). Usage: node scripts/register-as-tool.mjs <appId> */
 
 import { execSync } from "node:child_process";
