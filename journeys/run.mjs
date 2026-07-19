@@ -3424,6 +3424,327 @@ const journeys = [
       assert((await page.locator('[data-testid="peek-panel"]').count()) === 0, "palette toggling stays palette-owned (no panel)");
     },
   },
+  // --- lane: schema-editor
+  {
+    name: "schema-add-field", feature: "Runtime schema: add a field (colored select, everywhere on reload)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5300", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5300";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/p/schema");
+        await p2.waitForSelector('[data-testid="schema-obj-vendors"]');
+        await p2.click('[data-testid="schema-add-field-vendors"]');
+        await p2.fill('[data-testid="schema-field-key"]', "riskLevel");
+        await p2.fill('[data-testid="schema-field-label"]', "Risk level");
+        await p2.selectOption('[data-testid="schema-field-type"]', "select");
+        await p2.fill('[data-testid="schema-opt-value-0"]', "Low");
+        await p2.selectOption('[data-testid="schema-opt-color-0"]', "green");
+        await p2.click('[data-testid="schema-opt-add"]');
+        await p2.fill('[data-testid="schema-opt-value-1"]', "High");
+        await p2.selectOption('[data-testid="schema-opt-color-1"]', "red");
+        await p2.click('[data-testid="schema-commit"]');
+        // the commit reloads the app; the new field row proves the merged schema came back
+        await p2.waitForSelector('[data-testid="schema-field-vendors-riskLevel"]', { timeout: 10000 });
+        assert(true, "commit reloads; the field lists on the schema page");
+        // the field EXISTS everywhere: table column, filter chip, record editor
+        await p2.goto(B + "/#/o/vendors");
+        await p2.waitForSelector('[data-testid="table-vendors"] tbody tr');
+        assert((await p2.locator('th', { hasText: "Risk level" }).count()) === 1, "table grows the new column");
+        assert((await p2.locator('[data-testid="filter-riskLevel"]').count()) === 1, "the select gets a filter chip");
+        await p2.goto(B + "/#/o/vendors/r/ve_1");
+        await p2.waitForSelector('[data-testid="field-riskLevel"]');
+        await p2.selectOption('[data-testid="field-riskLevel"]', "High");
+        await p2.waitForFunction(() =>
+          [...document.querySelectorAll('[data-testid="toast"]')].some((t) => t.textContent?.includes("Saved")),
+        );
+        for (let i = 0; i < 20; i++) {
+          const r = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+          if (r.riskLevel === "High") break;
+          await new Promise((r2) => setTimeout(r2, 200));
+        }
+        const ve1 = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert(ve1.riskLevel === "High", "a value saves through the merged schema");
+        await p2.reload();
+        await p2.waitForSelector('[data-testid="timeline"]');
+        const tl = await p2.textContent('[data-testid="timeline"]');
+        assert(tl?.includes("riskLevel") && tl?.includes("High"), "the timeline logs the new field's change");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "schema-add-object", feature: "Runtime schema: add an object (full CRUD + runtime relation)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5305", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5305";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/p/schema");
+        await p2.waitForSelector('[data-testid="schema-add-object"]');
+        await p2.click('[data-testid="schema-add-object"]');
+        await p2.fill('[data-testid="schema-obj-key"]', "invoices");
+        await p2.fill('[data-testid="schema-obj-label"]', "Invoices");
+        await p2.fill('[data-testid="schema-obj-labelOne"]', "Invoice");
+        await p2.fill('[data-testid="schema-obj-primary"]', "ref");
+        await p2.click('[data-testid="schema-obj-commit"]');
+        await p2.waitForSelector('[data-testid="schema-obj-invoices"]', { timeout: 10000 });
+        assert(true, "the object lists on the schema page after reload");
+        // a RUNTIME RELATION field on the runtime object — the identity layer must read live config
+        await p2.click('[data-testid="schema-add-field-invoices"]');
+        await p2.fill('[data-testid="schema-field-key"]', "vendor");
+        await p2.fill('[data-testid="schema-field-label"]', "Vendor");
+        await p2.selectOption('[data-testid="schema-field-type"]', "relation");
+        await p2.selectOption('[data-testid="schema-field-target"]', "vendors");
+        await p2.click('[data-testid="schema-commit"]');
+        await p2.waitForSelector('[data-testid="schema-field-invoices-vendor"]', { timeout: 10000 });
+        // nav shows the object; full create round-trip
+        assert((await p2.locator('[data-testid="nav-invoices"]').count()) === 1, "nav grows the new object");
+        await p2.click('[data-testid="nav-invoices"]');
+        await p2.waitForSelector('[data-testid="new-record"]');
+        await p2.click('[data-testid="new-record"]');
+        await p2.fill('[data-testid="new-ref"]', "INV-1");
+        await p2.click('[data-testid="create-confirm"]');
+        await p2.waitForSelector('[data-testid="record-name"]');
+        assert((await p2.textContent('[data-testid="record-name"]'))?.trim() === "INV-1", "a row creates in the runtime object");
+        // link through the runtime relation via the identity picker
+        await p2.waitForSelector('[data-testid="field-vendor"]');
+        await p2.click('[data-testid="field-vendor"]');
+        await p2.fill('[data-testid="field-vendor-search"]', "bright");
+        await p2.waitForSelector('[data-rel-id="ve_1"]');
+        await p2.click('[data-rel-id="ve_1"]');
+        let inv;
+        for (let i = 0; i < 20; i++) {
+          const rows = (await (await p2.request.get(B + "/api/objects/invoices")).json()).rows;
+          inv = rows.find((r) => r.ref === "INV-1");
+          if (inv?._refs?.vendor === "ve_1") break;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        assert(inv?._refs?.vendor === "ve_1" && inv?.vendor === "Brightline Analytics",
+          "the runtime relation links by ID and projects the label (identity layer reads live config)");
+        // trash round-trip
+        await p2.request.delete(B + `/api/objects/invoices/${inv.id}`);
+        const trash = await (await p2.request.get(B + "/api/objects/invoices/trash")).json();
+        assert(trash.rows.some((r) => r.id === inv.id), "the runtime object's rows trash");
+        await p2.request.post(B + `/api/objects/invoices/${inv.id}/restore`, { data: {} });
+        const back = await (await p2.request.get(B + `/api/objects/invoices/${inv.id}`)).json();
+        assert(back.ref === "INV-1", "…and restore intact");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "schema-retire", feature: "Runtime schema: retire + re-activate (data preserved)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5310", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5310";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/p/schema");
+        await p2.waitForSelector('[data-testid="schema-retire-vendors-labels"]');
+        await p2.click('[data-testid="schema-retire-vendors-labels"]');
+        await p2.waitForSelector('[data-testid="schema-reactivate-vendors-labels"]', { timeout: 10000 });
+        assert(true, "retire commits and the field shows retired after reload");
+        await p2.goto(B + "/#/o/vendors");
+        await p2.waitForSelector('[data-testid="table-vendors"] tbody tr');
+        assert((await p2.locator('th', { hasText: "Labels" }).count()) === 0, "retired field leaves the table");
+        await p2.goto(B + "/#/o/vendors/r/ve_1");
+        await p2.waitForSelector('[data-testid="field-name"]');
+        assert((await p2.locator('[data-testid="field-labels"]').count()) === 0, "…and the record page");
+        const live = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert(JSON.stringify(live.labels) === '["priority","eu-region"]', "the stored values survive underneath");
+        const write = await p2.request.patch(B + "/api/objects/vendors/ve_1", { data: { labels: ["x"] } });
+        assert(write.status() === 400, "writes to a retired field are rejected");
+        // re-activate → values come back intact
+        await p2.goto(B + "/#/p/schema");
+        await p2.waitForSelector('[data-testid="schema-reactivate-vendors-labels"]');
+        await p2.click('[data-testid="schema-reactivate-vendors-labels"]');
+        await p2.waitForSelector('[data-testid="schema-retire-vendors-labels"]', { timeout: 10000 });
+        await p2.goto(B + "/#/o/vendors/r/ve_1");
+        await p2.waitForSelector('[data-testid="field-labels"]');
+        const chips = await p2.textContent('[data-testid="field-labels"]');
+        assert(chips?.includes("priority") && chips?.includes("eu-region"), "re-activation returns the values intact");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "schema-replay", feature: "Runtime schema replays (deltas + data interleaved, restart byte-equal)",
+    async run() {
+      const http = await import("node:http");
+      const { spawn } = await import("node:child_process");
+      const table = [];
+      const mock = http.createServer((rq, rs) => {
+        let b = "";
+        rq.on("data", (c) => (b += c));
+        rq.on("end", () => {
+          const m = rq.url.match(/^\/api\/public\/v1\/tools\/[^/]+\/execute$/);
+          if (!m || rq.method !== "POST") { rs.statusCode = 404; return rs.end("{}"); }
+          const { action, input } = JSON.parse(b);
+          let result;
+          if (action === "google_cloud-run-query") {
+            const q = String(input.query);
+            if (/^\s*INSERT\s/i.test(q)) {
+              for (const mt of q.matchAll(/\((\d+), TIMESTAMP '([^']+)', '([^']+)', '([^']+)'\)/g)) {
+                table.push({ seq: Number(mt[1]), ts: mt[2], op: mt[3], args: mt[4] });
+              }
+              result = [[], {}, {}];
+            } else if (/^\s*CREATE\s/i.test(q)) {
+              result = [[], {}, {}];
+            } else {
+              result = [table.slice().sort((a, z) => a.seq - z.seq).map((r) => ({ seq: String(r.seq), op: r.op, args: r.args, ts: r.ts })), {}, {}];
+            }
+          } else {
+            rs.statusCode = 400;
+            return rs.end(JSON.stringify({ error: `unknown action ${action}` }));
+          }
+          rs.setHeader("content-type", "application/json");
+          rs.end(JSON.stringify({ success: true, result }));
+        });
+      });
+      await new Promise((r) => mock.listen(5316, r));
+      const B = "http://localhost:5315";
+      const bootEnv = {
+        ...process.env, PORT: "5315", WAREHOUSE: "bigquery", CONFIG_PATH: "journeys/fixtures/depth.config.json",
+        NEXUS_BASE_URL: "http://localhost:5316", NEXUS_API_KEY: "nxs_mock_key",
+        WAREHOUSE_CREDENTIAL_ID: "mock-cred",
+      };
+      const boot = async () => {
+        const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], { stdio: "ignore", env: bootEnv });
+        for (let i = 0; i < 25; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        return proc;
+      };
+      let proc = await boot();
+      try {
+        const call = (p, body, method = "POST") =>
+          fetch(B + p, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+        // schema deltas and the data writes that DEPEND on them, interleaved
+        await call("/api/schema/objects/vendors/fields", { key: "riskLevel", label: "Risk level", type: "select", options: [{ value: "Low", color: "green" }, { value: "High", color: "red" }] });
+        await call("/api/objects/vendors/ve_1", { riskLevel: "High" }, "PATCH");
+        await call("/api/schema/objects", { key: "invoices", label: "Invoices", labelOne: "Invoice", primaryField: { key: "ref", label: "Reference" } });
+        await call("/api/schema/objects/invoices/fields", { key: "vendor", label: "Vendor", type: "relation", relation: "vendors" });
+        await call("/api/objects/invoices", { ref: "INV-1", vendor: "Brightline Analytics" });
+        await call("/api/schema/objects/vendors/fields/riskLevel", { label: "Risk" }, "PATCH");
+        await new Promise((r) => setTimeout(r, 1300)); // beyond the flush interval
+        assert(table.length >= 6, `schema + data ops flushed to the log (${table.length})`);
+        const snapshot = async () => {
+          const cfg = await (await fetch(B + "/api/config")).json();
+          const out = { config: cfg.objects };
+          for (const k of ["certifications", "reps", "vendors", "vendorNotes", "invoices"]) {
+            out[k] = (await (await fetch(B + `/api/objects/${k}`)).json()).rows;
+          }
+          return JSON.stringify(out);
+        };
+        const live = await snapshot();
+        assert(JSON.parse(live).invoices[0]._refs.vendor === "ve_1", "live: the runtime relation stored the id");
+        proc.kill();
+        await new Promise((r) => setTimeout(r, 400));
+        proc = await boot(); // fresh memory: seed → replay (deltas re-apply at their seq)
+        const replayed = await snapshot();
+        assert(replayed === live, "replayed schema + data state equals live state BYTE-FOR-BYTE (merged config included)");
+      } finally {
+        proc.kill();
+        mock.close();
+      }
+    },
+  },
+  {
+    name: "schema-guards", feature: "Runtime schema guard rails (every block names its reason)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5320", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5320";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        // duplicate key — VISIBLE on the page
+        await p2.goto(B + "/#/p/schema");
+        await p2.waitForSelector('[data-testid="schema-add-field-vendors"]');
+        await p2.click('[data-testid="schema-add-field-vendors"]');
+        await p2.fill('[data-testid="schema-field-key"]', "code");
+        await p2.fill('[data-testid="schema-field-label"]', "Dup");
+        await p2.click('[data-testid="schema-commit"]');
+        await p2.waitForSelector('[data-testid="schema-err"]');
+        let msg = await p2.textContent('[data-testid="schema-err"]');
+        assert(msg?.includes('already has a field "code"'), `duplicate key names itself (${msg})`);
+        // option removal while in use — VISIBLE (remove "Strategic", held by ve_1)
+        await p2.click('[data-testid="schema-edit-vendors-tier"]');
+        await p2.waitForSelector('[data-testid="schema-edit-opt-vendors-tier-rm-0"]');
+        await p2.click('[data-testid="schema-edit-opt-vendors-tier-rm-0"]');
+        await p2.click('[data-testid="schema-save-vendors-tier"]');
+        await p2.waitForFunction(() => document.querySelector('[data-testid="schema-err"]')?.textContent?.includes("still in use"));
+        msg = await p2.textContent('[data-testid="schema-err"]');
+        assert(msg?.includes("Strategic"), `option-removal names the held value (${msg})`);
+        // unique with duplicates — VISIBLE (two vendors share a tier first)
+        await p2.request.patch(B + "/api/objects/vendors/ve_1", { data: { tier: "Standard" } });
+        await p2.request.patch(B + "/api/objects/vendors/ve_3", { data: { tier: "Standard" } });
+        await p2.reload();
+        await p2.waitForSelector('[data-testid="schema-edit-vendors-tier"]');
+        await p2.click('[data-testid="schema-edit-vendors-tier"]');
+        await p2.waitForSelector('[data-testid="schema-edit-unique-vendors-tier"]');
+        await p2.check('[data-testid="schema-edit-unique-vendors-tier"]');
+        await p2.click('[data-testid="schema-save-vendors-tier"]');
+        await p2.waitForFunction(() => document.querySelector('[data-testid="schema-err"]')?.textContent?.includes("duplicate values"));
+        msg = await p2.textContent('[data-testid="schema-err"]');
+        assert(msg?.includes('"Standard"'), `unique-with-dupes names the offending value (${msg})`);
+        // the rest are API-level (the page never offers those buttons, by design)
+        const typeChange = await p2.request.patch(B + "/api/schema/objects/vendors/fields/tier", { data: { type: "text" } });
+        assert(typeChange.status() === 400 && (await typeChange.json()).error.includes("hold values"), "type change with data is blocked, reason named");
+        const keyChange = await p2.request.patch(B + "/api/schema/objects/vendors/fields/code", { data: { key: "newCode" } });
+        assert(keyChange.status() === 400 && (await keyChange.json()).error.includes("immutable"), "key change is blocked");
+        const retirePrimary = await p2.request.patch(B + "/api/schema/objects/vendors/fields/name", { data: { isActive: false } });
+        assert(retirePrimary.status() === 400 && (await retirePrimary.json()).error.includes("primary"), "retiring the primary is blocked");
+        const badObj = await p2.request.post(B + "/api/schema/objects", { data: { key: "vendors", label: "X", labelOne: "X", primaryField: { key: "name" } } });
+        assert(badObj.status() === 400 && (await badObj.json()).error.includes("already exists"), "duplicate object key is blocked");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----

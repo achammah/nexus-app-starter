@@ -25,6 +25,7 @@ import { can } from "./permissions.mjs";
 import { enqueue, startScheduler } from "./jobs.mjs";
 import { handleWebhooks, emitEvent } from "./webhooks.mjs";
 import { handleApiKeys, resolveApiKey } from "./apikeys.mjs";
+import { handleSchema } from "./schema.mjs";
 import { sendMail } from "./email.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -145,6 +146,7 @@ async function api(req, res, url, apiKey = null) {
     if (parts[1] === "webhooks" && !FEATURES.webhooks) return send(res, 404, { error: "webhooks disabled (FEATURE_WEBHOOKS=0)" });
     if (parts[1] === "apikeys" && !FEATURES.apikeys) return send(res, 404, { error: "apikeys disabled (FEATURE_APIKEYS=0)" });
     if (parts[1] === "tasks" && !FEATURES.tasks) return send(res, 404, { error: "tasks disabled (FEATURE_TASKS=0)" });
+    if (parts[1] === "schema" && !FEATURES.schema) return send(res, 404, { error: "schema editing disabled (FEATURE_SCHEMA=0)" });
     if (await handleTeams(req, res, url, readBody, send, store, session)) return;
     if (await handleWebhooks(req, res, url, readBody, send, store, CONFIG)) return;
     if (parts[1] === "jobs" && req.method === "GET") {
@@ -155,6 +157,7 @@ async function api(req, res, url, apiKey = null) {
     // key scopes DOWN); no key → auth off = owner-equivalent, on = from teams
     const role = apiKey ? apiKey.role : AUTH_ENABLED ? store.roleFor(session?.email) : "owner";
     if (await handleApiKeys(req, res, url, readBody, send, store, role)) return;
+    if (await handleSchema(req, res, url, readBody, send, store, role)) return;
     if (parts[1] === "healthz") return send(res, 200, { ok: true, version: VERSION, app: CONFIG.app.slug });
 
     if (parts[1] === "views") {

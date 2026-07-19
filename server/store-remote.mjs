@@ -25,6 +25,7 @@ const LOGGED_OPS = [
   "webhookAdd", "webhookUpdate", "webhookRemove",
   "apiKeyAdd", "apiKeyRevoke",
   "restoreRow", "destroyRow", "mergeRows",
+  "schemaObjectAdd", "schemaFieldAdd", "schemaFieldUpdate",
   "viewAdd", "viewUpdate", "viewRemove",
   "taskAdd", "taskUpdate", "taskRemove",
   "outboxAdd",
