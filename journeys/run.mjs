@@ -525,6 +525,102 @@ const journeys = [
     },
   },
   {
+    name: "mcp-protocol", feature: "MCP server (AI assistant over the data model)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const mcp = spawn("node", [path.join(ROOT, "scripts", "mcp-server.mjs")], {
+        env: { ...process.env, NX_APP_URL: URLBASE },
+        stdio: ["pipe", "pipe", "inherit"],
+      });
+      const replies = [];
+      let buf = "";
+      mcp.stdout.on("data", (c) => {
+        buf += c;
+        let i;
+        while ((i = buf.indexOf("\n")) >= 0) {
+          const line = buf.slice(0, i); buf = buf.slice(i + 1);
+          if (line.trim()) replies.push(JSON.parse(line));
+        }
+      });
+      const ask = (id, method, params) => mcp.stdin.write(JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n");
+      const waitFor = async (id) => {
+        for (let i = 0; i < 40; i++) {
+          const hit = replies.find((r) => r.id === id);
+          if (hit) return hit;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        throw new Error(`no MCP reply for id ${id}`);
+      };
+      try {
+        ask(1, "initialize", { protocolVersion: "2024-11-05", capabilities: {}, clientInfo: { name: "journey", version: "1" } });
+        const init = await waitFor(1);
+        assert(init.result.serverInfo.name.endsWith("-mcp"), "MCP initialize handshake answers");
+        ask(2, "tools/list", {});
+        const tools = (await waitFor(2)).result.tools.map((t) => t.name);
+        assert(["list_entities", "describe_entity", "query_records", "get_record", "get_timeline"].every((t) => tools.includes(t)),
+          `all five read-only tools are exposed (${tools.join(", ")})`);
+        ask(3, "tools/call", { name: "query_records", arguments: { entity: "companies", q: "bright" } });
+        const rows = JSON.parse((await waitFor(3)).result.content[0].text);
+        assert(rows.length === 1 && rows[0].name === "Brightline Analytics", "an assistant can query live records through MCP");
+        ask(4, "tools/call", { name: "describe_entity", arguments: { entity: "deals" } });
+        const schema = JSON.parse((await waitFor(4)).result.content[0].text);
+        assert(schema.stageField === "stage" && schema.fields.some((f) => f.type === "user"),
+          "the schema tool returns the real config shape");
+      } finally {
+        mcp.kill();
+      }
+    },
+  },
+  {
+    name: "theme-editor-live", feature: "Theme editor (live, persisted)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/theme");
+      await page.waitForSelector('[data-testid="theme-brand-hex"]');
+      await page.fill('[data-testid="theme-brand-hex"]', "#0B6E4F");
+      await page.waitForFunction(
+        () => getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim().toLowerCase() === "#0b6e4f",
+      );
+      assert(true, "the brand edit applies LIVE (accent token flips)");
+      await page.reload();
+      await page.waitForSelector('[data-testid="theme-brand-hex"]');
+      await page.waitForFunction(
+        () => getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim().toLowerCase() === "#0b6e4f",
+      );
+      assert(true, "the edited skin survives reload (app_state persistence)");
+      // reset so later journeys see the config skin
+      await page.click('[data-testid="theme-reset"]');
+      await page.request.post(URLBASE + "/api/state", { data: { key: "theme:skin", value: null } });
+    },
+  },
+  {
+    name: "feature-flags", feature: "Feature flags (one flag: nav + page + API)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4770", FEATURE_WEBHOOKS: "0" },
+      });
+      const B = "http://localhost:4770";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/");
+        await p2.waitForSelector('[data-testid="nav"]');
+        assert((await p2.locator('[data-testid="nav-p-webhooks"]').count()) === 0, "nav hides the disabled feature");
+        assert((await p2.locator('[data-testid="nav-p-team"]').count()) === 1, "other features stay");
+        const apiTry = await p2.request.get(B + "/api/webhooks");
+        assert(apiTry.status() === 404, "the API 404s the disabled feature (same single flag)");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
     name: "webhook-delivery", feature: "Webhooks (typed catalog, signed, logged)",
     async run(page) {
       const http = await import("node:http");

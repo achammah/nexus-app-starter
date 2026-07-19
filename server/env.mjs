@@ -17,6 +17,10 @@ const schema = z.object({
   // job seam knobs: recurring digest interval + its mail target (both optional)
   DIGEST_EVERY_MS: z.coerce.number().int().positive().optional(),
   DIGEST_TO: z.string().optional(),
+  // one flag gates nav + page + API together ("0"/"false" disables)
+  FEATURE_TEAMS: z.string().optional(),
+  FEATURE_WEBHOOKS: z.string().optional(),
+  FEATURE_THEME: z.string().optional(),
   APP_SECRET: z.string().min(16, "APP_SECRET must be ≥16 chars").optional(),
   // Nexus platform (server-side only — never reaches the browser)
   NEXUS_API_KEY: z.string().startsWith("nxs_").optional(),
@@ -37,6 +41,13 @@ if ((env.AUTH_USERS || env.AUTH_MODE) && !env.APP_SECRET) {
   console.error("[env] AUTH_USERS/AUTH_MODE is set but APP_SECRET is missing — sessions cannot be signed. Set both or neither.");
   process.exit(1);
 }
+
+const flagOn = (v) => !(v === "0" || v === "false" || v === "off");
+export const FEATURES = {
+  teams: flagOn(env.FEATURE_TEAMS),
+  webhooks: flagOn(env.FEATURE_WEBHOOKS),
+  theme: flagOn(env.FEATURE_THEME),
+};
 
 export const ACCOUNTS_ENABLED = Boolean(env.AUTH_MODE === "accounts" && env.APP_SECRET);
 export const AUTH_ENABLED = Boolean((env.AUTH_USERS || ACCOUNTS_ENABLED) && env.APP_SECRET);

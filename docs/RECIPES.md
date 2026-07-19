@@ -57,5 +57,14 @@ Set `AUTH_USERS` (`user:pass,user2:pass2`) + `APP_SECRET` (32+ chars) → the lo
 2. Teams live at `/p/team`: create, invite by mail, or share the join code. Roles: owner > admin > member.
 3. Per-object permissions in the config: `"permissions": { "admin": ["view","create","edit","delete","export"], "member": ["view"] }` — omit the block and everything stays open. The server 403s uncovered actions; the UI hides their affordances (`src/app/permissions.ts` mirrors `server/permissions.mjs` — keep them in sync).
 
+## Point an AI assistant at the app (MCP)
+`claude mcp add my-app -- node scripts/mcp-server.mjs` (the app must be running; `NX_APP_URL` overrides the target). Read-only tools: `list_entities · describe_entity · query_records · get_record · get_timeline`. Claude Desktop config lives in the header of `scripts/mcp-server.mjs`.
+
+## Notify another system on record changes (webhooks)
+`/p/webhooks` → endpoint URL + events from the typed catalog (`<object>.created/updated/deleted`, `*`). Deliveries are HMAC-SHA256 signed (`x-nx-signature`, secret shown once) and logged per endpoint; failures retry via the job queue.
+
+## Run something on a schedule (jobs)
+One handler per type in `server/jobs.mjs` + `enqueue(store, "<type>", payload)`. The shipped `digest` job (arm with `DIGEST_EVERY_MS`, optional `DIGEST_TO`) is the reference: rollups into `app_state`, runs visible at `/api/jobs`.
+
 ## Ship
 `npm run precheck` (tsc + build + journey-stamp freshness) → `docs/PRODUCTION_CHECKLIST.md` → push. CI runs the full journey suite; the deploy gate reads `journeys/.last-pass` + the manifest stamps.

@@ -22,14 +22,16 @@ export interface PageDef {
   component: React.ComponentType;
 }
 
-import { Boxes, Users2, Webhook } from "lucide-react";
+import { Boxes, Palette, Users2, Webhook } from "lucide-react";
 import { KitDemo } from "./pages/KitDemo";
 import { TeamPage } from "./pages/Team";
+import { ThemePage } from "./pages/Theme";
 import { WebhooksPage } from "./pages/Webhooks";
 
 export const customPages: PageDef[] = [
   { key: "team", label: "Team", icon: <Users2 size={15} />, component: TeamPage },
   { key: "webhooks", label: "Webhooks", icon: <Webhook size={15} />, component: WebhooksPage },
+  { key: "theme", label: "Theme", icon: <Palette size={15} />, component: ThemePage },
   // The kit demo proves this registry AND shows the deep component families live.
   // Real apps replace it with their own pages (or delete it).
   { key: "kit", label: "Kit demo", icon: <Boxes size={15} />, component: KitDemo },

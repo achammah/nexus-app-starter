@@ -16,7 +16,7 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Store } from "./store.mjs";
-import { env, AUTH_ENABLED } from "./env.mjs";
+import { env, AUTH_ENABLED, FEATURES } from "./env.mjs";
 import { handleAuth, gate, readSession } from "./auth.mjs";
 import { handleTeams } from "./teams.mjs";
 import { can } from "./permissions.mjs";
@@ -61,9 +61,12 @@ async function readBody(req) {
 async function api(req, res, url) {
   const parts = url.pathname.split("/").filter(Boolean); // ["api", ...]
   try {
-    if (parts[1] === "config") return send(res, 200, { ...CONFIG, demo: store.demo });
+    if (parts[1] === "config") return send(res, 200, { ...CONFIG, demo: store.demo, features: FEATURES });
 
     const session = AUTH_ENABLED ? readSession(req, store) : null;
+    // one flag → nav + page + API together: a disabled feature's routes 404
+    if (parts[1] === "teams" && !FEATURES.teams) return send(res, 404, { error: "teams disabled (FEATURE_TEAMS=0)" });
+    if (parts[1] === "webhooks" && !FEATURES.webhooks) return send(res, 404, { error: "webhooks disabled (FEATURE_WEBHOOKS=0)" });
     if (await handleTeams(req, res, url, readBody, send, store, session)) return;
     if (await handleWebhooks(req, res, url, readBody, send, store, CONFIG)) return;
     if (parts[1] === "jobs" && req.method === "GET") {

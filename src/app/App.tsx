@@ -114,6 +114,11 @@ export function App() {
         document.title = c.app.name;
         const skin = resolveSkin(c);
         if (skin) applySkin(skin);
+        // a runtime skin saved from /p/theme (app_state) overrides the config skin
+        api.state().then((s) => {
+          const saved = s["theme:skin"] as Skin | null | undefined;
+          if (saved) applySkin(saved);
+        }).catch(() => {});
         if (!route.object && !route.page && !/^#\/(reset|verify|delete|invite)\?/.test(window.location.hash)) {
           route.go(c.objects[0] ? `#/o/${c.objects[0].key}` : customPages[0] ? `#/p/${customPages[0].key}` : "#/");
         }
@@ -177,7 +182,7 @@ export function App() {
                   <span className="navCount">{counts[o.key] ?? ""}</span>
                 </button>
               ))}
-              {customPages.map((p) => (
+              {customPages.filter((p) => (config.features as Record<string, boolean> | undefined)?.[p.key] !== false).map((p) => (
                 <button
                   key={p.key}
                   className={`navItem ${route.page === p.key ? "navItem--active" : ""}`}

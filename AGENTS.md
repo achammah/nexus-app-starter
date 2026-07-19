@@ -15,6 +15,7 @@ You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the st
 | `npm run sync-ui` | pull the pinned nexus-ui copy into `src/ui/` |
 | `npm run model` | regenerate `docs/DATA-MODEL.md` from the config |
 | `npm run generate` | scaffold an object / page / journey (non-interactive; see docs/RECIPES.md) |
+| `npm run mcp` | MCP server over the app's entities/records (read-only; app must be running) |
 
 ## The four gate artifacts (the deploy gate READS these)
 | File | Contract |

@@ -21,15 +21,25 @@ server/
   server.mjs             zero-dep node: static dist + /api (objects CRUD+timeline+notes+activities ·
                          files upload/list/download (base64, 5 MB cap) · /enrich (MOCK — the single
                          swap-point for a real platform task/workflow via field.primitive) · app_state kv ·
-                         healthz w/ VERSION) · JSON no-store · binds PORT+3000+8080 · placeholder page when
-                         dist missing (a delivery failure must not read as a crash loop)
+                         watch/watchers · rev (live-sync poll) · users directory · healthz w/ VERSION) ·
+                         permission gate per route (server/permissions.mjs) · feature flags 404 disabled
+                         modules · JSON no-store · binds PORT+3000+8080 · placeholder page when dist
+                         missing (a delivery failure must not read as a crash loop)
+  auth.mjs               cookie sessions (HMAC+pwv) · AUTH_USERS gate or AUTH_MODE=accounts flows
+                         (signup/verify/reset+decoy/delete-by-confirmation)
+  teams.mjs              membership + dual invitations (mail token / join code) + roles
+  permissions.mjs        role × object-config action table (client twin: src/app/permissions.ts)
+  jobs.mjs               store-backed queue + scheduler (digest · webhook-deliver · notify-subscribers)
+  webhooks.mjs           typed event catalog (from config) · HMAC deliveries · delivery log
+  email.mjs              mail seam — dev OUTBOX transport (/api/outbox); SMTP_URL is the swap point
   store.mjs              in-memory store — the data-spine SHAPE (append-only app_state, latest-per-key);
                          swap for the warehouse client in prod, the /api surface (and UI) doesn't change
   seed.mjs               deterministic FICTIONAL seed (stable ids → journeys can assert on de_2 etc.)
 journeys/run.mjs         the verification harness: boots the server if needed, drives every journey as the
                          user, asserts VISIBLE outcomes, screenshots each, writes docs/COVERAGE.md rows,
                          stamps manifest Last-verified, writes journeys/.last-pass on all-green
-scripts/                 sync-ui · precheck (tsc+build+stamp) · register-as-tool
+scripts/                 sync-ui · precheck (tsc+build+stamp) · generate (object/page/journey) ·
+                         gen-model (ER doc) · mcp-server (assistant over the data model) · register-as-tool
 boards/                  design direction boards (serve, pick one, lock in docs/DESIGN.md)
 docs/                    SPEC · DESIGN · feature-manifest · COVERAGE (+ this file) — the gate artifacts
 ```
