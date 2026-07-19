@@ -6,6 +6,27 @@
 
 import { seed } from "./seed.mjs";
 
+/* URL-or-domain probe shared by `url` and `links` validation — bare domains
+   ("acme.example") are fine, probed with a scheme prefixed. */
+const urlOk = (s) => [s, `https://${s}`].some((u) => { try { new URL(u); return u.includes("."); } catch { return false; } });
+
+/* Readable flat text for a field value in timeline summaries — shaped values
+   log as "12500 EUR" / "a; b" / "street, city" / "First Last", never
+   "[object Object]". Server-side twin of the UI's cell formats (kept
+   consistent by convention; this module cannot import from src/ui). */
+const flatVal = (v, type) => {
+  if (v === null || v === undefined || v === "") return "—";
+  if (Array.isArray(v)) return v.length ? v.map((x) => flatVal(x, undefined)).join("; ") : "—";
+  if (typeof v === "object") {
+    if (type === "money" && typeof v.amount === "number") return `${v.amount} ${v.code ?? ""}`.trim();
+    if (type === "fullName") return [v.first, v.last].filter(Boolean).join(" ") || "—";
+    if (type === "address") return [v.street, v.city].filter(Boolean).join(", ") || "—";
+    const vals = Object.values(v).filter((x) => x !== null && x !== undefined && x !== "");
+    return vals.length ? vals.map((x) => flatVal(x, undefined)).join(", ") : "—";
+  }
+  return String(v);
+};
+
 export class Store {
   /* Time is injectable: during warehouse replay (store-remote.mjs) _nowOverride pins
      every timestamp to the ORIGINAL event's clock, so restored state renders true. */
@@ -293,7 +314,14 @@ export class Store {
     }
     if (q.q) {
       const t = String(q.q).toLowerCase();
-      rows = rows.filter((r) => Object.values(r).some((v) => String(v ?? "").toLowerCase().includes(t)));
+      // shaped values (money/address/fullName objects, string[] lists) match on
+      // their inner text — a plain String() would hide them behind "[object Object]"
+      const flat = (v) =>
+        v === null || v === undefined ? ""
+        : Array.isArray(v) ? v.map(flat).join(" ")
+        : typeof v === "object" ? Object.values(v).map(flat).join(" ")
+        : String(v);
+      rows = rows.filter((r) => Object.values(r).some((v) => flat(v).toLowerCase().includes(t)));
     }
     if (q.sortField) {
       const dir = q.sortDir === "desc" ? -1 : 1;
@@ -331,12 +359,8 @@ export class Store {
       }
       if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v)))
         return `${f.label} must be a valid email address`;
-      if (f.type === "url") {
-        // bare domains ("acme.example") are fine — probe with a scheme prefixed
-        const s = String(v);
-        const ok = [s, `https://${s}`].some((u) => { try { new URL(u); return u.includes("."); } catch { return false; } });
-        if (!ok) return `${f.label} must be a valid URL or domain`;
-      }
+      if (f.type === "url" && !urlOk(String(v)))
+        return `${f.label} must be a valid URL or domain`;
       if ((f.type === "number" || f.type === "currency") && (typeof v !== "number" || Number.isNaN(v)))
         return `${f.label} must be a number`;
       if ((f.type === "date" || f.type === "dateTime") && Number.isNaN(new Date(String(v)).getTime()))
@@ -354,6 +378,33 @@ export class Store {
         return `${f.label} must be one of: ${optionValues(f.options).join(", ")}`;
       if (f.type === "multiselect" && !Array.isArray(v))
         return `${f.label} must be a list`;
+      if (f.type === "money") {
+        if (typeof v !== "object" || Array.isArray(v) || typeof v.amount !== "number" || Number.isNaN(v.amount))
+          return `${f.label} must be shaped like { "amount": 12500, "code": "EUR" }`;
+        if (v.code !== undefined && v.code !== "" && !/^[A-Za-z]{3}$/.test(String(v.code)))
+          return `${f.label} code must be a 3-letter currency code`;
+      }
+      if (f.type === "emails") {
+        if (!Array.isArray(v)) return `${f.label} must be a list`;
+        for (const e of v) if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e)))
+          return `${f.label}: "${e}" is not a valid email address`;
+      }
+      if (f.type === "phones") {
+        if (!Array.isArray(v)) return `${f.label} must be a list`;
+        for (const p of v) if (!/^[0-9+()\-\s.]{3,}$/.test(String(p)))
+          return `${f.label}: "${p}" is not a valid phone number`;
+      }
+      if (f.type === "links") {
+        if (!Array.isArray(v)) return `${f.label} must be a list`;
+        for (const u of v) if (!urlOk(String(u)))
+          return `${f.label}: "${u}" is not a valid URL or domain`;
+      }
+      if (f.type === "address" || f.type === "fullName") {
+        if (typeof v !== "object" || Array.isArray(v)) return `${f.label} must be an object`;
+        for (const [part, pv] of Object.entries(v))
+          if (pv !== null && pv !== undefined && typeof pv !== "string")
+            return `${f.label} ${part} must be text`;
+      }
     }
     return null;
   }
@@ -376,7 +427,8 @@ export class Store {
       const old = row[k];
       row[k] = v;
       const kind = cfg?.stageField === k ? "stage" : "updated";
-      this._ev(objKey, id, kind, kind === "stage" ? `Stage: ${old ?? "—"} → ${v}` : `${k}: ${old ?? "—"} → ${v}`);
+      const type = cfg?.fields.find((f) => f.key === k)?.type;
+      this._ev(objKey, id, kind, kind === "stage" ? `Stage: ${old ?? "—"} → ${v}` : `${k}: ${flatVal(old, type)} → ${flatVal(v, type)}`);
     }
     return row;
   }
@@ -447,7 +499,12 @@ export class Store {
     const cfg = this.config.objects.find((o) => o.key === objKey);
     const primary = cfg.fields.find((f) => f.primary) ?? cfg.fields[0];
     const losers = ids.filter((x) => x !== winnerId).map((x) => this.get(objKey, x)).filter(Boolean);
-    const empty = (v) => v === undefined || v === null || v === "" || (Array.isArray(v) && v.length === 0);
+    // shaped fields inherit like scalars: [] and an object whose values are all
+    // empty count as EMPTY, so a loser's money/address/list can fill the winner's
+    const empty = (v) =>
+      v === undefined || v === null || v === "" ||
+      (Array.isArray(v) && v.length === 0) ||
+      (typeof v === "object" && !Array.isArray(v) && Object.values(v).every((x) => x === undefined || x === null || x === ""));
     const fields = [];
     const finalRow = { ...winner };
     for (const f of cfg.fields) {

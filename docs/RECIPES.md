@@ -15,9 +15,10 @@ Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:
 - All subcommands are flag-driven (no prompts) so an agent can run them headlessly; `--dry` on `object` prints the JSON without writing.
 
 ## Add a field to an existing entity
-1. `starter.config.json` → append to that object's `fields[]`. Types: `text · longText · number · boolean · rating · select · multiselect · array · date · dateTime · currency · email · url · json · relation · user`. Select/multiselect options may be strings or `{value, label, color}` (colored chips everywhere). Field flags: `unique: true` (duplicates 409), `isActive: false` (hidden + write-protected, data preserved), `scale` for ratings.
-2. `email/url/number/date/select` values are validated server-side FROM the type — no separate validation block (`server/store.mjs` `validate()`).
+1. `starter.config.json` → append to that object's `fields[]`. Types: `text · longText · number · boolean · rating · select · multiselect · array · date · dateTime · currency · email · url · json · relation · user · money · emails · phones · links · address · fullName`. Select/multiselect options may be strings or `{value, label, color}` (colored chips everywhere). Field flags: `unique: true` (duplicates 409), `isActive: false` (hidden + write-protected, data preserved), `scale` for ratings.
+2. `email/url/number/date/select` values are validated server-side FROM the type — no separate validation block (`server/store.mjs` `validate()`). Shaped types validate too: `money` wants `{ "amount": 12500, "code": "EUR" }`, `emails`/`links` check every entry, `phones` is lenient (digits/+/spaces).
 3. `user` fields read the top-level `users[]` directory; `multiselect` needs `options`.
+4. Shaped values: `money {amount, code}` (renders “€12,500”, sums by `amount` in rollups/charts) · `emails/phones/links` are `string[]` (chips in cells, list editor on the record page; links anchor with the bare host) · `address {street, city, postcode, country}` (cells show “street, city”) · `fullName {first, last}` (cells show “First Last”; may be `primary` — the row link and record title render the joined name). CSV export flattens them (`12500 EUR` · `a; b` · joined).
 
 ## Make a field AI-enrichable
 1. On the field: `"primitive": { "kind": "task" | "workflow", "id": "<platform id>", "label": "Company research" }`.

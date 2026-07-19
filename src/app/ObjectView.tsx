@@ -23,13 +23,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/components/ui/alert-dialog";
-import { DataTable } from "../ui/record-core/DataTable";
+import { csvCell, DataTable, formatCell } from "../ui/record-core/DataTable";
 import { KanbanBoard } from "../ui/record-core/KanbanBoard";
 import { ChartView } from "../ui/record-core/ChartView";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
 import { usePollRev } from "./usePollRev";
 import { can, type Role } from "./permissions";
-import { optionValues, normalizeOption } from "../ui/record-core/types";
+import { optionValues, normalizeOption, isMeasurable } from "../ui/record-core/types";
 import { activeFields } from "../ui/record-core/options";
 
 /* ObjectView — the list surface: view bar (search · filter chip · count · view switch ·
@@ -119,8 +119,8 @@ export function ObjectView({
     (saved as { groupBy?: string }).groupBy ?? config.stageField ?? groupables[0]?.key ?? "",
   );
   const groupFieldDef = config.fields.find((f) => f.key === groupBy);
-  // chart measure: "count" or a numeric field key to SUM per group
-  const numericFields = activeFields(config.fields).filter((f) => f.type === "number" || f.type === "currency");
+  // chart measure: "count" or a numeric field key to SUM per group (money measures by its amount)
+  const numericFields = activeFields(config.fields).filter((f) => isMeasurable(f));
   const [measure, setMeasure] = React.useState<string>(
     (saved as { measure?: string }).measure ?? "count",
   );
@@ -150,6 +150,8 @@ export function ObjectView({
   // merge dialog: pick a winner among the selected, preview, commit
   const [merging, setMerging] = React.useState<{ ids: string[]; winnerId: string; fields: { key: string; label: string; value: unknown; source: string }[] | null } | null>(null);
   const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
+  // display text for a row's primary value — shaped primaries (fullName) render joined, never "[object Object]"
+  const primaryLabel = (r: RecordRow | undefined | null) => (r ? formatCell(r[primary.key], primary.type) || r.id : "");
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
 
   // palette actions target the ACTIVE list via events (the palette lives app-level)
@@ -288,9 +290,10 @@ export function ObjectView({
 
   const exportCsv = () => {
     const chosen = rows?.filter((r) => selection[r.id]) ?? [];
-    const cols = activeFields(config.fields).map((f) => f.key);
+    const cols = activeFields(config.fields);
     const esc = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
-    const csv = [cols.join(","), ...chosen.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
+    // shaped values flatten (money → "amount code"; lists → "a; b"; address/fullName joined) BEFORE quoting
+    const csv = [cols.map((f) => f.key).join(","), ...chosen.map((r) => cols.map((f) => esc(csvCell(r[f.key], f.type))).join(","))].join("\n");
     const a = document.createElement("a");
     a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
     a.download = `${config.key}-${new Date().toISOString().slice(0, 10)}.csv`;
@@ -701,7 +704,7 @@ export function ObjectView({
             <div style={{ display: "grid", gap: 6, maxHeight: 380, overflowY: "auto" }}>
               {trash.map((r) => (
                 <div key={r.id} data-testid={`trash-row-${r.id}`} style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 8px", borderRadius: "var(--nx-radius-s)", background: "var(--nx-bg-raised)" }}>
-                  <span style={{ flex: 1, fontWeight: 500 }}>{String(r[primary.key] ?? r.id)}</span>
+                  <span style={{ flex: 1, fontWeight: 500 }}>{primaryLabel(r)}</span>
                   <span style={{ color: "var(--nx-fg-faint)", fontSize: 12 }}>
                     deleted {String(r._deletedAt ?? "").slice(0, 10)}
                   </span>
@@ -739,7 +742,7 @@ export function ObjectView({
                       data-testid={`merge-winner-${mid}`}
                       onChange={() => pickWinner(mid)}
                     />
-                    <span>{String(r?.[primary.key] ?? mid)}</span>
+                    <span>{r ? primaryLabel(r) : mid}</span>
                   </label>
                 );
               })}
@@ -753,7 +756,7 @@ export function ObjectView({
                     {merging.fields.map((f) => (
                       <tr key={f.key} style={{ borderTop: "1px solid var(--nx-border)" }}>
                         <td style={{ padding: "5px 8px", color: "var(--nx-fg-faint)", whiteSpace: "nowrap" }}>{f.label}</td>
-                        <td style={{ padding: "5px 8px" }} data-testid={`merge-final-${f.key}`}>{String(f.value)}</td>
+                        <td style={{ padding: "5px 8px" }} data-testid={`merge-final-${f.key}`}>{csvCell(f.value, config.fields.find((x) => x.key === f.key)?.type ?? "text")}</td>
                         <td style={{ padding: "5px 8px", textAlign: "right" }}>
                           {f.source !== "winner" && <Badge>{`from ${f.source}`}</Badge>}
                         </td>
@@ -784,7 +787,7 @@ export function ObjectView({
               <span style={{ display: "block", marginTop: 8, color: "var(--nx-fg)" }}>
                 {(rows ?? [])
                   .filter((r) => selection[r.id])
-                  .map((r) => String(r[primary.key] ?? r.id))
+                  .map((r) => primaryLabel(r))
                   .join(" · ")}
               </span>
             </AlertDialogDescription>
