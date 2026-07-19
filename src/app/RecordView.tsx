@@ -138,8 +138,29 @@ export function RecordView({
           }).catch((e) => toast(e.message)),
       } : undefined}
       onOpenRelation={(target, value) => {
+        // fresh mounts consume the sessionStorage handoff; a list that never
+        // unmounted (peek was over it) gets the live event instead
         sessionStorage.setItem("nx-pending-q", value);
         go(`#/o/${target}`);
+        setTimeout(() => window.dispatchEvent(new CustomEvent("nx-search", { detail: value })), 0);
+      }}
+      onCreateRelation={(fieldKey, title) => {
+        // picker "Create …": born with just a title, attached at once, then opened
+        // (in peek context `go` pushes it) so the rest fills in progressively
+        const f = config.fields.find((x) => x.key === fieldKey);
+        const target = appConfig.objects.find((o) => o.key === f?.relation);
+        if (!f || !target) return;
+        const tPrimary = target.fields.find((x) => x.primary) ?? target.fields[0];
+        api.create(target.key, { [tPrimary.key]: title })
+          .then((created) =>
+            api.patch(config.key, id, { [f.key]: title }).then(() => {
+              setRelationOptions((m) => ({ ...m, [fieldKey]: [...(m[fieldKey] ?? []), title] }));
+              toast(`${target.labelOne} “${title}” created & linked`);
+              load();
+              go(`#/o/${target.key}/r/${created.id}`);
+            }),
+          )
+          .catch((e) => toast(`Create failed: ${e.message}`));
       }}
       onPatch={(rid, patch) => {
         setRow((r) => (r ? { ...r, ...patch } : r)); // optimistic

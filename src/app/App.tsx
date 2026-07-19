@@ -1,7 +1,7 @@
 import * as React from "react";
-import { Building2, Handshake, LayoutGrid, Moon, Sun, Users, Table2, Kanban } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Moon, Sun, Users, Table2, Kanban, X } from "lucide-react";
 import { api, type AppConfig } from "./api";
-import { favList, type Fav } from "./favorites";
+import { favList, favToggle, type Fav } from "./favorites";
 import { Star } from "lucide-react";
 import { applySkin, type Skin } from "../ui/skins/skin";
 import { skinPresets } from "../ui/skins/presets";
@@ -22,11 +22,14 @@ function useHashRoute() {
     window.addEventListener("hashchange", on);
     return () => window.removeEventListener("hashchange", on);
   }, []);
-  const parts = hash.replace(/^#\//, "").split("/").filter(Boolean);
+  const [path, query = ""] = hash.split("?");
+  const parts = path.replace(/^#\//, "").split("/").filter(Boolean);
   return {
     object: parts[0] === "o" ? parts[1] : undefined,
     recordId: parts[2] === "r" ? parts[3] : undefined,
     page: parts[0] === "p" ? parts[1] : undefined,
+    // the peek ROOT rides the URL (?peek=<id>) — reload/share restores it
+    peekId: new URLSearchParams(query).get("peek") ?? undefined,
     go: (h: string) => (window.location.hash = h),
   };
 }
@@ -65,6 +68,42 @@ export function App() {
       window.removeEventListener("storage", onFavs);
     };
   }, []);
+  /* ---- side peek: one right-edge panel, records stack onto it (open a related
+     record → push; Escape/back → pop; empty → close). The list stays behind. ---- */
+  const [peek, setPeek] = React.useState<{ stack: { obj: string; id: string }[]; set: string[] } | null>(null);
+  const openPeek = React.useCallback((obj: string, id: string, set: string[] = []) => {
+    setPeek({ stack: [{ obj, id }], set });
+    // root in the URL: reload and share both land back on this peek
+    const h = `#/o/${obj}?peek=${id}`;
+    if (window.location.hash !== h) window.history.replaceState(null, "", h);
+  }, []);
+  const pushPeek = React.useCallback((obj: string, id: string) => setPeek((p) => (p ? { ...p, stack: [...p.stack, { obj, id }] } : { stack: [{ obj, id }], set: [] })), []);
+  const popPeek = React.useCallback(() => setPeek((p) => {
+    if (p && p.stack.length > 1) return { ...p, stack: p.stack.slice(0, -1) };
+    const root = p?.stack[0];
+    if (root) window.history.replaceState(null, "", `#/o/${root.obj}`);
+    return null;
+  }), []);
+  const closePeek = React.useCallback(() => {
+    setPeek((p) => {
+      const root = p?.stack[0];
+      if (root) window.history.replaceState(null, "", `#/o/${root.obj}`);
+      return null;
+    });
+  }, []);
+  // Escape ladder: an editor blurs first; then pop one level; then close
+  React.useEffect(() => {
+    if (!peek) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      const t = e.target as HTMLElement;
+      if (t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) { t.blur(); e.preventDefault(); return; }
+      popPeek();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [peek, popPeek]);
+
   const [err, setErr] = React.useState<string | null>(null);
   const [toasts, setToasts] = React.useState<Toast[]>([]);
   // auth gate: null = probing · {enabled,accounts,user} = known
@@ -95,6 +134,15 @@ export function App() {
       setActiveTeam(next);
     }).catch(() => {});
   }, [auth?.user]);
+
+  React.useEffect(() => {
+    if (route.peekId && route.object) {
+      setPeek((p) => (p && p.stack[0]?.id === route.peekId ? p : { stack: [{ obj: route.object as string, id: route.peekId as string }], set: p?.set ?? [] }));
+    } else {
+      setPeek(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.object, route.page, route.recordId, route.peekId]);
 
   const toast = React.useCallback((text: string) => {
     const id = Date.now() + Math.random();
@@ -183,6 +231,27 @@ export function App() {
   const activeTeamRole = teams.find((t) => t.slug === activeTeam)?.role as
     | "owner" | "admin" | "member" | "viewer" | undefined;
   const roleFor = (o: typeof active) => (o.teamScoped && auth?.enabled ? activeTeamRole ?? "viewer" : auth?.role);
+
+  // palette actions follow what's on screen: a record (peek or full page) beats the list
+  const curRec = peek ? peek.stack[peek.stack.length - 1] : route.recordId ? { obj: active.key, id: route.recordId } : null;
+  const paletteActions: { id: string; label: string; run: () => void }[] = [];
+  if (curRec) {
+    const recCfg = config.objects.find((o) => o.key === curRec.obj);
+    if (peek) paletteActions.push({ id: "promote", label: "Open full page", run: () => route.go(`#/o/${curRec.obj}/r/${curRec.id}`) });
+    paletteActions.push({
+      id: "fav",
+      label: favs.some((f) => f.obj === curRec.obj && f.id === curRec.id) ? "Remove from favorites" : "Add to favorites",
+      run: () => {
+        const primary = recCfg?.fields.find((f) => f.primary) ?? recCfg?.fields[0];
+        api.get(curRec.obj, curRec.id)
+          .then((r) => favToggle(curRec.obj, curRec.id, String(r[primary?.key ?? "id"] ?? curRec.id)))
+          .catch(() => {});
+      },
+    });
+  } else if (!route.page) {
+    paletteActions.push({ id: "new", label: `New ${active.labelOne.toLowerCase()}`, run: () => window.dispatchEvent(new Event("nx-new-record")) });
+    paletteActions.push({ id: "trash", label: "Open trash", run: () => window.dispatchEvent(new Event("nx-open-trash")) });
+  }
 
   return (
     <ToastCtx.Provider value={toast}>
@@ -340,7 +409,9 @@ export function App() {
                 config={active}
                 role={roleFor(active)}
                 users={config.users ?? []}
-                onOpen={(id) => route.go(`#/o/${active.key}/r/${id}`)}
+                onOpen={(id, set) =>
+                  active.openIn === "page" ? route.go(`#/o/${active.key}/r/${id}`) : openPeek(active.key, id, set ?? [])
+                }
                 onCountChange={onCount}
                 viewIcons={{ table: <Table2 size={13} />, kanban: <Kanban size={13} /> }}
               />
@@ -348,13 +419,69 @@ export function App() {
           </main>
         </div>
 
+        {peek && (() => {
+          const top = peek.stack[peek.stack.length - 1];
+          const cfg = config.objects.find((o) => o.key === top.obj);
+          if (!cfg) return null;
+          const rootIdx = peek.set.indexOf(peek.stack[0].id);
+          const canPage = peek.stack.length === 1 && rootIdx >= 0 && peek.set.length > 1;
+          const step = (d: number) => {
+            const next = peek.set[(rootIdx + d + peek.set.length) % peek.set.length];
+            openPeek(peek.stack[0].obj, next, peek.set);
+          };
+          return (
+            <div className="peekPanel" data-testid="peek-panel">
+              <div className="peekHead">
+                {peek.stack.length > 1 && (
+                  <Button variant="ghost" size="sm" icon={<ArrowLeft size={13} />} aria-label="Back one record" data-testid="peek-back" onClick={popPeek} />
+                )}
+                <span className="peekCrumbs" data-testid="peek-crumbs">
+                  {peek.stack.map((s, i) => {
+                    const c = config.objects.find((o) => o.key === s.obj);
+                    return <span key={`${s.obj}:${s.id}:${i}`} className="peekCrumb">{c?.labelOne ?? s.obj}</span>;
+                  })}
+                </span>
+                <span className="nxSpacer" style={{ flex: 1 }} />
+                {canPage && (
+                  <span className="peekPager">
+                    <Button variant="ghost" size="sm" icon={<ChevronLeft size={13} />} aria-label="Previous record" data-testid="peek-prev" onClick={() => step(-1)} />
+                    <span data-testid="peek-pos">{rootIdx + 1} of {peek.set.length}</span>
+                    <Button variant="ghost" size="sm" icon={<ChevronRight size={13} />} aria-label="Next record" data-testid="peek-next" onClick={() => step(1)} />
+                  </span>
+                )}
+                <Tip label="Open full page">
+                  <Button variant="ghost" size="sm" icon={<Maximize2 size={13} />} aria-label="Open full page" data-testid="peek-promote"
+                    onClick={() => route.go(`#/o/${top.obj}/r/${top.id}`)} />
+                </Tip>
+                <Button variant="ghost" size="sm" icon={<X size={14} />} aria-label="Close panel" data-testid="peek-close" onClick={closePeek} />
+              </div>
+              <div className="peekBody">
+                <RecordView
+                  key={`peek:${top.obj}:${top.id}:${activeTeam ?? ""}`}
+                  role={roleFor(cfg)}
+                  sessionUser={auth?.user}
+                  appConfig={config}
+                  config={cfg}
+                  id={top.id}
+                  onBack={popPeek}
+                  go={(hash) => {
+                    const m = hash.match(/^#\/o\/([^/]+)\/r\/([^/?]+)/);
+                    if (m) pushPeek(m[1], m[2]);
+                    else { setPeek(null); route.go(hash); }
+                  }}
+                />
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="toastWrap" aria-live="polite">
           {toasts.map((t) => (
             <div className="toast" key={t.id} data-testid="toast">{t.text}</div>
           ))}
         </div>
 
-        <CommandPalette config={config} go={route.go} />
+        <CommandPalette config={config} go={route.go} actions={paletteActions} />
         <ChatDock embedUrl={config.chat?.embedUrl} />
       </div>
     </ToastCtx.Provider>

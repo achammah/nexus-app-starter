@@ -47,7 +47,7 @@ export function ObjectView({
   config: ObjectConfig;
   users?: string[];
   role?: Role;
-  onOpen: (id: string) => void;
+  onOpen: (id: string, set?: string[]) => void;
   onCountChange: (key: string, n: number) => void;
   viewIcons: { table: React.ReactNode; kanban: React.ReactNode };
 }) {
@@ -124,6 +124,19 @@ export function ObjectView({
   const [merging, setMerging] = React.useState<{ ids: string[]; winnerId: string; fields: { key: string; label: string; value: unknown; source: string }[] | null } | null>(null);
   const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
+
+  // palette actions target the ACTIVE list via events (the palette lives app-level)
+  React.useEffect(() => {
+    const onNew = () => canCreate && setCreating(true);
+    const onTrash = () => openTrashRef.current();
+    window.addEventListener("nx-new-record", onNew);
+    window.addEventListener("nx-open-trash", onTrash);
+    return () => {
+      window.removeEventListener("nx-new-record", onNew);
+      window.removeEventListener("nx-open-trash", onTrash);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canCreate]);
 
   React.useEffect(() => {
     localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, groupBy, measure, aggregate }));
@@ -278,6 +291,8 @@ export function ObjectView({
   const openTrash = () => {
     api.trash(config.key).then(setTrash).catch((e) => toast(e.message));
   };
+  const openTrashRef = React.useRef(openTrash);
+  openTrashRef.current = openTrash;
   const restoreRow = (id: string) => {
     api.restore(config.key, id).then(() => {
       toast(`${config.labelOne} restored`);
@@ -607,7 +622,7 @@ export function ObjectView({
           config={config}
           rows={visibleRows}
           onPatch={patch}
-          onOpen={onOpen}
+          onOpen={(id) => onOpen(id, visibleRows?.map((r) => String(r.id)))}
           groupField={groupBy}
           groupOptions={groupFieldDef.type === "user" ? users : undefined}
           readOnly={!canEdit}
@@ -617,7 +632,8 @@ export function ObjectView({
         <DataTable
           config={config}
           rows={visibleRows}
-          onOpen={onOpen}
+          onOpen={(id) => onOpen(id, visibleRows?.map((r) => String(r.id)))}
+          onPeek={(id) => onOpen(id, visibleRows?.map((r) => String(r.id)))}
           onPatch={patch}
           readOnly={!canEdit}
           hiddenFields={hidden}

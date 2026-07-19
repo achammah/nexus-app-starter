@@ -1,5 +1,5 @@
 import * as React from "react";
-import { LayoutGrid, FileText, CornerDownLeft } from "lucide-react";
+import { LayoutGrid, FileText, CornerDownLeft, Zap } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -19,9 +19,12 @@ import type { RecordRow } from "../ui/record-core/types";
 export function CommandPalette({
   config,
   go,
+  actions = [],
 }: {
   config: AppConfig;
   go: (hash: string) => void;
+  /* context actions (what's on screen decides): New record, trash, favorite, promote… */
+  actions?: { id: string; label: string; run: () => void }[];
 }) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
@@ -70,8 +73,22 @@ export function CommandPalette({
     go(hash);
   };
 
+  // when a palette action opens ANOTHER dialog, the palette's close-time focus
+  // restore would steal focus out of the new dialog's trap (Escape then re-traps
+  // instead of closing) — suppress the restore while an action is in flight
+  const actionFired = React.useRef(false);
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} title={t("palette.placeholder")}>
+    <CommandDialog
+      open={open}
+      onOpenChange={setOpen}
+      title={t("palette.placeholder")}
+      onCloseAutoFocus={(e) => {
+        if (actionFired.current) {
+          e.preventDefault();
+          actionFired.current = false;
+        }
+      }}
+    >
       <CommandInput
         placeholder={t("palette.placeholder")}
         value={q}
@@ -80,6 +97,27 @@ export function CommandPalette({
       />
       <CommandList data-testid="palette-list">
         <CommandEmpty>{t("palette.empty")}</CommandEmpty>
+        {actions.length > 0 && (
+          <CommandGroup heading="Actions">
+            {actions.map((a) => (
+              <CommandItem
+                key={a.id}
+                value={`${a.label} action`}
+                data-testid={`palette-act-${a.id}`}
+                onSelect={() => {
+                  actionFired.current = true;
+                  setOpen(false);
+                  setQ("");
+                  // let this dialog's layer unwind before an action opens another
+                  setTimeout(a.run, 0);
+                }}
+              >
+                <Zap />
+                <span>{a.label}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
         {hits.length > 0 && (
           <CommandGroup heading={t("palette.records")}>
             {hits.map((h) => (

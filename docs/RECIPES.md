@@ -75,6 +75,14 @@ Set `AUTH_USERS` (`user:pass,user2:pass2`) + `APP_SECRET` (32+ chars) → the lo
 ## Run something on a schedule (jobs)
 One handler per type in `server/jobs.mjs` + `enqueue(store, "<type>", payload)`. The shipped `digest` job (arm with `DIGEST_EVERY_MS`, optional `DIGEST_TO`) is the reference: rollups into `app_state`, runs visible at `/api/jobs`.
 
+## Work the list without a mouse
+
+Tables carry a three-level focus model: ↑↓ (or j/k) move a row focus; `x` selects (Shift+x extends, Cmd/Ctrl+A selects all); Enter drops into cells; arrows move spreadsheet-style; typing on a cell opens its editor seeded with the keystroke; Enter saves and steps down, Tab saves and steps sideways; Escape climbs back out one level at a time. Cmd/Ctrl+Enter opens the focused record in the side peek.
+
+## The side peek
+
+Rows open in a right-edge panel over the list (set `"openIn": "page"` on an object to navigate instead). Related records stack onto the same panel — Escape steps back, then closes; the panel root rides the URL (`?peek=<id>`), so reload and share restore it; cmd/ctrl-click a row link for a real new tab. The header pages through the set you opened from (N of M, wrapping). In a relation picker, a search with no match offers "Create …" — the record is born with just a title, attached, and opened for progressive completion.
+
 ## Recover deleted records (trash)
 
 Deleting is recoverable: rows get a `_deletedAt` stamp and move to the per-object Trash (toolbar icon next to New). Restore brings a row back intact; **Delete forever** is permanent and is its own permission — grant `destroy` (and optionally `destroyOwn`) in the object's `permissions` table; `restore` rides the `delete` grant. Owners always hold both. Set `TRASH_RETENTION_DAYS` to auto-destroy expired trash (a `trash-sweep` job runs on an interval; unset/0 keeps trash forever).

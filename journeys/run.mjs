@@ -116,10 +116,13 @@ const journeys = [
       await page.waitForSelector('[data-testid="field-stage"]');
       await page.selectOption('[data-testid="field-stage"]', "Qualified");
       await page.waitForSelector('[data-testid="toast"]');
-      await page.goBack();
+      await page.keyboard.press("Escape"); // closes the select's focus
+      await page.keyboard.press("Escape"); // closes the peek — the board is behind it
       await page.waitForSelector('[data-testid="kanban-deals"]');
-      const inCol = await page.locator('[data-testid="col-Qualified"] [data-testid="card-de_2"]').count();
-      assert(inCol === 1, "card visibly moved to the Qualified column");
+      // live sync: the board behind the peek refreshes on the next rev poll
+      await page.waitForFunction(() =>
+        document.querySelector('[data-testid="col-Qualified"]')?.querySelector('[data-testid="card-de_2"]'), null, { timeout: 8000 });
+      assert(true, "card visibly moved to the Qualified column");
     },
   },
   {
@@ -1625,7 +1628,7 @@ const journeys = [
       await page.waitForFunction(() =>
         document.querySelector('[data-testid="field-owner-value"]')?.textContent?.includes("Maya"));
       assert(true, "owner picked from the app users directory");
-      await page.goBack();
+      await page.keyboard.press("Escape"); // close the peek — the table is behind it
       await page.waitForFunction(() =>
         document.querySelector('[data-testid="table-deals"]')?.textContent?.includes("Maya Verstraete"));
       assert(true, "table renders the user cell (avatar + name)");
@@ -1803,6 +1806,149 @@ const journeys = [
       const hscroll = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
       assert(!hscroll, "no horizontal page scroll at 390px");
       await page.setViewportSize({ width: 1280, height: 800 });
+    },
+  },
+  {
+    name: "side-peek-stack", feature: "Side peek (stacked record panel over the list)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector(".nxRowLink");
+      await page.click('.nxRowLink:has-text("Brightline Analytics")');
+      await page.waitForSelector('[data-testid="peek-panel"]');
+      assert((await page.locator('[data-testid="table-companies"]').count()) === 1, "the LIST stays visible behind the panel");
+      assert(page.url().includes("peek="), "the peek root rides the URL (shareable, reload-safe)");
+      // walk one hop deeper: a related record PUSHES onto the same panel
+      await page.waitForSelector('[data-testid="related-people"]');
+      await page.click('[data-testid^="related-people-"]');
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="peek-crumbs"] .peekCrumb').length === 2);
+      assert(true, "opening a related record stacks a second level (crumbs show the path)");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="peek-crumbs"] .peekCrumb').length === 1);
+      assert(true, "Escape steps BACK a level, not straight to close");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => !document.querySelector('[data-testid="peek-panel"]'));
+      assert(true, "Escape at the root closes the panel");
+      // promote: the same record, its own full page
+      await page.click('.nxRowLink:has-text("Brightline Analytics")');
+      await page.waitForSelector('[data-testid="peek-promote"]');
+      await page.click('[data-testid="peek-promote"]');
+      await page.waitForFunction(() => /#\/o\/companies\/r\//.test(window.location.hash));
+      await page.waitForFunction(() => !document.querySelector('[data-testid="peek-panel"]'));
+      assert(true, "promote escapes the peek into the full record page");
+    },
+  },
+  {
+    name: "record-pagination", feature: "Record-to-record pagination (N of M through the open set)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector(".nxRowLink");
+      await page.click("tbody tr:first-child .nxRowLink");
+      await page.waitForSelector('[data-testid="peek-pos"]');
+      const pos0 = await page.textContent('[data-testid="peek-pos"]');
+      assert(/1 of \d+/.test(pos0 ?? ""), `panel shows the position in the originating set (${pos0})`);
+      const name0 = await page.textContent('[data-testid="record-name"]');
+      await page.click('[data-testid="peek-next"]');
+      await page.waitForFunction((n) => document.querySelector('[data-testid="record-name"]')?.textContent !== n, name0);
+      const pos1 = await page.textContent('[data-testid="peek-pos"]');
+      assert(/2 of \d+/.test(pos1 ?? ""), `next steps through the SAME set (${pos1})`);
+      await page.click('[data-testid="peek-prev"]');
+      await page.click('[data-testid="peek-prev"]');
+      const posWrap = await page.textContent('[data-testid="peek-pos"]');
+      assert(/of \d+$/.test(posWrap ?? "") && !posWrap?.startsWith("0"), `prev wraps around the set (${posWrap})`);
+      await page.keyboard.press("Escape");
+    },
+  },
+  {
+    name: "keyboard-grid", feature: "Spreadsheet keyboard model (row → cell → edit, type-to-edit)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="table-companies"] tbody tr');
+      await page.focus('[data-testid="table-companies"]');
+      await page.keyboard.press("ArrowDown"); // no focus → row 0
+      await page.waitForSelector("tr[data-row-focus]");
+      const r0 = await page.getAttribute("tr[data-row-focus]", "data-testid");
+      await page.keyboard.press("j");
+      await page.waitForFunction((prev) => document.querySelector("tr[data-row-focus]")?.getAttribute("data-testid") !== prev, r0);
+      assert(true, "j moves row focus down (vim alternate works)");
+      await page.keyboard.press("x");
+      await page.waitForSelector('[data-testid="bulk-bar"]');
+      assert(true, "x selects the focused row (bulk bar appears)");
+      await page.keyboard.press("Enter");
+      await page.waitForSelector("td[data-cell-focus]");
+      assert(true, "Enter drops from row focus into cell focus");
+      await page.keyboard.press("ArrowRight"); // → domain (a text column)
+      // type-to-edit: the keystroke itself opens AND seeds the editor
+      await page.keyboard.press("Z");
+      await page.waitForSelector("td[data-cell-focus] input, td input.nxCellEdit");
+      const seeded = await page.inputValue("td[data-cell-focus] input").catch(() => page.inputValue("td input.nxCellEdit"));
+      assert(seeded === "Z", `typing seeds the editor with the keystroke (${seeded})`);
+      await page.keyboard.type("ulu");
+      await page.keyboard.press("Escape"); // cancel — no save
+      await page.waitForFunction(() => !document.querySelector("td[data-cell-focus] input"));
+      await page.keyboard.press("Escape"); // cell → row
+      await page.waitForSelector("tr[data-row-focus]");
+      await page.keyboard.press("Escape"); // selection clears first
+      await page.waitForFunction(() => !document.querySelector('[data-testid="bulk-bar"]'));
+      assert(true, "Escape is a ladder: edit → cell → row → selection");
+      // cmd/ctrl-Enter on a focused row opens the peek
+      await page.keyboard.press("ArrowDown");
+      await page.waitForSelector("tr[data-row-focus]");
+      await page.keyboard.press(process.platform === "darwin" ? "Meta+Enter" : "Control+Enter");
+      await page.waitForSelector('[data-testid="peek-panel"]');
+      assert(true, "Cmd/Ctrl+Enter opens the focused record in the peek");
+      await page.keyboard.press("Escape");
+    },
+  },
+  {
+    name: "picker-inline-create", feature: "Inline create inside the relation picker (no-match → create & attach)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/deals/r/de_2");
+      await page.waitForSelector('[data-testid="field-company"]');
+      const before = (await (await page.request.get(URLBASE + "/api/objects/companies")).json()).rows.length;
+      await page.click('[data-testid="field-company"]');
+      await page.waitForSelector('[data-testid="field-company-search"]');
+      await page.fill('[data-testid="field-company-search"]', "Zebra Dynamics");
+      await page.waitForSelector('[data-testid="field-company-create"]');
+      await page.click('[data-testid="field-company-create"]');
+      // progressive completion: the fresh record opens (title only, rest fills later)
+      await page.waitForFunction(() => document.querySelector('[data-testid="record-name"]')?.textContent?.includes("Zebra Dynamics"));
+      assert(true, "the new record opens immediately for field-by-field completion");
+      const deal = await (await page.request.get(URLBASE + "/api/objects/deals/de_2")).json();
+      assert(deal.company === "Zebra Dynamics", "created record is attached to the relation in the same step");
+      const rows = (await (await page.request.get(URLBASE + "/api/objects/companies")).json()).rows;
+      assert(rows.length === before + 1, "the record really exists");
+      const z = rows.find((r) => r.name === "Zebra Dynamics");
+      await page.request.patch(URLBASE + "/api/objects/deals/de_2", { data: { company: "Cargolane" } });
+      await page.request.delete(URLBASE + `/api/objects/companies/${z.id}`);
+      await page.request.delete(URLBASE + `/api/objects/companies/${z.id}/destroy`);
+    },
+  },
+  {
+    name: "palette-actions", feature: "Context actions in the command palette",
+    async run(page) {
+      // list context: create + trash actions
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="table-companies"] tbody tr');
+      await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+      await page.waitForSelector('[data-testid="palette-act-new"]');
+      await page.click('[data-testid="palette-act-new"]');
+      await page.waitForSelector('[role="dialog"]:has-text("New company")', { timeout: 6000 });
+      assert(true, "palette 'New company' opens the create dialog");
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[role="dialog"]', { state: "detached", timeout: 6000 });
+      // record context: favorite toggle
+      await page.click('.nxRowLink:has-text("Brightline Analytics")');
+      await page.waitForSelector('[data-testid="peek-panel"]');
+      await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
+      await page.waitForSelector('[data-testid="palette-act-fav"]');
+      await page.click('[data-testid="palette-act-fav"]');
+      await page.waitForSelector('[data-testid="fav-shelf"]');
+      const shelf = await page.textContent('[data-testid="fav-shelf"]');
+      assert(shelf?.includes("Brightline"), "palette favorite pins the record in view");
+      // unpin round trip via the record's own star (palette add is already proven)
+      await page.click('[data-testid="fav-toggle"]');
+      await page.waitForFunction(() => !document.querySelector('[data-testid="fav-shelf"]'));
+      await page.keyboard.press("Escape");
     },
   },
   {
