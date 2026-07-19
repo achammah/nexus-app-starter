@@ -20,6 +20,15 @@ const dicts = {
     "bulk.exported": "{n} rows exported",
     "chat.open": "Chat with the assistant",
     "chat.title": "Assistant",
+    "import.open": "Import",
+    "import.title": "Import {label} from CSV",
+    "import.back": "Back",
+    "import.next": "Next",
+    "import.run": "Import {n} rows",
+    "import.cancel": "Cancel",
+    "import.close": "Close",
+    "import.summary": "{created} created · {restored} restored · {skipped} skipped · {failed} failed",
+    "import.failedCsv": "Download failed rows (CSV)",
   },
 } as const;
 

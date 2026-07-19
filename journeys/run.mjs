@@ -2183,6 +2183,215 @@ const journeys = [
       }
     },
   },
+  // --- lane: import-apikeys
+  {
+    name: "import-wizard", feature: "CSV import wizard",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForFunction(() => /^\d+$/.test(document.querySelector('[data-testid="row-count"]')?.textContent ?? ""));
+      const before = Number(await page.textContent('[data-testid="row-count"]'));
+      await page.click('[data-testid="import-open"]');
+      await page.waitForSelector('[data-testid="import-text"]');
+      // "Company Title" deliberately matches no field → exercises manual mapping;
+      // the quoted first value exercises commas inside quotes
+      const csv = [
+        "Company Title,domain,industry,city",
+        '"Import Alpha, Inc",alpha.example,Software,Ghent',
+        "Import Beta,beta.example,Logistics,Liège",
+        "Import Gamma,gamma.example,Software,Namur",
+        "Import Delta,delta.example,Retail,Bruges",
+        "Import Epsilon,eps.example,Software,Leuven",
+      ].join("\n");
+      await page.fill('[data-testid="import-text"]', csv);
+      await page.click('[data-testid="import-next"]');
+      await page.waitForSelector('[data-testid="import-map-0"]');
+      const autoMapped = await page.inputValue('[data-testid="import-map-1"]');
+      assert(autoMapped === "domain", `matching headers auto-map (domain → ${autoMapped})`);
+      assert(await page.locator('[data-testid="import-next"]').isDisabled(),
+        "Next is blocked while the primary field is unmapped");
+      await page.selectOption('[data-testid="import-map-0"]', "name");
+      await page.click('[data-testid="import-next"]');
+      await page.waitForSelector('[data-testid="import-preview"]');
+      const prev = await page.textContent('[data-testid="import-preview"]');
+      assert((prev?.match(/created/g) ?? []).length === 5, "preview verdicts all 5 rows as created");
+      await page.click('[data-testid="import-run"]');
+      await page.waitForSelector('[data-testid="import-summary"]');
+      const sum = await page.textContent('[data-testid="import-summary"]');
+      assert(sum?.includes("5 created"), `summary shows 5 created (${sum})`);
+      await page.click('[data-testid="import-close"]');
+      await page.waitForFunction((b) => Number(document.querySelector('[data-testid="row-count"]')?.textContent) === b + 5, before);
+      assert(true, `list count rose by 5 (${before} → ${before + 5})`);
+      // CLEAN UP: destroy the five imported companies
+      const rows = (await (await page.request.get(URLBASE + "/api/objects/companies")).json()).rows;
+      for (const nm of ["Import Alpha, Inc", "Import Beta", "Import Gamma", "Import Delta", "Import Epsilon"]) {
+        const r = rows.find((x) => x.name === nm);
+        assert(!!r, `imported row exists server-side (${nm})`);
+        await page.request.delete(URLBASE + `/api/objects/companies/${r.id}`);
+        await page.request.delete(URLBASE + `/api/objects/companies/${r.id}/destroy`);
+      }
+      const after = (await (await page.request.get(URLBASE + "/api/objects/companies")).json()).rows.length;
+      assert(after === before, `seed state restored (${after} rows)`);
+    },
+  },
+  {
+    name: "import-dedupe-restore", feature: "CSV import wizard",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5100", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5100";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        // trash the seeded unique holder (code V-001), then import that code + a fresh one
+        await p2.request.delete(B + "/api/objects/vendors/ve_1");
+        await p2.goto(B + "/#/o/vendors");
+        await p2.click('[data-testid="import-open"]');
+        await p2.waitForSelector('[data-testid="import-text"]');
+        await p2.fill('[data-testid="import-text"]',
+          "name,Vendor code\nBrightline Reborn Import,V-001\nImport Fresh Vendor,V-999\nImport Dup Vendor,V-999");
+        await p2.click('[data-testid="import-next"]');
+        await p2.waitForSelector('[data-testid="import-map-0"]');
+        const codeMap = await p2.inputValue('[data-testid="import-map-1"]');
+        assert(codeMap === "code", `label-based auto-map works ("Vendor code" → ${codeMap})`);
+        await p2.click('[data-testid="import-next"]');
+        await p2.waitForSelector('[data-testid="import-preview"]');
+        const prev = await p2.textContent('[data-testid="import-preview"]');
+        assert(prev?.includes("restored") && prev?.includes("created"),
+          "preview already shows the restore-vs-create split");
+        assert(prev?.includes("duplicate within this file"),
+          "preview flags the in-file duplicate WITHOUT mutating (same verdict as the run)");
+        await p2.click('[data-testid="import-run"]');
+        await p2.waitForSelector('[data-testid="import-summary"]');
+        const sum = await p2.textContent('[data-testid="import-summary"]');
+        assert(sum?.includes("1 created") && sum?.includes("1 restored") && sum?.includes("1 skipped"),
+          `summary shows 1 restored, 1 created, 1 skipped (${sum})`);
+        // the restored row carries the CSV's data under its ORIGINAL id
+        const v1 = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert(v1.name === "Brightline Reborn Import" && v1.code === "V-001",
+          "restored row keeps id ve_1 and carries the CSV's data");
+        const rows = (await (await p2.request.get(B + "/api/objects/vendors")).json()).rows;
+        const v999 = rows.filter((r) => r.code === "V-999");
+        assert(v999.length === 1 && v999[0].id !== "ve_1", `fresh code created exactly ONE new row (${v999[0]?.id})`);
+        const trashLeft = await (await p2.request.get(B + "/api/objects/vendors/trash")).json();
+        assert(!trashLeft.rows.some((r) => r.id === "ve_1"), "restored row left the trash");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "import-errors", feature: "CSV import wizard",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/people");
+      await page.waitForSelector('[data-testid="import-open"]');
+      await page.click('[data-testid="import-open"]');
+      await page.waitForSelector('[data-testid="import-text"]');
+      await page.fill('[data-testid="import-text"]', [
+        "name,email,role",
+        "Import Valid Person,valid@import.test,Tester",
+        "Import Broken Person,not-an-email,Tester",
+        ",missing@import.test,Tester",
+      ].join("\n"));
+      await page.click('[data-testid="import-next"]');
+      await page.waitForSelector('[data-testid="import-map-0"]');
+      await page.click('[data-testid="import-next"]'); // headers all auto-map
+      await page.waitForSelector('[data-testid="import-preview"]');
+      const prev = await page.textContent('[data-testid="import-preview"]');
+      assert(prev?.includes("valid email"), "preview surfaces the validator's reason on the bad row");
+      await page.click('[data-testid="import-run"]');
+      await page.waitForSelector('[data-testid="import-summary"]');
+      const sum = await page.textContent('[data-testid="import-summary"]');
+      assert(sum?.includes("1 created") && sum?.includes("2 failed"), `summary shows 1 created · 2 failed (${sum})`);
+      // failed rows download as a CSV carrying the reason per row
+      const dl = page.waitForEvent("download", { timeout: 8000 });
+      await page.click('[data-testid="import-failed-csv"]');
+      const file = await dl;
+      const text = readFileSync(await file.path(), "utf8");
+      assert(text.split("\n")[0].includes("reason"), "failed-rows CSV has a reason column");
+      assert(text.includes("valid email"), "…and carries the per-row failure reason");
+      assert(text.includes("not-an-email"), "…next to the original row data");
+      await page.click('[data-testid="import-close"]');
+      // CLEAN UP: destroy the one created person
+      const rows = (await (await page.request.get(URLBASE + "/api/objects/people")).json()).rows;
+      const mine = rows.find((r) => r.name === "Import Valid Person");
+      assert(!!mine, "created person exists server-side");
+      await page.request.delete(URLBASE + `/api/objects/people/${mine.id}`);
+      await page.request.delete(URLBASE + `/api/objects/people/${mine.id}/destroy`);
+    },
+  },
+  {
+    name: "apikey-scoping", feature: "API keys (role-scoped access)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: {
+          ...process.env, PORT: "5110", AUTH_MODE: "accounts",
+          APP_SECRET: "journey-secret-16-chars-plus", CONFIG_PATH: "journeys/fixtures/apikeys.config.json",
+        },
+      });
+      const B = "http://localhost:5110";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        // owner drives the UI (signup + team → role owner)
+        const ctxO = await page.context().browser().newContext();
+        const pO = await ctxO.newPage();
+        await pO.request.post(B + "/api/auth/signup", { data: { email: "odette@fixture.example", name: "Odette", password: "owner-pass-1234" } });
+        await pO.request.post(B + "/api/teams", { data: { name: "Ops" } });
+        await pO.goto(B + "/#/p/apikeys");
+        await pO.waitForSelector('[data-testid="apikey-name"]');
+        await pO.fill('[data-testid="apikey-name"]', "Reporting bot");
+        await pO.selectOption('[data-testid="apikey-role"]', "viewer");
+        await pO.click('[data-testid="apikey-create"]');
+        await pO.waitForSelector('[data-testid="apikey-secret"]');
+        const secret = (await pO.textContent('[data-testid="apikey-secret"]')).trim();
+        assert(secret.startsWith("nak_") && secret.length === 36, "full key is shown once at creation");
+        // key calls come from a COOKIE-LESS context — the key alone authenticates
+        const ctxK = await page.context().browser().newContext();
+        const pk = await ctxK.newPage();
+        const bare = await pk.request.get(B + "/api/objects/records");
+        assert(bare.status() === 401, "no session + no key → 401");
+        const read = await pk.request.get(B + "/api/objects/records", { headers: { "x-api-key": secret } });
+        assert(read.status() === 200 && (await read.json()).rows.length === 2, "viewer key reads the rows");
+        const bearer = await pk.request.get(B + "/api/objects/records", { headers: { authorization: `Bearer ${secret}` } });
+        assert(bearer.status() === 200, "Authorization: Bearer form resolves too");
+        const patchTry = await pk.request.patch(B + "/api/objects/records/rc_1", {
+          headers: { "x-api-key": secret }, data: { name: "Hacked" },
+        });
+        assert(patchTry.status() === 403, "the same key cannot PATCH (role scoping)");
+        // team-scoped objects refuse key callers — keys carry no membership
+        const scopedTry = await pk.request.get(B + "/api/objects/projects", {
+          headers: { "x-api-key": secret, "x-nx-team": "ops" },
+        });
+        assert(scopedTry.status() === 403, "team-scoped objects refuse api-key callers");
+        // revoke in the UI (confirm dialog) → the same read dies with 401
+        const keyId = (await (await pO.request.get(B + "/api/apikeys")).json()).keys[0].id;
+        await pO.click(`[data-testid="apikey-revoke-${keyId}"]`);
+        await pO.waitForSelector('[data-testid="apikey-revoke-confirm"]');
+        await pO.click('[data-testid="apikey-revoke-confirm"]');
+        await pO.waitForFunction((id) =>
+          document.querySelector(`[data-testid="apikey-row-${id}"]`)?.textContent?.includes("revoked"), keyId);
+        assert(true, "the key row flips to revoked in the list");
+        const dead = await pk.request.get(B + "/api/objects/records", { headers: { "x-api-key": secret } });
+        assert(dead.status() === 401, "the revoked key answers 401");
+        await ctxO.close();
+        await ctxK.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----

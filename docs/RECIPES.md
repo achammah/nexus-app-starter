@@ -93,6 +93,20 @@ Creating a record whose unique field matches a TRASHED row restores that row and
 
 Select 2–10 rows → **Merge** → pick the survivor. The preview shows the final value per field and where inherited values come from: the winner keeps its values on conflict and absorbs the losers' non-empty fields into its own empties. Relation fields elsewhere that pointed at a loser re-point to the winner; timelines and watchers travel; losers land in the trash. `POST /api/objects/:key/merge {ids, winnerId, preview?}`.
 
+## Import records from CSV
+
+Any object list → **Import** (toolbar) → paste CSV text or pick a `.csv` file → map columns to fields (auto-matched on name/label; the primary field must be mapped) → preview the first rows against the server's validators → run. Rows import in chunks with live progress and a cancel between chunks; the summary counts created / restored / skipped / failed, and failed rows download as a CSV with the reason per row. A unique value matching a TRASHED row restores it (original id, new data); a collision with a live row is skipped as a duplicate. Another system can call it directly: `POST /api/objects/:key/import {rows: [{field: value}], preview?}` — rows keyed by field key, at most 2000 per call, gated by the `create` permission.
+
+## Let another system call the app (API keys)
+
+`/p/apikeys` (owners/admins; `FEATURE_APIKEYS=0` hides page + API together) → name + role → **Create** → copy the `nak_…` key: it is shown exactly once, only its sha256 hash is stored. A request carrying the key authenticates as the key's role through the same permission tables as a signed-in member, with or without account auth:
+
+```
+curl -H "x-api-key: nak_…" https://your-app/api/objects/companies
+```
+
+`Authorization: Bearer nak_…` works too. Scoping: a `viewer` key reads whatever viewers can view and nothing more; `member`/`admin` keys follow each object's `permissions` table; revoking a key kills it immediately (every call answers 401). Team-scoped objects stay session-only — keys carry no team membership.
+
 ## Pin favorites
 
 The star on any record header pins it to a Favorites section in the sidebar. Pins are personal and device-local (localStorage), so they work with or without accounts.

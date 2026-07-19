@@ -1,0 +1,39 @@
+{
+  "app": { "name": "ApiKeys Fixture", "slug": "apikeys-fixture" },
+  "theme": {},
+  "users": [],
+  "objects": [
+    {
+      "key": "records",
+      "label": "Records",
+      "labelOne": "Record",
+      "icon": "building-2",
+      "defaultView": "table",
+      "permissions": {
+        "admin": ["view", "create", "edit", "delete", "export"],
+        "member": ["view", "create", "editOwn"],
+        "viewer": ["view"]
+      },
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "status", "label": "Status", "type": "select", "options": ["Open", "Closed"] }
+      ],
+      "sampleRows": [
+        { "id": "rc_1", "name": "Seeded Record One", "status": "Open" },
+        { "id": "rc_2", "name": "Seeded Record Two", "status": "Closed" }
+      ]
+    },
+    {
+      "key": "projects",
+      "label": "Projects",
+      "labelOne": "Project",
+      "icon": "handshake",
+      "defaultView": "table",
+      "teamScoped": true,
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true }
+      ],
+      "sampleRows": []
+    }
+  ]
+}

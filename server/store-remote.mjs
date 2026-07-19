@@ -23,6 +23,7 @@ const LOGGED_OPS = [
   "teamAdd", "memberAdd", "memberActivate", "memberSetRole", "memberRemove", "teamEvent",
   "watchToggle",
   "webhookAdd", "webhookUpdate", "webhookRemove",
+  "apiKeyAdd", "apiKeyRevoke",
   "restoreRow", "destroyRow", "mergeRows",
   "viewAdd", "viewUpdate", "viewRemove",
   "outboxAdd",

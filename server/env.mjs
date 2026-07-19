@@ -31,6 +31,7 @@ const schema = z.object({
   FEATURE_TEAMS: z.string().optional(),
   FEATURE_WEBHOOKS: z.string().optional(),
   FEATURE_THEME: z.string().optional(),
+  FEATURE_APIKEYS: z.string().optional(),
   APP_SECRET: z.string().min(16, "APP_SECRET must be ≥16 chars").optional(),
   // Nexus platform (server-side only — never reaches the browser)
   NEXUS_API_KEY: z.string().startsWith("nxs_").optional(),
@@ -62,6 +63,7 @@ export const FEATURES = {
   teams: flagOn(env.FEATURE_TEAMS),
   webhooks: flagOn(env.FEATURE_WEBHOOKS),
   theme: flagOn(env.FEATURE_THEME),
+  apikeys: flagOn(env.FEATURE_APIKEYS),
 };
 
 export const ACCOUNTS_ENABLED = Boolean(env.AUTH_MODE === "accounts" && env.APP_SECRET);

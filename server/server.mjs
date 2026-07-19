@@ -24,6 +24,7 @@ import { handleTeams } from "./teams.mjs";
 import { can } from "./permissions.mjs";
 import { enqueue, startScheduler } from "./jobs.mjs";
 import { handleWebhooks, emitEvent } from "./webhooks.mjs";
+import { handleApiKeys, resolveApiKey } from "./apikeys.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DIST = path.join(ROOT, "dist");
@@ -63,7 +64,33 @@ async function readBody(req) {
   try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
 
-async function api(req, res, url) {
+/* CSV import rows arrive as strings — coerce each value to its field's
+   declared type so the type validators judge real values, and DROP keys that
+   match no field (an unmapped column must never become a phantom property).
+   Empty strings are omitted (an empty CSV cell is "no value", not ""). */
+function coerceImportRow(cfg, raw) {
+  const out = {};
+  for (const f of cfg.fields) {
+    let v = raw?.[f.key];
+    if (typeof v === "string") v = v.trim();
+    if (v === undefined || v === null || v === "") continue;
+    if ((f.type === "number" || f.type === "currency" || f.type === "rating") && typeof v === "string") {
+      const n = Number(v.replaceAll(",", ""));
+      if (!Number.isNaN(n)) v = n; // NaN → keep the string; the validator names the field
+    }
+    if (f.type === "boolean" && typeof v === "string") {
+      if (["true", "yes", "1"].includes(v.toLowerCase())) v = true;
+      else if (["false", "no", "0"].includes(v.toLowerCase())) v = false;
+    }
+    if ((f.type === "array" || f.type === "multiselect") && typeof v === "string") {
+      v = v.split(/[;|]/).map((s) => s.trim()).filter(Boolean);
+    }
+    out[f.key] = v;
+  }
+  return out;
+}
+
+async function api(req, res, url, apiKey = null) {
   const parts = url.pathname.split("/").filter(Boolean); // ["api", ...]
   try {
     if (parts[1] === "config") return send(res, 200, { ...CONFIG, demo: store.demo, features: FEATURES });
@@ -72,14 +99,17 @@ async function api(req, res, url) {
     // one flag → nav + page + API together: a disabled feature's routes 404
     if (parts[1] === "teams" && !FEATURES.teams) return send(res, 404, { error: "teams disabled (FEATURE_TEAMS=0)" });
     if (parts[1] === "webhooks" && !FEATURES.webhooks) return send(res, 404, { error: "webhooks disabled (FEATURE_WEBHOOKS=0)" });
+    if (parts[1] === "apikeys" && !FEATURES.apikeys) return send(res, 404, { error: "apikeys disabled (FEATURE_APIKEYS=0)" });
     if (await handleTeams(req, res, url, readBody, send, store, session)) return;
     if (await handleWebhooks(req, res, url, readBody, send, store, CONFIG)) return;
     if (parts[1] === "jobs" && req.method === "GET") {
       const rows = [...(store.jobs ?? [])].reverse().slice(0, 50).map(({ payload, result, ...j }) => j);
       return send(res, 200, { jobs: rows });
     }
-    // role for permission checks: auth off → owner-equivalent (open); on → from teams
-    const role = AUTH_ENABLED ? store.roleFor(session?.email) : "owner";
+    // role for permission checks: an API key acts as ITS role (with auth off a
+    // key scopes DOWN); no key → auth off = owner-equivalent, on = from teams
+    const role = apiKey ? apiKey.role : AUTH_ENABLED ? store.roleFor(session?.email) : "owner";
+    if (await handleApiKeys(req, res, url, readBody, send, store, role)) return;
     if (parts[1] === "healthz") return send(res, 200, { ok: true, version: VERSION, app: CONFIG.app.slug });
 
     if (parts[1] === "views") {
@@ -200,6 +230,92 @@ async function api(req, res, url) {
         emitEvent(store, `${objKey}.updated`, { row: winner });
         for (const id of ids) if (id !== winnerId) emitEvent(store, `${objKey}.deleted`, { id });
         return send(res, 200, { row: winner, merged: ids.length - 1 });
+      }
+
+      /* Batch CSV import — rows arrive already mapped {fieldKey: value}. Same
+         semantics as N sequential creates: a unique hit on a LIVE row skips
+         (duplicate), on a TRASHED row resurrects (the existing upsert), an
+         invalid row fails with the validator's reason. preview:true runs the
+         same classification without mutating. The loop lives HERE so the
+         command log stays a deterministic sequence of the existing logged ops
+         (create / restoreRow / patch) — no new store op. */
+      if (parts[3] === "import" && !parts[4] && req.method === "POST") {
+        if (deny("create")) return;
+        const { rows: incoming, preview } = await readBody(req);
+        if (!Array.isArray(incoming) || incoming.length === 0) return send(res, 400, { error: "rows[] required" });
+        if (incoming.length > 2000) return send(res, 400, { error: "import at most 2000 rows per call" });
+        const primary = cfg.fields.find((f) => f.primary) ?? cfg.fields[0];
+        const results = [];
+        const totals = { created: 0, restored: 0, skipped: 0, failed: 0 };
+        // in-file duplicate guard: preview and run must AGREE. Unique values a
+        // prior row of THIS batch consumed (created/restored) mark the next
+        // occurrence "skipped" in both paths — in a live run the collision
+        // would surface anyway, but preview mutates nothing, so only this set
+        // keeps its verdicts honest (and the reason clearer).
+        const seenUnique = new Map(); // field key → Set of consumed values
+        const uniqueVals = (body) =>
+          cfg.fields.filter((f) => f.unique && body[f.key] !== undefined && body[f.key] !== null && body[f.key] !== "")
+            .map((f) => [f.key, String(body[f.key])]);
+        const inFileDup = (body) => uniqueVals(body).some(([k, v]) => seenUnique.get(k)?.has(v));
+        const markSeen = (body) => {
+          for (const [k, v] of uniqueVals(body)) {
+            if (!seenUnique.has(k)) seenUnique.set(k, new Set());
+            seenUnique.get(k).add(v);
+          }
+        };
+        for (let i = 0; i < incoming.length; i++) {
+          const body = coerceImportRow(cfg, incoming[i]);
+          if (body[primary.key] === undefined) {
+            totals.failed++;
+            results.push({ index: i, verdict: "failed", reason: `${primary.label} is required` });
+            continue;
+          }
+          if (inFileDup(body)) {
+            totals.skipped++;
+            results.push({ index: i, verdict: "skipped", reason: "duplicate within this file" });
+            continue;
+          }
+          const live = store.uniqueLiveMatch(objKey, body);
+          if (live) {
+            totals.skipped++;
+            results.push({ index: i, verdict: "skipped", id: live.id, reason: "duplicate — a live row already holds this unique value" });
+            continue;
+          }
+          const zombie = store.uniqueResurrectMatch(objKey, body);
+          if (zombie) {
+            const invalid = store.validate(objKey, body, zombie.id);
+            if (invalid) {
+              totals.failed++;
+              results.push({ index: i, verdict: "failed", reason: invalid });
+              continue;
+            }
+            if (!preview) {
+              store.restoreRow(objKey, zombie.id);
+              const row = store.patch(objKey, zombie.id, body);
+              emitEvent(store, `${objKey}.restored`, { row });
+            }
+            totals.restored++;
+            markSeen(body);
+            results.push({ index: i, verdict: "restored", id: zombie.id });
+            continue;
+          }
+          const invalid = store.validate(objKey, body);
+          if (invalid) {
+            totals.failed++;
+            results.push({ index: i, verdict: "failed", reason: invalid });
+            continue;
+          }
+          totals.created++;
+          markSeen(body);
+          if (preview) {
+            results.push({ index: i, verdict: "created" });
+            continue;
+          }
+          const created = store.create(objKey, body, { createdBy: session?.email, teamId: teamCtx?.id });
+          emitEvent(store, `${objKey}.created`, { row: created });
+          results.push({ index: i, verdict: "created", id: created.id });
+        }
+        return send(res, 200, { results, totals, preview: !!preview });
       }
 
       if (parts[3] === "rev") return send(res, 200, { rev: store.rev(objKey) });
@@ -330,8 +446,13 @@ async function api(req, res, url) {
 async function handler(req, res) {
   const url = new URL(req.url, "http://x");
   if (await handleAuth(req, res, url, readBody, send, store)) return;
-  if (!gate(req, url, store)) return send(res, 401, { error: "unauthorized" });
-  if (url.pathname.startsWith("/api/")) return api(req, res, url);
+  // API keys authenticate BEFORE the session gate: a valid key acts as its
+  // role whether or not account auth is on; a dead key is an explicit 401,
+  // never a silent fall-through to anonymous access
+  const viaKey = resolveApiKey(req, store);
+  if (viaKey?.error) return send(res, 401, { error: viaKey.error });
+  if (!viaKey && !gate(req, url, store)) return send(res, 401, { error: "unauthorized" });
+  if (url.pathname.startsWith("/api/")) return api(req, res, url, viaKey?.key ?? null);
 
   // static: dist/ with SPA fallback; placeholder when dist is missing
   let fp = path.join(DIST, url.pathname === "/" ? "index.html" : url.pathname);

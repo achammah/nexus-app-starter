@@ -183,6 +183,25 @@ export class Store {
     return true;
   }
 
+  /* ---- API keys: only the secret's sha256 hash is stored (plus display
+     prefix/last4 — the hash is one-way, so display bits are captured at
+     creation). Revocation is a stamp, never a splice — the log replays it. ---- */
+
+  apiKeyAdd({ name, role, prefix, last4, hash }) {
+    const k = {
+      id: `ak_${++this.n}`, name, role, prefix, last4, hash,
+      createdAt: this._now().toISOString(), revokedAt: null,
+    };
+    (this.apiKeys ??= []).push(k);
+    return k;
+  }
+
+  apiKeyRevoke(id) {
+    const k = (this.apiKeys ?? []).find((x) => x.id === id);
+    if (k && !k.revokedAt) k.revokedAt = this._now().toISOString();
+    return k ?? null;
+  }
+
   /* team audit trail: who invited/joined/changed whom */
   teamEvent(teamId, kind, summary, actor) {
     const ev = { id: `te_${++this.n}`, teamId, kind, summary, actor: actor ?? null, ts: this._now().toISOString() };
@@ -389,6 +408,20 @@ export class Store {
     delete (this.files[objKey] ?? {})[id];
     this._bump(objKey);
     return true;
+  }
+
+  /* live twin of uniqueResurrectMatch: an incoming unique value colliding with
+     a LIVE row (batch import reports it as a skipped duplicate, not a failure) */
+  uniqueLiveMatch(objKey, body) {
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    for (const f of cfg?.fields ?? []) {
+      if (!f.unique) continue;
+      const v = body[f.key];
+      if (v === undefined || v === null || v === "") continue;
+      const hit = (this.rows[objKey] ?? []).find((r) => !r._deletedAt && String(r[f.key] ?? "") === String(v));
+      if (hit) return hit;
+    }
+    return null;
   }
 
   /* upsert semantic: an incoming value matching a TRASHED row's unique field
