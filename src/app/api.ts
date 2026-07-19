@@ -81,6 +81,11 @@ export const api = {
   webhookDeliveries: (id: string) =>
     j<{ deliveries: { id: string; event: string; status: string; code: number; ts: string }[] }>(`/api/webhooks/${id}/deliveries`),
   jobs: () => j<{ jobs: { id: string; type: string; status: string }[] }>("/api/jobs"),
+  views: (objectKey: string) =>
+    j<{ views: { id: string; name: string; layout: string; visibility: string; state: Record<string, unknown> }[] }>(`/api/views?object=${encodeURIComponent(objectKey)}`).then((r) => r.views),
+  viewCreate: (body: { objectKey: string; name: string; layout: string; state: Record<string, unknown>; visibility?: string }) =>
+    j<{ id: string; name: string }>("/api/views", { method: "POST", body: JSON.stringify(body) }),
+  viewDelete: (id: string) => j<{ ok: boolean }>(`/api/views/${id}`, { method: "DELETE" }),
   teamRemove: (slug: string, email: string) =>
     j<{ ok: boolean }>(`/api/teams/${slug}/members?email=${encodeURIComponent(email)}`, { method: "DELETE" }),
   timeline: (obj: string, id: string) =>

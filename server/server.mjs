@@ -82,6 +82,24 @@ async function api(req, res, url) {
     const role = AUTH_ENABLED ? store.roleFor(session?.email) : "owner";
     if (parts[1] === "healthz") return send(res, 200, { ok: true, version: VERSION, app: CONFIG.app.slug });
 
+    if (parts[1] === "views") {
+      const viewer = session?.email ?? null;
+      if (!parts[2] && req.method === "GET") {
+        const objectKey = url.searchParams.get("object") ?? "";
+        return send(res, 200, { views: store.viewList(objectKey, viewer) });
+      }
+      if (!parts[2] && req.method === "POST") {
+        const { objectKey, name, layout, state, visibility } = await readBody(req);
+        if (!CONFIG.objects.some((o) => o.key === objectKey)) return send(res, 400, { error: `unknown object ${objectKey}` });
+        if (!String(name ?? "").trim()) return send(res, 400, { error: "name required" });
+        return send(res, 201, store.viewAdd({ objectKey, name: String(name).trim(), layout, state, visibility, createdBy: viewer }));
+      }
+      const view = (store.views ?? []).find((v) => v.id === parts[2]);
+      if (!view) return send(res, 404, { error: "unknown view" });
+      if (req.method === "PATCH") return send(res, 200, store.viewUpdate(view.id, await readBody(req)));
+      if (req.method === "DELETE") { store.viewRemove(view.id); return send(res, 200, { ok: true }); }
+    }
+
     if (parts[1] === "users" && req.method === "GET") {
       const names = (store.users ?? []).filter((u) => !u.deletedAt).map((u) => u.name);
       return send(res, 200, { users: names.length ? names : (CONFIG.users ?? []) });

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { BarChart3, Columns3, Download, Plus, Search, Trash2 } from "lucide-react";
+import { BarChart3, Bookmark, Columns3, Download, Pencil, Plus, Search, Sigma, Trash2, X } from "lucide-react";
 import type { SortingState } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -97,6 +97,21 @@ export function ObjectView({
     (saved as { measure?: string }).measure ?? "count",
   );
   const measureDef = numericFields.find((f) => f.key === measure);
+  // kanban per-column rollup: fn over a numeric field (persisted per object)
+  const [aggregate, setAggregate] = React.useState<{ fn: "sum" | "avg" | "min" | "max"; field: string } | null>(
+    (saved as { aggregate?: { fn: "sum" | "avg" | "min" | "max"; field: string } | null }).aggregate ?? null,
+  );
+  // saved views (server-persisted, shareable)
+  const [views, setViews] = React.useState<{ id: string; name: string; layout: string; state: Record<string, unknown> }[]>([]);
+  const loadViews = React.useCallback(() => {
+    api.views(config.key).then(setViews).catch(() => {});
+  }, [config.key]);
+  React.useEffect(loadViews, [loadViews]);
+  const [savingView, setSavingView] = React.useState(false);
+  const [viewName, setViewName] = React.useState("");
+  // bulk edit dialog
+  const [bulkEdit, setBulkEdit] = React.useState<{ field: string; value: string; running: boolean; done: number } | null>(null);
+  const bulkCancel = React.useRef(false);
   const [creating, setCreating] = React.useState(false);
   const [draft, setDraft] = React.useState<Record<string, string>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
@@ -105,8 +120,8 @@ export function ObjectView({
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
 
   React.useEffect(() => {
-    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, groupBy, measure }));
-  }, [config.key, q, view, hidden, sort, selFilters, groupBy, measure]);
+    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, groupBy, measure, aggregate }));
+  }, [config.key, q, view, hidden, sort, selFilters, groupBy, measure, aggregate]);
 
   // relation options for the create dialog (fetched once the dialog opens)
   React.useEffect(() => {
@@ -168,6 +183,61 @@ export function ObjectView({
         toast(`Save failed: ${e.message}`);
         load(); // restore truth
       });
+  };
+
+  const applyView = (state: Record<string, unknown>) => {
+    setQ(String(state.q ?? ""));
+    setView((state.view as "table" | "kanban" | "chart") ?? config.defaultView);
+    setHidden((state.hidden as string[]) ?? []);
+    setSort((state.sort as SortingState) ?? []);
+    setSelFilters((state.selFilters as Record<string, string[]>) ?? {});
+    setGroupBy(String(state.groupBy ?? config.stageField ?? groupables[0]?.key ?? ""));
+    setMeasure(String(state.measure ?? "count"));
+    setAggregate((state.aggregate as { fn: "sum" | "avg" | "min" | "max"; field: string } | null) ?? null);
+  };
+  const resetView = () => applyView({});
+  const saveCurrentView = () => {
+    if (!viewName.trim()) return;
+    api
+      .viewCreate({
+        objectKey: config.key,
+        name: viewName.trim(),
+        layout: view,
+        state: { q, view, hidden, sort, selFilters, groupBy, measure, aggregate },
+      })
+      .then(() => {
+        toast(`View “${viewName.trim()}” saved`);
+        setViewName("");
+        setSavingView(false);
+        loadViews();
+      })
+      .catch((e) => toast(e.message));
+  };
+  const runBulkEdit = async () => {
+    if (!bulkEdit) return;
+    const f = config.fields.find((x) => x.key === bulkEdit.field);
+    if (!f) return;
+    let value: unknown = bulkEdit.value;
+    if (f.type === "number" || f.type === "currency") value = Number(bulkEdit.value);
+    if (f.type === "boolean") value = bulkEdit.value === "true";
+    setBulkEdit((b) => (b ? { ...b, running: true, done: 0 } : b));
+    bulkCancel.current = false;
+    let done = 0;
+    for (const id of selectedIds) {
+      if (bulkCancel.current) break;
+      try {
+        await api.patch(config.key, id, { [bulkEdit.field]: value });
+        done++;
+        setBulkEdit((b) => (b ? { ...b, done } : b));
+      } catch (e) {
+        toast(`Stopped at ${done}: ${(e as Error).message}`);
+        break;
+      }
+    }
+    toast(`Updated ${done} of ${selectedIds.length}`);
+    setBulkEdit(null);
+    setSelection({});
+    load();
   };
 
   const exportCsv = () => {
@@ -240,6 +310,43 @@ export function ObjectView({
             “{q}” <button style={{ border: 0, background: "none", cursor: "pointer", color: "inherit", font: "inherit" }} onClick={() => setQ("")} aria-label="Clear filter">×</button>
           </Badge>
         )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="ghost" icon={<Bookmark size={13} />} data-testid="views-menu">
+              Views{views.length > 0 ? ` · ${views.length}` : ""}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuCheckboxItem checked={false} data-testid="view-all" onCheckedChange={() => resetView()}>
+              All {config.label.toLowerCase()}
+            </DropdownMenuCheckboxItem>
+            {views.map((v) => (
+              <DropdownMenuCheckboxItem
+                key={v.id}
+                checked={false}
+                data-testid={`view-${v.id}`}
+                onCheckedChange={() => applyView(v.state)}
+              >
+                <span style={{ flex: 1 }}>{v.name}</span>
+                <button
+                  type="button"
+                  aria-label={`Delete view ${v.name}`}
+                  data-testid={`view-del-${v.id}`}
+                  style={{ border: 0, background: "none", cursor: "pointer", color: "var(--nx-fg-faint)", marginLeft: 8 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    api.viewDelete(v.id).then(loadViews).catch((err) => toast(err.message));
+                  }}
+                >
+                  <X size={11} />
+                </button>
+              </DropdownMenuCheckboxItem>
+            ))}
+            <DropdownMenuCheckboxItem checked={false} data-testid="view-save" onCheckedChange={() => setSavingView(true)}>
+              <Plus size={12} /> Save current as view…
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         {activeFields(config.fields)
           .filter((f) => (f.type === "select" || f.type === "multiselect") && f.key !== config.stageField)
           .map((f) => {
@@ -370,6 +477,32 @@ export function ObjectView({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        {view === "kanban" && numericFields.length > 0 && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="ghost" icon={<Sigma size={13} />} data-testid="agg-by">
+                {aggregate ? `${aggregate.fn} · ${config.fields.find((f) => f.key === aggregate.field)?.label ?? aggregate.field}` : "Rollup"}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuCheckboxItem checked={!aggregate} data-testid="agg-none" onCheckedChange={() => setAggregate(null)}>
+                None
+              </DropdownMenuCheckboxItem>
+              {numericFields.flatMap((f) =>
+                (["sum", "avg", "min", "max"] as const).map((fn) => (
+                  <DropdownMenuCheckboxItem
+                    key={`${fn}-${f.key}`}
+                    checked={aggregate?.fn === fn && aggregate.field === f.key}
+                    data-testid={`agg-${fn}-${f.key}`}
+                    onCheckedChange={() => setAggregate({ fn, field: f.key })}
+                  >
+                    {fn === "sum" ? "Sum" : fn === "avg" ? "Average" : fn === "min" ? "Min" : "Max"} of {f.label}
+                  </DropdownMenuCheckboxItem>
+                )),
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {canCreate && (
         <Button variant="primary" size="md" icon={<Plus size={14} />} data-testid="new-record" onClick={() => setCreating(true)}>
           New {config.labelOne.toLowerCase()}
@@ -390,6 +523,11 @@ export function ObjectView({
           {canExport && (
           <Button size="sm" icon={<Download size={13} />} data-testid="bulk-export" onClick={exportCsv}>
             {t("bulk.exportCsv")}
+          </Button>
+          )}
+          {canEdit && (
+          <Button size="sm" icon={<Pencil size={13} />} data-testid="bulk-edit" onClick={() => setBulkEdit({ field: "", value: "", running: false, done: 0 })}>
+            Edit
           </Button>
           )}
           {canDelete && (
@@ -421,6 +559,7 @@ export function ObjectView({
           groupField={groupBy}
           groupOptions={groupFieldDef.type === "user" ? users : undefined}
           readOnly={!canEdit}
+          aggregate={aggregate ?? undefined}
         />
       ) : (
         <DataTable
@@ -461,6 +600,99 @@ export function ObjectView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={savingView}
+        onOpenChange={setSavingView}
+        title="Save current view"
+        footer={
+          <>
+            <Button onClick={() => setSavingView(false)}>Cancel</Button>
+            <Button variant="primary" data-testid="view-save-go" onClick={saveCurrentView} disabled={!viewName.trim()}>
+              Save view
+            </Button>
+          </>
+        }
+      >
+        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span className="nxMicro">Name</span>
+          <Input data-testid="view-name" value={viewName} onChange={(e) => setViewName(e.target.value)} placeholder="Hot leads this quarter" />
+          <span style={{ font: "var(--nx-text-meta)", color: "var(--nx-fg-muted)" }}>
+            Captures the current layout, filters, sort, grouping and rollup — visible to the whole workspace.
+          </span>
+        </label>
+      </Dialog>
+
+      <Dialog
+        open={!!bulkEdit}
+        onOpenChange={(o) => { if (!o) { bulkCancel.current = true; setBulkEdit(null); } }}
+        title={`Edit ${selectedIds.length} ${config.label.toLowerCase()}`}
+        footer={
+          <>
+            <Button onClick={() => { bulkCancel.current = true; setBulkEdit(null); }}>Cancel</Button>
+            <Button variant="primary" data-testid="bulk-edit-go" busy={bulkEdit?.running}
+              onClick={runBulkEdit} disabled={!bulkEdit?.field || bulkEdit?.running}>
+              {bulkEdit?.running ? `Updating ${bulkEdit.done}/${selectedIds.length}…` : "Update all"}
+            </Button>
+          </>
+        }
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <span className="nxMicro">Field</span>
+            <select
+              className="nxInput"
+              data-testid="bulk-edit-field"
+              value={bulkEdit?.field ?? ""}
+              onChange={(e) => setBulkEdit((b) => (b ? { ...b, field: e.target.value, value: "" } : b))}
+            >
+              <option value="">Pick a field…</option>
+              {activeFields(config.fields)
+                .filter((f) => ["text", "longText", "number", "currency", "select", "user", "email", "url", "boolean"].includes(f.type) && !f.primary)
+                .map((f) => (
+                  <option key={f.key} value={f.key}>{f.label}</option>
+                ))}
+            </select>
+          </label>
+          {bulkEdit?.field && (() => {
+            const f = config.fields.find((x) => x.key === bulkEdit.field);
+            if (!f) return null;
+            if (f.type === "select" || f.type === "user") {
+              const opts = f.type === "user" ? users : optionValues(f.options);
+              return (
+                <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span className="nxMicro">New value</span>
+                  <select className="nxInput" data-testid="bulk-edit-value" value={bulkEdit.value}
+                    onChange={(e) => setBulkEdit((b) => (b ? { ...b, value: e.target.value } : b))}>
+                    <option value="">—</option>
+                    {opts.map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </label>
+              );
+            }
+            if (f.type === "boolean") {
+              return (
+                <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span className="nxMicro">New value</span>
+                  <select className="nxInput" data-testid="bulk-edit-value" value={bulkEdit.value}
+                    onChange={(e) => setBulkEdit((b) => (b ? { ...b, value: e.target.value } : b))}>
+                    <option value="">—</option>
+                    <option value="true">Yes</option>
+                    <option value="false">No</option>
+                  </select>
+                </label>
+              );
+            }
+            return (
+              <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <span className="nxMicro">New value (empty clears the field)</span>
+                <Input data-testid="bulk-edit-value" value={bulkEdit.value}
+                  onChange={(e) => setBulkEdit((b) => (b ? { ...b, value: e.target.value } : b))} />
+              </label>
+            );
+          })()}
+        </div>
+      </Dialog>
 
       <Dialog
         open={creating}

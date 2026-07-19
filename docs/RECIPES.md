@@ -43,6 +43,9 @@ Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:
 ## Change the base theme
 `src/ui/tokens/tokens.css` holds the `--nx-*` canvas (light + dark) — the static layer skins write over. Fix tokens in nexus-ui, re-sync.
 
+## Save + share list views
+Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.
+
 ## Add a journey
 1. Append to the array in `journeys/run.mjs`: `{ name, feature, async run(page) }` — `feature` must EXACTLY match a manifest row's Feature column (the runner stamps `Last verified` by that string).
 2. Assert VISIBLE outcomes (a value changed, a card moved, a toast) — never a bare 200.

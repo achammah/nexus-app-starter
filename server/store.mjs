@@ -194,6 +194,41 @@ export class Store {
     return (this.teamEvents ?? []).filter((e) => e.teamId === teamId).reverse().slice(0, 50);
   }
 
+  /* ---- saved views: named, per-object, shareable snapshots of list state ---- */
+
+  viewAdd({ objectKey, name, layout, state, visibility, createdBy }) {
+    const v = {
+      id: `vw_${++this.n}`, objectKey, name, layout: layout ?? "table",
+      visibility: visibility === "personal" ? "personal" : "workspace",
+      order: (this.views ?? []).filter((x) => x.objectKey === objectKey).length,
+      state: state ?? {}, createdBy: createdBy ?? null, createdAt: this._now().toISOString(),
+    };
+    (this.views ??= []).push(v);
+    return v;
+  }
+
+  viewList(objectKey, viewer) {
+    return (this.views ?? [])
+      .filter((v) => v.objectKey === objectKey)
+      .filter((v) => v.visibility === "workspace" || !v.createdBy || v.createdBy === viewer)
+      .sort((a, b) => a.order - b.order);
+  }
+
+  viewUpdate(id, patch) {
+    const v = (this.views ?? []).find((x) => x.id === id);
+    if (!v) return null;
+    if (patch.name) v.name = String(patch.name);
+    if (patch.state) v.state = patch.state;
+    if (patch.visibility) v.visibility = patch.visibility === "personal" ? "personal" : "workspace";
+    if (typeof patch.order === "number") v.order = patch.order;
+    return v;
+  }
+
+  viewRemove(id) {
+    this.views = (this.views ?? []).filter((x) => x.id !== id);
+    return true;
+  }
+
   /* ---- record subscriptions (watchers) ---- */
 
   watchToggle(objectKey, id, email, on) {

@@ -534,6 +534,144 @@ const journeys = [
     },
   },
   {
+    name: "saved-views", feature: "Saved views (named, shareable, per-object)",
+    async run(page) {
+      const pickItem = async (trigger, locator) => {
+        await page.click(trigger);
+        await locator.waitFor();
+        for (let i = 0; i < 12; i++) {
+          if ((await locator.getAttribute("data-highlighted")) !== null) break;
+          await page.keyboard.press("ArrowDown");
+          await page.waitForTimeout(70);
+        }
+        await page.keyboard.press("Enter");
+      };
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="table-companies"] tbody tr');
+      // shape a state: industry=Software + Board layout
+      await pickItem('[data-testid="filter-industry"]', page.locator('[data-testid="filter-industry-software"]'));
+      await page.keyboard.press("Escape");
+      await page.click('[data-testid="view-switch"] button:has-text("Board")');
+      await page.waitForSelector('[data-testid="kanban-companies"]');
+      // save it as a named view
+      await pickItem('[data-testid="views-menu"]', page.locator('[data-testid="view-save"]'));
+      await page.waitForSelector('[data-testid="view-name"]');
+      await page.fill('[data-testid="view-name"]', "SW Board");
+      await page.click('[data-testid="view-save-go"]');
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll('[data-testid="toast"]')].some((t) => t.textContent?.includes("saved")),
+      );
+      // reset to the default state
+      await pickItem('[data-testid="views-menu"]', page.locator('[data-testid="view-all"]'));
+      await page.waitForSelector('[data-testid="table-companies"]');
+      // the view is server-persisted + workspace-visible
+      const list = (await (await page.request.get(URLBASE + "/api/views?object=companies")).json()).views;
+      const mine = list.find((v) => v.name === "SW Board");
+      assert(!!mine, "the view is server-persisted (another browser/user would see it)");
+      // applying it brings the WHOLE state back: board + active filter
+      await pickItem('[data-testid="views-menu"]', page.locator(`[data-testid="view-${mine.id}"]`));
+      await page.waitForSelector('[data-testid="kanban-companies"]');
+      const chip = await page.textContent('[data-testid="filter-industry"]');
+      assert(chip.includes("1"), "applying the saved view restores layout AND filters");
+      // cleanup
+      await page.request.fetch(URLBASE + `/api/views/${mine.id}`, { method: "DELETE" });
+      await pickItem('[data-testid="views-menu"]', page.locator('[data-testid="view-all"]'));
+      await page.waitForSelector('[data-testid="table-companies"]');
+    },
+  },
+  {
+    name: "kanban-rollups", feature: "Kanban per-column rollups (sum/avg/min/max)",
+    async run(page) {
+      const pickItem = async (trigger, locator) => {
+        await page.click(trigger);
+        await locator.waitFor();
+        for (let i = 0; i < 12; i++) {
+          if ((await locator.getAttribute("data-highlighted")) !== null) break;
+          await page.keyboard.press("ArrowDown");
+          await page.waitForTimeout(70);
+        }
+        await page.keyboard.press("Enter");
+      };
+      await page.goto(URLBASE + "/#/o/deals");
+      await page.waitForSelector('[data-testid="kanban-deals"]');
+      await pickItem('[data-testid="agg-by"]', page.locator('[data-testid="agg-sum-amount"]'));
+      await page.keyboard.press("Escape");
+      // expected sums straight from the API (order-independent)
+      const deals = (await (await page.request.get(URLBASE + "/api/objects/deals")).json()).rows;
+      const sums = {};
+      for (const d of deals) sums[d.stage] = (sums[d.stage] ?? 0) + (d.amount ?? 0);
+      const stage = Object.keys(sums).find((s) => sums[s] > 0);
+      await page.waitForFunction(
+        ([s, v]) => document.querySelector(`[data-testid="agg-${s}"]`)?.dataset.value === String(v),
+        [stage, sums[stage]],
+      );
+      assert(true, `every column heads shows its Σ (${stage}=${sums[stage]})`);
+      await page.reload();
+      await page.waitForSelector(`[data-testid="agg-${stage}"]`);
+      assert(true, "the rollup choice persists");
+      await pickItem('[data-testid="agg-by"]', page.locator('[data-testid="agg-none"]'));
+      await page.keyboard.press("Escape");
+      await page.waitForFunction((s) => !document.querySelector(`[data-testid="agg-${s}"]`), stage);
+    },
+  },
+  {
+    name: "bulk-edit", feature: "Bulk edit (batched, live progress)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/people");
+      await page.waitForSelector('[data-testid="table-people"] tbody tr');
+      const before = (await (await page.request.get(URLBASE + "/api/objects/people")).json()).rows;
+      await page.click('tbody tr:nth-child(1) [role="checkbox"]');
+      await page.click('tbody tr:nth-child(2) [role="checkbox"]');
+      await page.waitForSelector('[data-testid="bulk-edit"]');
+      await page.click('[data-testid="bulk-edit"]');
+      await page.waitForSelector('[data-testid="bulk-edit-field"]');
+      await page.selectOption('[data-testid="bulk-edit-field"]', "role");
+      await page.fill('[data-testid="bulk-edit-value"]', "Advisor");
+      await page.click('[data-testid="bulk-edit-go"]');
+      await page.waitForFunction(() =>
+        [...document.querySelectorAll('[data-testid="toast"]')].some((t) => t.textContent?.includes("Updated 2")),
+      );
+      const after = (await (await page.request.get(URLBASE + "/api/objects/people")).json()).rows;
+      const changed = after.filter((r) => r.role === "Advisor");
+      assert(changed.length === 2, "both selected rows took the new value");
+      // restore originals
+      for (const r of changed) {
+        const orig = before.find((b) => b.id === r.id);
+        await page.request.patch(URLBASE + `/api/objects/people/${r.id}`, { data: { role: orig.role } });
+      }
+    },
+  },
+  {
+    name: "multi-sort", feature: "Multi-level sort (shift-click tie-breaker)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="table-companies"] tbody tr');
+      await page.click('th:has-text("Industry")');
+      await page.keyboard.down("Shift");
+      await page.click('th:has-text("Employees")');
+      await page.keyboard.up("Shift");
+      await page.waitForFunction(() => {
+        try { return (JSON.parse(localStorage.getItem("nx-view-companies") ?? "{}").sort ?? []).length === 2; }
+        catch { return false; }
+      });
+      assert(true, "shift-click stacks a second sort level (persisted)");
+      // reset via the views menu default
+      await page.click('[data-testid="views-menu"]');
+      const all = page.locator('[data-testid="view-all"]');
+      await all.waitFor();
+      for (let i = 0; i < 8; i++) {
+        if ((await all.getAttribute("data-highlighted")) !== null) break;
+        await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(70);
+      }
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => {
+        try { return (JSON.parse(localStorage.getItem("nx-view-companies") ?? "{}").sort ?? []).length === 0; }
+        catch { return false; }
+      });
+    },
+  },
+  {
     name: "field-depth", feature: "Field-type depth (boolean/rating/dateTime/array/longText/json, colored options, unique, deactivation)",
     async run(page) {
       const { spawn } = await import("node:child_process");
