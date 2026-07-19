@@ -22,14 +22,16 @@ export interface PageDef {
   component: React.ComponentType;
 }
 
-import { Boxes, KeyRound, Palette, Users2, Webhook } from "lucide-react";
+import { Boxes, KeyRound, ListTodo, Palette, Users2, Webhook } from "lucide-react";
 import { ApiKeysPage } from "./pages/ApiKeys";
 import { KitDemo } from "./pages/KitDemo";
+import { TasksPage } from "./pages/Tasks";
 import { TeamPage } from "./pages/Team";
 import { ThemePage } from "./pages/Theme";
 import { WebhooksPage } from "./pages/Webhooks";
 
 export const customPages: PageDef[] = [
+  { key: "tasks", label: "Tasks", icon: <ListTodo size={15} />, component: TasksPage },
   { key: "team", label: "Team", icon: <Users2 size={15} />, component: TeamPage },
   { key: "webhooks", label: "Webhooks", icon: <Webhook size={15} />, component: WebhooksPage },
   { key: "apikeys", label: "API keys", icon: <KeyRound size={15} />, component: ApiKeysPage },

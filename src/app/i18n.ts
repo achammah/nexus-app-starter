@@ -29,6 +29,17 @@ const dicts = {
     "import.close": "Close",
     "import.summary": "{created} created · {restored} restored · {skipped} skipped · {failed} failed",
     "import.failedCsv": "Download failed rows (CSV)",
+    "tasks.new": "New task",
+    "tasks.titlePlaceholder": "What needs doing?",
+    "tasks.create": "Create",
+    "tasks.add": "Add",
+    "tasks.none": "No tasks yet.",
+    "tasks.deleted": "(deleted)",
+    "tasks.bucket.overdue": "Overdue",
+    "tasks.bucket.today": "Today",
+    "tasks.bucket.week": "This week",
+    "tasks.bucket.later": "Later",
+    "tasks.bucket.done": "Done",
   },
 } as const;
 
