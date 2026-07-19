@@ -29,6 +29,11 @@ const dicts = {
     "import.close": "Close",
     "import.summary": "{created} created · {restored} restored · {skipped} skipped · {failed} failed",
     "import.failedCsv": "Download failed rows (CSV)",
+    "dup.open": "Find duplicates",
+    "dup.title": "Possible duplicates — {label}",
+    "dup.none": "No duplicates found.",
+    "dup.review": "Review merge",
+    "dup.panelTitle": "Possible duplicates",
   },
 } as const;
 

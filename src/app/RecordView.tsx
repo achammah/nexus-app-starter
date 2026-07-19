@@ -1,6 +1,7 @@
 import * as React from "react";
-import { api, type AppConfig } from "./api";
+import { api, type AppConfig, type DupCandidate } from "./api";
 import { useToast } from "./App";
+import { t } from "./i18n";
 import { RecordPage, type RelatedList } from "../ui/record-core/RecordPage";
 import { formatCell } from "../ui/record-core/DataTable";
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
@@ -32,6 +33,7 @@ export function RecordView({
   const [missing, setMissing] = React.useState(false);
   const [relationOptions, setRelationOptions] = React.useState<Record<string, string[]>>({});
   const [related, setRelated] = React.useState<RelatedList[]>([]);
+  const [dups, setDups] = React.useState<DupCandidate[]>([]);
   const [files, setFiles] = React.useState<FileMeta[]>([]);
   const [watchState, setWatchState] = React.useState<{ on: boolean; count: number }>({ on: false, count: 0 });
   const [mentionOptions, setMentionOptions] = React.useState<string[]>([]);
@@ -43,6 +45,7 @@ export function RecordView({
     api.get(config.key, id).then(setRow).catch(() => setMissing(true));
     api.timeline(config.key, id).then(setTimeline).catch(() => {});
     api.files(config.key, id).then(setFiles).catch(() => {});
+    api.duplicatesFor(config.key, id).then(setDups).catch(() => {});
   }, [config.key, id]);
 
   React.useEffect(load, [load]);
@@ -109,6 +112,23 @@ export function RecordView({
   const own = !!(sessionUser && row._createdBy === sessionUser);
   const readOnly = !can(role, config, "edit", { own });
 
+  /* "Possible duplicates" — a SYNTHETIC related section (no library surface):
+     candidate name in the primary slot, the matched rules + the action in the
+     meta slot, so the row announces what its single click does. Clicking hands
+     the pair to the list (nx-pending-merge) where the existing merge dialog
+     opens preselected; the panel only INFORMS — merge rights gate the dialog. */
+  const dupSection: RelatedList = {
+    key: "duplicates",
+    label: t("dup.panelTitle"),
+    rows: dups.map((d) => ({ id: d.id, name: d.name, why: `${d.reasons.join(" · ")} · ${t("dup.review")}` })),
+    primaryKey: "name",
+    metaKey: "why",
+    onOpen: (rid) => {
+      sessionStorage.setItem("nx-pending-merge", JSON.stringify([id, rid]));
+      go(`#/o/${config.key}`);
+    },
+  };
+
   return (
     <RecordPage
       config={config}
@@ -116,7 +136,7 @@ export function RecordView({
       timeline={timeline}
       onBack={onBack}
       relationOptions={relationOptions}
-      related={related}
+      related={dups.length ? [...related, dupSection] : related}
       userOptions={appConfig.users ?? []}
       readOnly={readOnly}
       mentionOptions={mentionOptions}

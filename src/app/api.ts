@@ -129,7 +129,14 @@ export const api = {
     j<ApiKeyMeta & { secret: string }>("/api/apikeys", { method: "POST", body: JSON.stringify({ name, role }) }),
   apiKeyRevoke: (id: string) =>
     j<{ ok: boolean }>(`/api/apikeys/${id}/revoke`, { method: "POST", body: "{}" }),
+  duplicatesFor: (obj: string, id: string) =>
+    j<{ candidates: DupCandidate[] }>(`/api/objects/${obj}/${id}/duplicates`).then((r) => r.candidates),
+  duplicateGroups: (obj: string) =>
+    j<{ groups: DupGroup[] }>(`/api/objects/${obj}/duplicates`).then((r) => r.groups),
 };
+
+export interface DupCandidate { id: string; name: string; reasons: string[] }
+export interface DupGroup { ids: string[]; reasons: string[] }
 
 export interface ImportResult { index: number; verdict: "created" | "restored" | "skipped" | "failed"; id?: string; reason?: string }
 export interface ImportTotals { created: number; restored: number; skipped: number; failed: number }
