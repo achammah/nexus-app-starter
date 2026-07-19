@@ -40,6 +40,8 @@ Journeys you add bind inside your port band — but the BASE suite boots fixed p
    ```
    Run the suite, let the trap release. A lock older than 15 minutes is stale — steal it.
 
+Reserved-port traps inside otherwise-free bands on macOS: **5000 and 7000** (ControlCenter/AirPlay listens on both — the runner reports "server failed to boot") and **5060/5061** (Chromium refuses them, ERR_UNSAFE_PORT). Skip all four when picking ports.
+
 ## PR checklist (goes in the PR body)
 
 - [ ] All journeys green locally (count + tail pasted)
