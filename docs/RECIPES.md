@@ -94,6 +94,12 @@ Deleting is recoverable: rows get a `_deletedAt` stamp and move to the per-objec
 
 Creating a record whose unique field matches a TRASHED row restores that row and applies the incoming data (the response is `200` with `_resurrected: true` and the original id) — imports and re-syncs converge instead of colliding. A collision with a live row still 400s.
 
+## Find duplicates
+
+Every object gets deterministic duplicate detection — no scoring, no AI, each match explainable in one sentence: same normalized primary (case, accents, spacing and punctuation ignored); one normalized primary beginning the other at a word boundary when the shorter is ≥ 8 characters; the same email-field value; the same url-field domain. Unique fields are skipped — the server already makes live collisions impossible, so a unique match can't exist. Trashed rows never match.
+
+Two surfaces: a record with suspected twins shows a **Possible duplicates** section (each candidate names its matched rule; one click opens the merge dialog preselected — Cancel moves nothing and leaves the pair selected on the list), and any list's **Find duplicates** action sweeps the whole object into groups with a per-group Review merge. Read-only API: `GET /api/objects/:key/duplicates` (groups) and `GET /api/objects/:key/:id/duplicates` (one record's candidates) — both ride the `view` permission; merging stays behind `edit`+`delete`.
+
 ## Merge duplicates
 
 Select 2–10 rows → **Merge** → pick the survivor. The preview shows the final value per field and where inherited values come from: the winner keeps its values on conflict and absorbs the losers' non-empty fields into its own empties. Relation fields elsewhere that pointed at a loser re-point to the winner; timelines and watchers travel; losers land in the trash. `POST /api/objects/:key/merge {ids, winnerId, preview?}`.
