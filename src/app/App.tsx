@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Moon, Sun, Users, Table2, Kanban, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, Sun, Users, Table2, Kanban, X } from "lucide-react";
 import { api, type AppConfig } from "./api";
 import { favList, favToggle, type Fav } from "./favorites";
 import { Star } from "lucide-react";
@@ -13,6 +13,8 @@ import { ChatDock } from "./ChatDock";
 import { Login } from "./Login";
 import { Button } from "../ui/primitives/Button";
 import { Tip } from "../ui/primitives/fields";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../ui/components/ui/sheet";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/components/ui/dropdown-menu";
 
 /* Hash routes: #/o/<object> · #/o/<object>/r/<id> · #/p/<page>. Hand-rolled (no router dep). */
 function useHashRoute() {
@@ -68,6 +70,8 @@ export function App() {
       window.removeEventListener("storage", onFavs);
     };
   }, []);
+  // mobile nav drawer: burger (≤768px, both nav modes) opens a left Sheet
+  const [drawerOpen, setDrawerOpen] = React.useState(false);
   /* ---- side peek: one right-edge panel, records stack onto it (open a related
      record → push; Escape/back → pop; empty → close). The list stays behind. ---- */
   const [peek, setPeek] = React.useState<{ stack: { obj: string; id: string }[]; set: string[] } | null>(null);
@@ -91,9 +95,10 @@ export function App() {
       return null;
     });
   }, []);
-  // Escape ladder: an editor blurs first; then pop one level; then close
+  // Escape ladder: an editor blurs first; then pop one level; then close.
+  // The drawer sits above the ladder — while it's open, Escape belongs to it (Radix).
   React.useEffect(() => {
-    if (!peek) return;
+    if (!peek || drawerOpen) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || e.defaultPrevented) return;
       const t = e.target as HTMLElement;
@@ -102,7 +107,7 @@ export function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [peek, popPeek]);
+  }, [peek, popPeek, drawerOpen]);
 
   const [err, setErr] = React.useState<string | null>(null);
   const [toasts, setToasts] = React.useState<Toast[]>([]);
@@ -232,6 +237,85 @@ export function App() {
     | "owner" | "admin" | "member" | "viewer" | undefined;
   const roleFor = (o: typeof active) => (o.teamScoped && auth?.enabled ? activeTeamRole ?? "viewer" : auth?.role);
 
+  /* ---- nav chrome: one knob (config app.nav), three surfaces (sidebar · top bar ·
+     mobile drawer) sharing the same item/search renderers so they can't drift ---- */
+  const navMode = config.app.nav ?? "side";
+  const visiblePages = customPages.filter((p) => (config.features as Record<string, boolean> | undefined)?.[p.key] !== false);
+  // every drawer path closes the drawer — including a click on the CURRENT object (no route change)
+  const goNav = (h: string) => { route.go(h); setDrawerOpen(false); };
+  const brand = (
+    <div className="sideBrand">
+      <span
+        className="sideBrandMark"
+        data-testid="brand-mark"
+        style={logo?.markBg ? { background: logo.markBg, color: logo.markFg ?? "#ffffff", boxShadow: "none" } : undefined}
+      >
+        {logo?.url ? <img src={logo.url} alt="" style={{ width: 18, height: 18 }} /> : logo?.mark ?? config.app.name.slice(0, 1)}
+      </span>
+      <span className="sideBrandName" data-testid="app-name">
+        {logo?.wordmark ?? config.app.name}
+        {logo?.wordmarkAccent ? <> <b>{logo.wordmarkAccent}</b></> : null}
+      </span>
+    </div>
+  );
+  const burger = (
+    <button className="navItem navBurger" data-testid="nav-burger" aria-label="Open menu" onClick={() => setDrawerOpen(true)}>
+      <Menu size={16} />
+    </button>
+  );
+  // the drawer search mirrors the topbar exactly: go to the active object's LIST first,
+  // THEN dispatch — a bare event dispatch does nothing visible from a record/custom page
+  const searchBox = (inDrawer?: boolean) => (
+    <label className={inDrawer ? "topSearch drawerSearch" : "topSearch"} data-testid={inDrawer ? undefined : "global-search"}>
+      <input
+        placeholder={`Search ${active.label.toLowerCase()}…`}
+        data-testid={inDrawer ? "drawer-search" : undefined}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            const v = (e.target as HTMLInputElement).value;
+            route.go(`#/o/${active.key}`);
+            window.dispatchEvent(new CustomEvent("nx-search", { detail: v }));
+            if (inDrawer) setDrawerOpen(false);
+          }
+        }}
+      />
+      {!inDrawer && <span className="kbd">⌘K</span>}
+    </label>
+  );
+  const navButtons = (prefix: "" | "drawer-") => (
+    <>
+      {config.objects.map((o) => (
+        <button
+          key={o.key}
+          className={`navItem ${o.key === active.key && !route.recordId && !route.page ? "navItem--active" : ""}`}
+          data-testid={`${prefix}nav-${o.key}`}
+          onClick={() => (prefix ? goNav(`#/o/${o.key}`) : route.go(`#/o/${o.key}`))}
+        >
+          <span className="navIcon">{ICONS[o.icon ?? ""] ?? <LayoutGrid size={15} />}</span>
+          {o.label}
+          <span className="navCount">{counts[o.key] ?? ""}</span>
+        </button>
+      ))}
+      {visiblePages.map((p) => (
+        <button
+          key={p.key}
+          className={`navItem ${route.page === p.key ? "navItem--active" : ""}`}
+          data-testid={`${prefix}nav-p-${p.key}`}
+          onClick={() => (prefix ? goNav(`#/p/${p.key}`) : route.go(`#/p/${p.key}`))}
+        >
+          <span className="navIcon">{p.icon ?? <LayoutGrid size={15} />}</span>
+          {p.label}
+        </button>
+      ))}
+    </>
+  );
+  const themeButton = (
+    <Tip label="Toggle theme">
+      <Button variant="ghost" size="sm" aria-label="Toggle theme" data-testid="theme-toggle" onClick={toggleTheme}
+        icon={<span style={{ display: "grid" }}><Sun size={14} className="sunIcon" /><span style={{ display: "none" }}><Moon size={14} /></span></span>} />
+    </Tip>
+  );
+
   // palette actions follow what's on screen: a record (peek or full page) beats the list
   const curRec = peek ? peek.stack[peek.stack.length - 1] : route.recordId ? { obj: active.key, id: route.recordId } : null;
   const paletteActions: { id: string; label: string; run: () => void }[] = [];
@@ -255,24 +339,78 @@ export function App() {
 
   return (
     <ToastCtx.Provider value={toast}>
-      <div className="shell">
+      <div className={`shell${navMode === "top" ? " shell--top" : ""}`}>
+        {navMode === "top" && (
+          <header className="topNav" data-testid="nav-top">
+            {burger}
+            {brand}
+            <nav className="topNavItems">{navButtons("")}</nav>
+            <span style={{ flex: 1 }} />
+            <div className="topNavTools">
+              {favs.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="navItem topNavFavs" data-testid="topnav-favs">
+                      <span className="navIcon"><Star size={13} /></span>
+                      Favorites
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {favs.map((f) => (
+                      <DropdownMenuItem key={`${f.obj}:${f.id}`} data-testid={`fav-link-${f.id}`} onSelect={() => route.go(`#/o/${f.obj}/r/${f.id}`)}>
+                        {f.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {teams.length > 0 && (
+                <select
+                  className="nxCellEdit topNavTeam"
+                  data-testid="team-switch"
+                  value={activeTeam ?? ""}
+                  onChange={(e) => {
+                    localStorage.setItem("nx-team", e.target.value);
+                    setActiveTeam(e.target.value);
+                  }}
+                >
+                  {teams.map((t) => (
+                    <option key={t.slug} value={t.slug}>{t.name} · {t.role}</option>
+                  ))}
+                </select>
+              )}
+              {config.demo && (
+                <span
+                  data-testid="demo-badge"
+                  title="Seeded fictional rows — replace via starter.config.json or the API"
+                  style={{
+                    font: "var(--nx-text-meta)", fontWeight: 600, borderRadius: 999, padding: "1px 8px",
+                    background: "var(--nx-warn-soft, var(--nx-accent-soft))", color: "var(--nx-warn, var(--nx-accent))",
+                  }}
+                >
+                  Demo data
+                </span>
+              )}
+              {searchBox()}
+            </div>
+            {themeButton}
+            {auth?.user && (
+              <button
+                className="navItem topNavSignout"
+                data-testid="logout"
+                onClick={() => fetch("/api/auth/logout", { method: "POST" }).then(probeAuth)}
+              >
+                Sign out
+              </button>
+            )}
+          </header>
+        )}
+        {navMode === "side" && (
         <aside className="side">
-          <div className="sideBrand">
-            <span
-              className="sideBrandMark"
-              data-testid="brand-mark"
-              style={logo?.markBg ? { background: logo.markBg, color: logo.markFg ?? "#ffffff", boxShadow: "none" } : undefined}
-            >
-              {logo?.url ? <img src={logo.url} alt="" style={{ width: 18, height: 18 }} /> : logo?.mark ?? config.app.name.slice(0, 1)}
-            </span>
-            <span className="sideBrandName" data-testid="app-name">
-              {logo?.wordmark ?? config.app.name}
-              {logo?.wordmarkAccent ? <> <b>{logo.wordmarkAccent}</b></> : null}
-            </span>
-          </div>
+          {brand}
           {teams.length > 0 && (
             <select
-              className="nxCellEdit"
+              className="nxCellEdit sideTeam"
               data-testid="team-switch"
               value={activeTeam ?? ""}
               style={{ margin: "0 8px", width: "calc(100% - 16px)", background: "var(--nx-chrome-active-bg)", color: "var(--nx-chrome-fg)", borderColor: "var(--nx-chrome-border)" }}
@@ -289,33 +427,12 @@ export function App() {
           <div className="sideSection">
             <span className="nxMicro">Records</span>
             <nav className="sideNav" data-testid="nav">
-              {config.objects.map((o) => (
-                <button
-                  key={o.key}
-                  className={`navItem ${o.key === active.key && !route.recordId && !route.page ? "navItem--active" : ""}`}
-                  data-testid={`nav-${o.key}`}
-                  onClick={() => route.go(`#/o/${o.key}`)}
-                >
-                  <span className="navIcon">{ICONS[o.icon ?? ""] ?? <LayoutGrid size={15} />}</span>
-                  {o.label}
-                  <span className="navCount">{counts[o.key] ?? ""}</span>
-                </button>
-              ))}
-              {customPages.filter((p) => (config.features as Record<string, boolean> | undefined)?.[p.key] !== false).map((p) => (
-                <button
-                  key={p.key}
-                  className={`navItem ${route.page === p.key ? "navItem--active" : ""}`}
-                  data-testid={`nav-p-${p.key}`}
-                  onClick={() => route.go(`#/p/${p.key}`)}
-                >
-                  <span className="navIcon">{p.icon ?? <LayoutGrid size={15} />}</span>
-                  {p.label}
-                </button>
-              ))}
+              {navButtons("")}
+              {burger}
             </nav>
           </div>
           {favs.length > 0 && (
-            <div className="sideSection" data-testid="fav-shelf">
+            <div className="sideSection sideFavs" data-testid="fav-shelf">
               <span className="nxMicro">Favorites</span>
               <nav className="sideNav">
                 {favs.map((f) => (
@@ -358,31 +475,19 @@ export function App() {
             )}
           </div>
         </aside>
+        )}
 
         <div className="main">
-          <header className="top">
-            <span className="crumb">
-              <b>{route.page ? customPages.find((p) => p.key === route.page)?.label ?? route.page : active.label}</b>
-              {route.recordId && <span>/ record</span>}
-            </span>
-            <label className="topSearch" data-testid="global-search">
-              <input
-                placeholder={`Search ${active.label.toLowerCase()}…`}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const v = (e.target as HTMLInputElement).value;
-                    route.go(`#/o/${active.key}`);
-                    window.dispatchEvent(new CustomEvent("nx-search", { detail: v }));
-                  }
-                }}
-              />
-              <span className="kbd">⌘K</span>
-            </label>
-            <Tip label="Toggle theme">
-              <Button variant="ghost" size="sm" aria-label="Toggle theme" data-testid="theme-toggle" onClick={toggleTheme}
-                icon={<span style={{ display: "grid" }}><Sun size={14} className="sunIcon" /><span style={{ display: "none" }}><Moon size={14} /></span></span>} />
-            </Tip>
-          </header>
+          {navMode === "side" && (
+            <header className="top">
+              <span className="crumb">
+                <b>{route.page ? customPages.find((p) => p.key === route.page)?.label ?? route.page : active.label}</b>
+                {route.recordId && <span>/ record</span>}
+              </span>
+              {searchBox()}
+              {themeButton}
+            </header>
+          )}
 
           <main className="content">
             {route.page ? (
@@ -480,6 +585,65 @@ export function App() {
             <div className="toast" key={t.id} data-testid="toast">{t.text}</div>
           ))}
         </div>
+
+        {/* mobile nav drawer — everything the sidebar holds, behind the burger */}
+        <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <SheetContent side="left" className="navDrawer" data-testid="nav-drawer">
+            <SheetHeader>
+              <SheetTitle>Menu</SheetTitle>
+              <SheetDescription>Navigate to any object, page, or favorite.</SheetDescription>
+            </SheetHeader>
+            <div className="drawerBody">
+              {searchBox(true)}
+              <nav className="sideNav">{navButtons("drawer-")}</nav>
+              {favs.length > 0 && (
+                <div className="drawerSection">
+                  <span className="nxMicro">Favorites</span>
+                  <nav className="sideNav">
+                    {favs.map((f) => (
+                      <button
+                        key={`${f.obj}:${f.id}`}
+                        className="navItem"
+                        data-testid={`drawer-fav-${f.id}`}
+                        onClick={() => goNav(`#/o/${f.obj}/r/${f.id}`)}
+                      >
+                        <span className="navIcon"><Star size={13} /></span>
+                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label}</span>
+                      </button>
+                    ))}
+                  </nav>
+                </div>
+              )}
+              {teams.length > 0 && (
+                <select
+                  className="nxCellEdit drawerTeam"
+                  data-testid="drawer-team-switch"
+                  value={activeTeam ?? ""}
+                  onChange={(e) => {
+                    localStorage.setItem("nx-team", e.target.value);
+                    setActiveTeam(e.target.value);
+                  }}
+                >
+                  {teams.map((t) => (
+                    <option key={t.slug} value={t.slug}>{t.name} · {t.role}</option>
+                  ))}
+                </select>
+              )}
+              {auth?.user && (
+                <button
+                  className="navItem"
+                  data-testid="drawer-signout"
+                  onClick={() => {
+                    setDrawerOpen(false);
+                    fetch("/api/auth/logout", { method: "POST" }).then(probeAuth);
+                  }}
+                >
+                  Sign out
+                </button>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
 
         <CommandPalette config={config} go={route.go} actions={paletteActions} />
         <ChatDock embedUrl={config.chat?.embedUrl} />
