@@ -2712,6 +2712,363 @@ const journeys = [
       }
     },
   },
+  // --- lane: relations-depth
+  {
+    name: "rel-identity", feature: "Relation identity (store ids, read labels)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5150", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5150";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        // a seeded LABEL value normalized to an id at boot, projected back as the label
+        await p2.goto(B + "/#/o/vendors");
+        await p2.waitForSelector('[data-testid="rel-ve_2-rep"]');
+        assert((await p2.textContent('[data-testid="rel-ve_2-rep"]')) === "Jules Okafor", "seeded label projects from its normalized id");
+        const ve2 = await (await p2.request.get(B + "/api/objects/vendors/ve_2")).json();
+        assert(ve2._refs?.rep === "re_2", `the stored link is the ID (${JSON.stringify(ve2._refs?.rep)})`);
+        // the picker lists fullName-primary targets by JOINED name and saves by id
+        await p2.goto(B + "/#/o/vendors/r/ve_1");
+        await p2.waitForSelector('[data-testid="field-rep"]');
+        await p2.click('[data-testid="field-rep"]');
+        await p2.waitForSelector('[data-testid="field-rep-search"]');
+        await p2.fill('[data-testid="field-rep-search"]', "nora");
+        await p2.waitForSelector('[data-testid="field-rep-opt-nora-lindqvist"][data-rel-id="re_1"]');
+        await p2.keyboard.press("ArrowDown");
+        await p2.keyboard.press("Enter");
+        await p2.waitForFunction(() => document.querySelector('[data-testid="field-rep-value"]')?.textContent?.includes("Nora Lindqvist"));
+        assert(true, "picker shows the joined name and sets the relation");
+        let ve1;
+        for (let i = 0; i < 20; i++) {
+          ve1 = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+          if (ve1._refs?.rep === "re_1") break;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        assert(ve1._refs?.rep === "re_1", "the pick saved the ID, not the label");
+        // the rep's record shows the inverse-labeled related section
+        await p2.goto(B + "/#/o/reps/r/re_1");
+        await p2.waitForSelector('[data-testid="related-vendors"]');
+        const sec = await p2.textContent('[data-testid="related-vendors"]');
+        assert(sec?.includes("Vendors covered") && sec?.includes("Brightline Analytics"), "inverse label names the related section and the vendor lists in it");
+        // RENAME the rep — every inbound surface follows, NO sweep ran
+        await p2.request.patch(B + "/api/objects/reps/re_1", { data: { personName: { first: "Nora", last: "Vasquez" } } });
+        await p2.goto(B + "/#/o/vendors");
+        await p2.waitForSelector('[data-testid="rel-ve_1-rep"]');
+        await p2.waitForFunction(() => document.querySelector('[data-testid="rel-ve_1-rep"]')?.textContent === "Nora Vasquez");
+        assert(true, "renaming the target re-projects every inbound cell (no sweep, id linkage)");
+        const ve1b = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert(ve1b._refs?.rep === "re_1" && ve1b.rep === "Nora Vasquez", "id survives the rename; the label re-projects");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "rel-many", feature: "Many-to-many relations (one committed diff on close)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5155", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5155";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        let patches = 0;
+        p2.on("request", (rq) => { if (rq.method() === "PATCH" && rq.url().includes("/api/objects/vendors/ve_1")) patches++; });
+        await p2.goto(B + "/#/o/vendors/r/ve_1");
+        await p2.waitForSelector('[data-testid="field-certifications-open"]');
+        await p2.click('[data-testid="field-certifications-open"]');
+        await p2.waitForSelector('[data-testid="field-certifications-opt-ce_1"]');
+        // toggle TWO options — no network call fires while the picker is open
+        await p2.click('[data-testid="field-certifications-opt-ce_1"]');
+        await p2.click('[data-testid="field-certifications-opt-ce_3"]');
+        assert(patches === 0, "toggles stay local while the picker is open");
+        await p2.keyboard.press("Escape"); // close → the accumulated diff commits ONCE
+        await p2.waitForSelector('[data-testid="field-certifications-chip-ce_1"]');
+        await p2.waitForSelector('[data-testid="field-certifications-chip-ce_3"]');
+        for (let i = 0; i < 20 && patches === 0; i++) await new Promise((r) => setTimeout(r, 150));
+        assert(patches === 1, `closing commits exactly ONE patch (${patches})`);
+        const ve1 = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert(JSON.stringify(ve1._refs?.certifications) === '["ce_1","ce_3"]', "both ids landed in one write");
+        assert(JSON.stringify(ve1.certifications) === '["ISO 9001","GDPR Ready"]', "the field reads as projected labels");
+        // reopen: the pending set re-seeds from what is attached
+        await p2.click('[data-testid="field-certifications-open"]');
+        await p2.waitForSelector('[data-testid="field-certifications-opt-ce_1"]');
+        const row1 = await p2.textContent('[data-testid="field-certifications-opt-ce_1"]');
+        assert(row1?.includes("✓"), "reopening shows the attached state checked");
+        await p2.keyboard.press("Escape");
+        // chip detach commits immediately (a direct action, not a picker diff)
+        const before = patches;
+        await p2.click('[data-testid="field-certifications-rm-ce_3"]');
+        for (let i = 0; i < 20; i++) {
+          const r = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+          if (JSON.stringify(r._refs?.certifications) === '["ce_1"]') break;
+          await new Promise((r2) => setTimeout(r2, 200));
+        }
+        const after = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert(JSON.stringify(after._refs?.certifications) === '["ce_1"]', "chip detach removes one link");
+        assert(patches === before + 1, "detach is one direct write");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "rel-poly", feature: "Polymorphic relations (cross-type search, type labels)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5165", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5165";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/o/vendorNotes/r/vn_1");
+        await p2.waitForSelector('[data-testid="field-about"]');
+        await p2.click('[data-testid="field-about"]');
+        await p2.waitForSelector('[data-testid="field-about-search"]');
+        // the DISAMBIGUATION case: "Atlas" exists as a vendor AND as a rep —
+        // one search shows both, each row carrying its type label
+        await p2.fill('[data-testid="field-about-search"]', "Atlas");
+        await p2.waitForSelector('[data-rel-id="ve_4"]');
+        await p2.waitForSelector('[data-rel-id="re_3"]');
+        assert((await p2.locator('[data-rel-id="ve_4"] [data-testid="rel-type-vendors"]').count()) === 1, "the vendor row carries its type tag");
+        assert((await p2.locator('[data-rel-id="re_3"] [data-testid="rel-type-reps"]').count()) === 1, "the rep row carries its type tag");
+        // pick the REP Atlas — same label as the vendor; disambiguated by identity
+        await p2.click('[data-rel-id="re_3"]');
+        let vn;
+        for (let i = 0; i < 20; i++) {
+          vn = await (await p2.request.get(B + "/api/objects/vendorNotes/vn_1")).json();
+          if (vn._refs?.about?.id === "re_3") break;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        assert(vn._refs?.about?.object === "reps" && vn._refs?.about?.id === "re_3", `picked the REP Atlas (${JSON.stringify(vn._refs?.about)})`);
+        // now the VENDOR Atlas — same label, different identity
+        await p2.click('[data-testid="field-about"]');
+        await p2.fill('[data-testid="field-about-search"]', "Atlas");
+        await p2.waitForSelector('[data-rel-id="ve_4"]');
+        await p2.click('[data-rel-id="ve_4"]');
+        for (let i = 0; i < 20; i++) {
+          vn = await (await p2.request.get(B + "/api/objects/vendorNotes/vn_1")).json();
+          if (vn._refs?.about?.id === "ve_4") break;
+          await new Promise((r) => setTimeout(r, 200));
+        }
+        assert(vn._refs?.about?.object === "vendors" && vn._refs?.about?.id === "ve_4", "picking the same-named VENDOR links the other identity");
+        // reverse side: the poly inverseLabel names the section on a target record
+        await p2.goto(B + "/#/o/reps/r/re_1");
+        await p2.waitForSelector('[data-testid="related-vendorNotes"]');
+        const sec = await p2.textContent('[data-testid="related-vendorNotes"]');
+        assert(sec?.includes("Notes") && sec?.includes("Quota review"), "a poly-linked note lists on its target's record");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "rel-integrity", feature: "Relation integrity (merge re-points ids; trash keeps, destroy severs)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5170", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5170";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const req = page.request;
+        // MERGE: ve_2 links re_2; merging re_2 into re_1 re-points the id
+        const merged = await req.post(B + "/api/objects/reps/merge", { data: { ids: ["re_1", "re_2"], winnerId: "re_1" } });
+        assert(merged.ok(), "reps merge commits");
+        const ve2 = await (await req.get(B + "/api/objects/vendors/ve_2")).json();
+        assert(ve2._refs?.rep === "re_1", `merge re-pointed the vendor's link to the winner (${ve2._refs?.rep})`);
+        assert(ve2.rep === "Nora Lindqvist", "…and it reads as the winner's label");
+        // TRASH keeps the link alive: label still projects, restore heals silently
+        await req.delete(B + "/api/objects/reps/re_1");
+        let after = await (await req.get(B + "/api/objects/vendors/ve_2")).json();
+        assert(after._refs?.rep === "re_1" && after.rep === "Nora Lindqvist", "a trashed target keeps projecting its label");
+        await req.post(B + "/api/objects/reps/re_1/restore", { data: {} });
+        after = await (await req.get(B + "/api/objects/vendors/ve_2")).json();
+        assert(after._refs?.rep === "re_1", "restore heals with zero writes to the pointing rows");
+        // DESTROY severs: ve_2 holds certifications [ce_1, ce_2]; destroying ce_2 removes it from the list
+        const destroyed = await req.delete(B + "/api/objects/certifications/ce_2/destroy");
+        assert(destroyed.ok(), "certification destroyed");
+        after = await (await req.get(B + "/api/objects/vendors/ve_2")).json();
+        assert(JSON.stringify(after._refs?.certifications) === '["ce_1"]', "destroy severed the inbound many-link");
+        assert(JSON.stringify(after.certifications) === '["ISO 9001"]', "the projected labels shrink with it");
+        // and a destroyed SINGLE target empties the field
+        await req.delete(B + "/api/objects/reps/re_1");
+        await req.delete(B + "/api/objects/reps/re_1/destroy");
+        after = await (await req.get(B + "/api/objects/vendors/ve_2")).json();
+        assert(!after._refs?.rep && (after.rep === null || after.rep === "" || after.rep === undefined), `destroying the rep empties the vendor's field (${JSON.stringify(after.rep)})`);
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "rel-create", feature: "Composite-aware create dialog (shaped drafts + id-mode relations)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5175", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5175";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        // a fullName-primary + money record authored ENTIRELY in the New dialog
+        await p2.goto(B + "/#/o/reps");
+        await p2.waitForSelector('[data-testid="new-record"]');
+        await p2.click('[data-testid="new-record"]');
+        await p2.waitForSelector('[data-testid="field-new-personName-first"]');
+        await p2.fill('[data-testid="field-new-personName-first"]', "Zoe");
+        await p2.fill('[data-testid="field-new-personName-last"]', "Marsh");
+        await p2.locator('[data-testid="field-new-personName-last"]').blur();
+        await p2.fill('[data-testid="field-new-quota-amount"]', "120000");
+        await p2.fill('[data-testid="field-new-quota-code"]', "eur");
+        await p2.locator('[data-testid="field-new-quota-code"]').blur();
+        await p2.click('[data-testid="create-confirm"]');
+        await p2.waitForSelector('[data-testid="record-name"]');
+        const title = (await p2.textContent('[data-testid="record-name"]'))?.trim();
+        assert(title === "Zoe Marsh", `the shaped draft created a joined-name record (${title})`);
+        const reps = (await (await p2.request.get(B + "/api/objects/reps")).json()).rows;
+        const zoe = reps.find((r) => r.personName?.first === "Zoe");
+        assert(zoe?.quota?.amount === 120000 && zoe?.quota?.code === "EUR", "money draft saved shaped, code uppercased");
+        // a poly relation authored in the New dialog: optgrouped select, saves the REF
+        await p2.goto(B + "/#/o/vendorNotes");
+        await p2.waitForSelector('[data-testid="new-record"]');
+        await p2.click('[data-testid="new-record"]');
+        await p2.waitForSelector('[data-testid="new-title"]');
+        await p2.fill('[data-testid="new-title"]', "Freight terms");
+        await p2.selectOption('[data-testid="new-about"]', "vendors:ve_2");
+        await p2.click('[data-testid="create-confirm"]');
+        await p2.waitForSelector('[data-testid="record-name"]');
+        const notes = (await (await p2.request.get(B + "/api/objects/vendorNotes")).json()).rows;
+        const note = notes.find((n) => n.title === "Freight terms");
+        assert(note?._refs?.about?.object === "vendors" && note?._refs?.about?.id === "ve_2", "the dialog saved a typed ref");
+        assert(note?.about === "Cargolane", "…projected back as the target's label");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "rel-replay", feature: "Relation identity replays (warehouse log, rename-safe)",
+    async run() {
+      const http = await import("node:http");
+      const { spawn } = await import("node:child_process");
+      // same mock-warehouse contract as warehouse-persistence, depth fixture on top
+      const table = [];
+      const mock = http.createServer((rq, rs) => {
+        let b = "";
+        rq.on("data", (c) => (b += c));
+        rq.on("end", () => {
+          const m = rq.url.match(/^\/api\/public\/v1\/tools\/[^/]+\/execute$/);
+          if (!m || rq.method !== "POST") { rs.statusCode = 404; return rs.end("{}"); }
+          const { action, input } = JSON.parse(b);
+          let result;
+          if (action === "google_cloud-run-query") {
+            const q = String(input.query);
+            if (/^\s*INSERT\s/i.test(q)) {
+              for (const mt of q.matchAll(/\((\d+), TIMESTAMP '([^']+)', '([^']+)', '([^']+)'\)/g)) {
+                table.push({ seq: Number(mt[1]), ts: mt[2], op: mt[3], args: mt[4] });
+              }
+              result = [[], {}, {}];
+            } else if (/^\s*CREATE\s/i.test(q)) {
+              result = [[], {}, {}];
+            } else {
+              result = [table.slice().sort((a, z) => a.seq - z.seq).map((r) => ({ seq: String(r.seq), op: r.op, args: r.args, ts: r.ts })), {}, {}];
+            }
+          } else {
+            rs.statusCode = 400;
+            return rs.end(JSON.stringify({ error: `unknown action ${action}` }));
+          }
+          rs.setHeader("content-type", "application/json");
+          rs.end(JSON.stringify({ success: true, result }));
+        });
+      });
+      await new Promise((r) => mock.listen(5181, r));
+      const B = "http://localhost:5180";
+      const bootEnv = {
+        ...process.env, PORT: "5180", WAREHOUSE: "bigquery", CONFIG_PATH: "journeys/fixtures/depth.config.json",
+        NEXUS_BASE_URL: "http://localhost:5181", NEXUS_API_KEY: "nxs_mock_key",
+        WAREHOUSE_CREDENTIAL_ID: "mock-cred",
+      };
+      const boot = async () => {
+        const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], { stdio: "ignore", env: bootEnv });
+        for (let i = 0; i < 25; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        return proc;
+      };
+      let proc = await boot();
+      try {
+        const post = (p, body, method = "POST") => fetch(B + p, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+        // (1) a LABEL write — the log records the normalized id
+        await post("/api/objects/vendors/ve_1", { rep: "Nora Lindqvist" }, "PATCH");
+        // (2) rename BEFORE a later label-write of the OLD label → that write dangles
+        await post("/api/objects/reps/re_2", { personName: { first: "Jules", last: "Nyberg" } }, "PATCH");
+        await post("/api/objects/vendors/ve_3", { rep: "Jules Okafor" }, "PATCH"); // old label — no match, stays verbatim
+        // (3) rename AFTER a label-write → the id survives, the label re-projects
+        await post("/api/objects/reps/re_1", { personName: { first: "Nora", last: "Vasquez" } }, "PATCH");
+        await new Promise((r) => setTimeout(r, 1300)); // beyond the flush interval
+        assert(table.length >= 4, `relation writes flushed to the log (${table.length})`);
+        const snapshot = async () => {
+          const out = {};
+          for (const k of ["certifications", "reps", "vendors", "vendorNotes"]) {
+            out[k] = (await (await fetch(B + `/api/objects/${k}`)).json()).rows;
+          }
+          return JSON.stringify(out);
+        };
+        const live = await snapshot();
+        assert(JSON.parse(live).vendors.find((v) => v.id === "ve_1")._refs.rep === "re_1", "live: the label write stored the id");
+        assert(JSON.parse(live).vendors.find((v) => v.id === "ve_1").rep === "Nora Vasquez", "live: rename-after re-projects");
+        assert(JSON.parse(live).vendors.find((v) => v.id === "ve_3").rep === "Jules Okafor", "live: rename-before leaves the old label dangling verbatim");
+        assert(!JSON.parse(live).vendors.find((v) => v.id === "ve_3")._refs?.rep, "live: the dangling label carries no ref");
+        proc.kill();
+        await new Promise((r) => setTimeout(r, 400));
+        proc = await boot(); // fresh memory: seed → boot normalization → replay
+        const replayed = await snapshot();
+        assert(replayed === live, "replayed state equals live state BYTE-FOR-BYTE (ids, labels, refs, dangling values)");
+      } finally {
+        proc.kill();
+        mock.close();
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----
