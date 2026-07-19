@@ -2183,6 +2183,79 @@ const journeys = [
       }
     },
   },
+  // --- lane: nav-mobile
+  {
+    name: "nav-top", feature: "Nav placement (config app.nav: top)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5010", CONFIG_PATH: "journeys/fixtures/navtop.config.json" },
+      });
+      const B = "http://localhost:5010";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/");
+        await p2.waitForSelector('[data-testid="nav-top"]', { timeout: 8000 });
+        assert(true, "app.nav: top renders the horizontal top-nav bar");
+        assert((await p2.locator('[data-testid="nav"]').count()) === 0, "no sidebar renders in top mode");
+        await p2.waitForFunction(() => /\d/.test(document.querySelector('[data-testid="nav-companies"]')?.textContent ?? ""));
+        assert(true, "record counts are visible on the top-nav items");
+        await p2.click('[data-testid="nav-deals"]');
+        await p2.waitForFunction(() => document.querySelector(".pageTitle")?.textContent?.includes("Deals"));
+        assert(true, "clicking a top-nav item switches the list (page title changes)");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "mobile-drawer", feature: "Mobile nav drawer + full-screen peek",
+    async run(page) {
+      const noHScroll = () => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1);
+      await page.setViewportSize({ width: 390, height: 844 });
+      try {
+        await page.goto(URLBASE + "/#/o/companies");
+        await page.waitForSelector('[data-testid="nav-burger"]');
+        assert(await noHScroll(), "no horizontal page scroll on the table at 390px");
+        await page.click('[data-testid="nav-burger"]');
+        await page.waitForSelector('[data-testid="nav-drawer"]');
+        assert(true, "burger opens the nav drawer");
+        await page.click('[data-testid="drawer-nav-deals"]');
+        await page.waitForFunction(() => document.querySelector(".pageTitle")?.textContent?.includes("Deals"));
+        await page.waitForSelector('[data-testid="nav-drawer"]', { state: "detached" });
+        assert(true, "picking Deals in the drawer navigates and closes it");
+        assert(await noHScroll(), "no horizontal page scroll on the kanban at 390px");
+        await page.click('[data-testid="nav-burger"]');
+        await page.waitForSelector('[data-testid="drawer-nav-companies"]');
+        await page.click('[data-testid="drawer-nav-companies"]');
+        await page.waitForFunction(() => document.querySelector(".pageTitle")?.textContent?.includes("Companies"));
+        await page.waitForSelector('[data-testid="nav-drawer"]', { state: "detached" });
+        await page.waitForSelector(".nxRowLink");
+        await page.click("tbody tr:first-child .nxRowLink");
+        await page.waitForSelector('[data-testid="peek-panel"]');
+        // the panel slides in (peekIn, ~160ms) — wait for SETTLED geometry, then judge
+        await page.waitForFunction(() => {
+          const r = document.querySelector('[data-testid="peek-panel"]')?.getBoundingClientRect();
+          return !!r && r.width >= window.innerWidth - 1 && r.left <= 1;
+        });
+        assert(true, "the peek covers the full viewport width at 390px");
+        assert(await noHScroll(), "no horizontal page scroll with the peek open");
+        await page.keyboard.press("Escape");
+        await page.waitForFunction(() => !document.querySelector('[data-testid="peek-panel"]'));
+        assert(true, "Escape closes the full-screen peek");
+        assert(await noHScroll(), "no horizontal page scroll after closing the peek");
+      } finally {
+        await page.setViewportSize({ width: 1280, height: 800 });
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----
