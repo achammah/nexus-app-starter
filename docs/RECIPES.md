@@ -55,6 +55,10 @@ Tasks are cross-record to-dos — title, status (`todo`/`doing`/`done`), optiona
 ## Boot as a different product
 `CONFIG_PATH=path/to/other.config.json npm run serve` — the config IS the app. Fullest reference shape: `journeys/fixtures/coverage.config.json` (a test fixture, not a template).
 
+## Preview your brand against the kit
+
+`/p/gallery` (hide with `FEATURE_GALLERY=0`) shows the whole component surface on one page — primitives, a live vendored subset, the full library inventory, record-core in miniature, and every field type's read + edit states — with a skin bar that repaints it all instantly. Previews persist NOTHING: they compile through `skinToCss()` into a separate `#nx-skin-preview` style tag, so the app's own skin, the Theme page's saved state, and the `nx-skin-css` boot cache are never touched; reset (or just leaving the page) restores everything. Section headers carry copyable `src/ui/...` import paths, and the inventory footer compares its snapshot stamp against `src/ui/.ui-version` — it turns into a visible warning when someone runs `sync-ui` without refreshing `src/app/gallery.catalog.json`. The record-core minis run on local fictional rows, so the page works even on an empty app.
+
 ## Re-brand for an organisation (skins)
 1. `starter.config.json` → `theme.skin` = the org's brand as JSON (or `theme.skinPreset` for a built-in; `theme.accent` for the one-knob shortcut). Full knob set → `src/ui/docs/THEMING.md`: brand ramp, dark/brand chrome shell, radius personality (0 = squared, reaches the vendored shadcn kit), fonts, labels, semantic palette, logo mark/wordmark, raw token overrides.
 2. Reload — the whole app re-brands, dark mode derives from the same brand. Reference example: the `ember` preset (dark chrome + sharp corners + own palette).

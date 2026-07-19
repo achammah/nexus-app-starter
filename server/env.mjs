@@ -32,6 +32,7 @@ const schema = z.object({
   FEATURE_WEBHOOKS: z.string().optional(),
   FEATURE_THEME: z.string().optional(),
   FEATURE_APIKEYS: z.string().optional(),
+  FEATURE_GALLERY: z.string().optional(),
   FEATURE_TASKS: z.string().optional(),
   FEATURE_SCHEMA: z.string().optional(),
   APP_SECRET: z.string().min(16, "APP_SECRET must be ≥16 chars").optional(),
@@ -68,6 +69,7 @@ export const FEATURES = {
   apikeys: flagOn(env.FEATURE_APIKEYS),
   tasks: flagOn(env.FEATURE_TASKS),
   schema: flagOn(env.FEATURE_SCHEMA),
+  gallery: flagOn(env.FEATURE_GALLERY),
 };
 
 export const ACCOUNTS_ENABLED = Boolean(env.AUTH_MODE === "accounts" && env.APP_SECRET);
