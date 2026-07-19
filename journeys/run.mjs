@@ -2183,6 +2183,248 @@ const journeys = [
       }
     },
   },
+  // --- lane: field-composites
+  {
+    name: "composite-render", feature: "Composite fields render (money/emails/phones/links/address/fullName)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5050", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5050";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/o/vendors");
+        await p2.waitForSelector('[data-testid="table-vendors"] tbody tr');
+        const money = await p2.textContent('[data-testid="cell-ve_1-contract"]');
+        assert(money === "€12,500", `money cell renders Intl currency (${money})`);
+        const mails = await p2.textContent('[data-testid="cell-ve_1-contacts"]');
+        assert(mails?.includes("ada.reyes@brightline.example") && mails?.includes("+1"), `emails cell shows first chip + overflow (${mails})`);
+        const phones = await p2.textContent('[data-testid="cell-ve_2-phoneNumbers"]');
+        assert(phones?.includes("+1 415 555 0199") && phones?.includes("+1"), `phones cell shows first chip + overflow (${phones})`);
+        const linkText = await p2.textContent('[data-testid="cell-ve_1-sites-link-0"]');
+        assert(linkText === "brightline.example", `link anchor labels with the bare host (${linkText})`);
+        const linkHref = await p2.getAttribute('[data-testid="cell-ve_1-sites-link-0"]', "href");
+        const linkTarget = await p2.getAttribute('[data-testid="cell-ve_1-sites-link-0"]', "target");
+        assert(linkHref === "https://brightline.example/pricing?plans=gold,silver" && linkTarget === "_blank", "anchor keeps the full URL and opens a new tab");
+        const addr = await p2.textContent('[data-testid="cell-ve_1-hq"]');
+        assert(addr === "Rue de la Loi 12, Brussels", `address cell one-lines street, city (${addr})`);
+        const fn = await p2.textContent('[data-testid="cell-ve_1-accountManager"]');
+        assert(fn === "Nora Lindqvist", `fullName cell joins first + last (${fn})`);
+        // fullName as PRIMARY: table link, record title, kanban card all render the joined name
+        await p2.goto(B + "/#/o/reps");
+        await p2.waitForSelector('[data-testid="table-reps"] tbody tr');
+        const repLink = await p2.textContent('[data-testid="row-re_1"] .nxRowLink');
+        assert(repLink === "Nora Lindqvist", `fullName-primary renders as the row link (${repLink})`);
+        await p2.click('[data-testid="row-re_1"] .nxRowLink');
+        await p2.waitForSelector('[data-testid="record-name"]');
+        const title = (await p2.textContent('[data-testid="record-name"]'))?.trim();
+        assert(title === "Nora Lindqvist", `record title joins the name (${title})`);
+        // the record opened as a side-peek OVER the list — Escape closes it (laddered model)
+        await p2.keyboard.press("Escape");
+        await p2.waitForFunction(() => !document.querySelector('[data-testid="peek-panel"]'));
+        await p2.waitForSelector('[data-testid="view-switch"]');
+        await p2.click('[data-testid="view-switch"] button:has-text("Board")');
+        await p2.waitForSelector('[data-testid="kanban-reps"]');
+        const card = await p2.textContent('[data-testid="card-re_1"]');
+        assert(card?.includes("Nora Lindqvist"), "kanban card titles the joined name");
+        assert(card?.includes("€250,000"), `kanban card meta formats money (${card})`);
+        // money is MEASURABLE: sum rollup over a money field aggregates its .amount
+        const pickItem = async (trigger, locator) => {
+          await p2.click(trigger);
+          await locator.waitFor();
+          for (let i = 0; i < 12; i++) {
+            if ((await locator.getAttribute("data-highlighted")) !== null) break;
+            await p2.keyboard.press("ArrowDown");
+            await p2.waitForTimeout(70);
+          }
+          await p2.keyboard.press("Enter");
+        };
+        await pickItem('[data-testid="agg-by"]', p2.locator('[data-testid="agg-sum-quota"]'));
+        await p2.keyboard.press("Escape");
+        await p2.waitForFunction(() => document.querySelector('[data-testid="agg-EMEA"]')?.dataset.value === "250000");
+        assert(true, "money field sums per column (EMEA Σ=250000 from {amount:250000})");
+        await p2.screenshot({ path: path.join(SHOTS, "journey-composite-cells.png"), fullPage: true });
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "composite-edit", feature: "Composite field editors (one-patch shaped saves)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5055", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5055";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        const api = async () => await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        const until = async (pred, label) => {
+          for (let i = 0; i < 25; i++) {
+            if (pred(await api())) return;
+            await new Promise((r) => setTimeout(r, 200));
+          }
+          assert(false, label);
+        };
+        await p2.goto(B + "/#/o/vendors/r/ve_1");
+        await p2.waitForSelector('[data-testid="field-contacts-input"]');
+        // add an email entry
+        await p2.fill('[data-testid="field-contacts-input"]', "nora.lindqvist@brightline.example");
+        await p2.keyboard.press("Enter");
+        await p2.waitForFunction(() =>
+          [...document.querySelectorAll('[data-testid="toast"]')].some((t) => t.textContent?.includes("Saved")),
+        );
+        assert(true, "adding an email saves (toast)");
+        await until((r) => (r.contacts ?? []).includes("nora.lindqvist@brightline.example"), "new email persisted to the list");
+        // change the money amount (code rides along in the SAME patch)
+        await p2.fill('[data-testid="field-contract-amount"]', "13750");
+        await p2.locator('[data-testid="field-contract-amount"]').blur();
+        await until((r) => r.contract?.amount === 13750 && r.contract?.code === "EUR", "money amount updated, code preserved (one patch)");
+        // set the address city (street survives — whole object in one patch)
+        await p2.fill('[data-testid="field-hq-city"]', "Ghent");
+        await p2.locator('[data-testid="field-hq-city"]').blur();
+        await until((r) => r.hq?.city === "Ghent" && r.hq?.street === "Rue de la Loi 12", "address city updated, street preserved");
+        // change the last name
+        await p2.fill('[data-testid="field-accountManager-last"]', "Nyberg");
+        await p2.locator('[data-testid="field-accountManager-last"]').blur();
+        await until((r) => r.accountManager?.first === "Nora" && r.accountManager?.last === "Nyberg", "last name updated, first preserved");
+        // edits survive reload — the editors re-seed from the stored shapes
+        await p2.reload();
+        await p2.waitForSelector('[data-testid="field-contract-amount"]');
+        assert((await p2.inputValue('[data-testid="field-contract-amount"]')) === "13750", "amount survives reload");
+        assert((await p2.inputValue('[data-testid="field-hq-city"]')) === "Ghent", "city survives reload");
+        assert((await p2.inputValue('[data-testid="field-accountManager-last"]')) === "Nyberg", "last name survives reload");
+        const rows3 = await p2.textContent('[data-testid="field-contacts"]');
+        assert(rows3?.includes("nora.lindqvist@brightline.example"), "added email row survives reload");
+        // timeline logs READABLE shaped values, never [object Object]
+        const tl = await p2.textContent('[data-testid="timeline"]');
+        assert(tl?.includes("13750 EUR"), "timeline logs the money change readably");
+        assert(tl?.includes("Ghent"), "timeline logs the address change readably");
+        assert(tl?.includes("Nora Nyberg"), "timeline logs the name change readably");
+        assert(!tl?.includes("[object Object]"), "no [object Object] anywhere in the timeline");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "composite-validate", feature: "Composite validation (per-entry, field-named)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        // 5060/5061 are Chromium-restricted (SIP) — ERR_UNSAFE_PORT — so this lane skips to 5070
+        env: { ...process.env, PORT: "5070", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5070";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/o/vendors/r/ve_1");
+        await p2.waitForSelector('[data-testid="field-contacts-input"]');
+        // bad email: VISIBLE inline error naming the field; value not saved
+        await p2.fill('[data-testid="field-contacts-input"]', "not-an-email");
+        await p2.keyboard.press("Enter");
+        await p2.waitForSelector('[data-testid="field-contacts-err"]');
+        const emailErr = await p2.textContent('[data-testid="field-contacts-err"]');
+        assert(emailErr?.includes("Contact emails") && emailErr?.includes("not-an-email"), `error names the field and the entry (${emailErr})`);
+        let live = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert((live.contacts ?? []).length === 2 && !live.contacts.includes("not-an-email"), "record keeps its old email list");
+        // bad URL in the links editor
+        await p2.fill('[data-testid="field-sites-input"]', "not a url");
+        await p2.keyboard.press("Enter");
+        await p2.waitForSelector('[data-testid="field-sites-err"]');
+        const urlErr = await p2.textContent('[data-testid="field-sites-err"]');
+        assert(urlErr?.includes("Web presence"), `URL error names the field (${urlErr})`);
+        live = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert((live.sites ?? []).length === 2, "record keeps its old links");
+        // bad currency code in the money editor
+        await p2.fill('[data-testid="field-contract-code"]', "E1");
+        await p2.locator('[data-testid="field-contract-code"]').blur();
+        await p2.waitForSelector('[data-testid="field-contract-err"]');
+        live = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert(live.contract?.code === "EUR", "record keeps its old currency code");
+        // the server is the real gate: wrong-shaped payloads 400 NAMING the field
+        const badMoney = await p2.request.patch(B + "/api/objects/vendors/ve_1", { data: { contract: { amount: "12" } } });
+        assert(badMoney.status() === 400 && (await badMoney.json()).error.includes("Contract value"), "server 400 names the money field on a wrong shape");
+        const badMail = await p2.request.patch(B + "/api/objects/vendors/ve_1", { data: { contacts: ["nodot@nowhere"] } });
+        assert(badMail.status() === 400 && (await badMail.json()).error.includes("Contact emails"), "server 400 names the emails field per entry");
+        const badLink = await p2.request.patch(B + "/api/objects/vendors/ve_1", { data: { sites: ["not a url"] } });
+        assert(badLink.status() === 400 && (await badLink.json()).error.includes("Web presence"), "server 400 names the links field per entry");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "composite-export", feature: "Composite CSV flatten (shaped values in exports)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5065", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:5065";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/o/vendors");
+        await p2.waitForSelector('[data-testid="table-vendors"] tbody tr');
+        await p2.click('[data-testid="row-ve_1"] [role="checkbox"]');
+        await p2.click('[data-testid="row-ve_2"] [role="checkbox"]');
+        await p2.waitForSelector('[data-testid="bulk-export"]');
+        const dl = p2.waitForEvent("download", { timeout: 8000 });
+        await p2.click('[data-testid="bulk-export"]');
+        const file = await dl;
+        const csv = readFileSync(await file.path(), "utf8");
+        const lines = csv.split("\n");
+        const header = lines[0].split(",");
+        for (const k of ["contract", "contacts", "phoneNumbers", "sites", "hq", "accountManager"]) {
+          assert(header.includes(k), `CSV header carries ${k}`);
+        }
+        assert(!header.includes("legacyRef"), "deactivated fields stay out of the export");
+        assert(csv.includes('"12500 EUR"') && csv.includes('"4800 USD"'), "money flattens to amount + code");
+        assert(csv.includes('"ada.reyes@brightline.example; billing@brightline.example"'), 'lists join with "; "');
+        assert(csv.includes('"Rue de la Loi 12, Brussels, 1000, BE"'), "address flattens to all four parts");
+        assert(csv.includes('"Nora Lindqvist"') && csv.includes('"Jules Okafor"'), "fullName flattens to the joined name");
+        // a comma INSIDE a link must not split columns — quoted-cell count matches the header
+        const ve1 = lines.find((l) => l.includes("Brightline Analytics"));
+        assert(ve1?.includes("plans=gold,silver"), "comma-carrying URL is present in the row");
+        const cells = ve1?.match(/"(?:[^"]|"")*"/g) ?? [];
+        assert(cells.length === header.length, `quoted cells align with the header (${cells.length}/${header.length})`);
+        const shapedIdx = ["contract", "contacts", "phoneNumbers", "sites", "hq", "accountManager"].map((k) => header.indexOf(k));
+        assert(shapedIdx.every((i) => cells[i] && !cells[i].includes("[object Object]")), "every shaped column flattens cleanly");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----
