@@ -318,6 +318,16 @@ async function api(req, res, url, apiKey = null) {
         return send(res, 200, { results, totals, preview: !!preview });
       }
 
+      /* Duplicate sweep — read-only, deterministic (see store duplicateGroups:
+         normalized-name / word-boundary-prefix / email / domain rules; unique
+         fields skipped because the server already rejects live collisions).
+         Team-scoped objects sweep only the caller's visible rows. */
+      if (parts[3] === "duplicates" && !parts[4] && req.method === "GET") {
+        if (deny("view")) return;
+        const pool = scoped ? (store.rows[objKey] ?? []).filter((r) => !r._team || r._team === teamCtx.id) : null;
+        return send(res, 200, { groups: store.duplicateGroups(objKey, pool) });
+      }
+
       if (parts[3] === "rev") return send(res, 200, { rev: store.rev(objKey) });
 
       const id = parts[3];
@@ -327,6 +337,12 @@ async function api(req, res, url, apiKey = null) {
       if (parts[4] === "timeline") {
         if (deny("view")) return;
         return send(res, 200, { events: store.timeline(objKey, id) });
+      }
+      /* Possible duplicates for ONE record (feeds the record-page panel) */
+      if (parts[4] === "duplicates" && req.method === "GET") {
+        if (deny("view")) return;
+        const pool = scoped ? (store.rows[objKey] ?? []).filter((r) => !r._team || r._team === teamCtx.id) : null;
+        return send(res, 200, { candidates: store.duplicatesFor(objKey, id, pool) });
       }
       if (parts[4] === "notes" && req.method === "POST") {
         if (deny("edit", { own })) return;

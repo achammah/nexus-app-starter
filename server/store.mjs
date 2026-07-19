@@ -27,6 +27,25 @@ const flatVal = (v, type) => {
   return String(v);
 };
 
+/* Duplicate-detection normalizers. dupNorm compares names ignoring case,
+   accents, spacing and punctuation (values pass through flatVal first, so
+   shaped primaries like fullName compare as their readable text); dupHost
+   compares url fields by domain (scheme, www. and path stripped). */
+const dupNorm = (v, type) =>
+  flatVal(v, type)
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+const dupHost = (v) =>
+  String(v ?? "")
+    .toLowerCase()
+    .replace(/^[a-z][a-z0-9+.-]*:\/\//, "")
+    .replace(/^www\./, "")
+    .split(/[/?#]/)[0]
+    .trim();
+
 export class Store {
   /* Time is injectable: during warehouse replay (store-remote.mjs) _nowOverride pins
      every timestamp to the ORIGINAL event's clock, so restored state renders true. */
@@ -460,6 +479,128 @@ export class Store {
     delete (this.files[objKey] ?? {})[id];
     this._bump(objKey);
     return true;
+  }
+
+  /* ---- duplicate detection: deterministic READS, never logged. Every rule is
+     explainable in one sentence; unique fields are skipped (the server already
+     makes live collisions impossible); trashed rows, self, and empty values
+     never match. ---- */
+
+  /* reason labels for ONE pair — the rules:
+     1. same normalized primary (case/accents/spacing/punctuation ignored)
+     2. one normalized primary begins the other at a word boundary, shorter ≥ 8 chars
+     3. same email-type field value (lowercase-exact)
+     4. same url-type field domain (scheme/www./path stripped) */
+  _dupReasons(cfg, a, b) {
+    const reasons = [];
+    const primary = cfg.fields.find((f) => f.primary) ?? cfg.fields[0];
+    if (!primary.unique) {
+      const na = dupNorm(a[primary.key], primary.type);
+      const nb = dupNorm(b[primary.key], primary.type);
+      if (na && nb) {
+        if (na === nb) reasons.push(`Same ${primary.label.toLowerCase()} ignoring case, accents, spacing and punctuation`);
+        else {
+          const [s, l] = na.length <= nb.length ? [na, nb] : [nb, na];
+          if (s.length >= 8 && l.startsWith(s + " ")) reasons.push(`One ${primary.label.toLowerCase()} begins with the other`);
+        }
+      }
+    }
+    for (const f of cfg.fields) {
+      if (f.unique || f.isActive === false || f.primary) continue;
+      if (f.type === "email") {
+        const va = String(a[f.key] ?? "").toLowerCase().trim();
+        const vb = String(b[f.key] ?? "").toLowerCase().trim();
+        if (va && vb && va === vb) reasons.push(`Same ${f.label.toLowerCase()}`);
+      }
+      if (f.type === "url") {
+        const va = dupHost(a[f.key]);
+        const vb = dupHost(b[f.key]);
+        if (va && vb && va === vb) reasons.push("Same web domain");
+      }
+    }
+    return reasons;
+  }
+
+  /* candidates for ONE record — O(N) scan; rowsOverride lets team-scoped
+     routes pass only the rows the caller may see */
+  duplicatesFor(objKey, id, rowsOverride = null) {
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    const me = this.get(objKey, id);
+    if (!cfg || !me) return [];
+    const primary = cfg.fields.find((f) => f.primary) ?? cfg.fields[0];
+    const pool = rowsOverride ?? this.rows[objKey] ?? [];
+    const out = [];
+    for (const r of pool) {
+      if (r.id === id || r._deletedAt) continue;
+      const reasons = this._dupReasons(cfg, me, r);
+      if (reasons.length) out.push({ id: r.id, name: flatVal(r[primary.key], primary.type), reasons });
+    }
+    return out;
+  }
+
+  /* whole-object sweep — per-rule value buckets (norm/email/host maps) plus a
+     sorted-adjacent scan for the prefix rule, merged by union-find. Groups are
+     deterministic: ids sorted within a group, groups sorted by first id. */
+  duplicateGroups(objKey, rowsOverride = null) {
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    if (!cfg) return [];
+    const rows = (rowsOverride ?? this.rows[objKey] ?? []).filter((r) => !r._deletedAt);
+    const primary = cfg.fields.find((f) => f.primary) ?? cfg.fields[0];
+    const edges = []; // {a, b, label}
+    const bucket = (map, key, id) => {
+      if (!key) return;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(id);
+    };
+    if (!primary.unique) {
+      const byNorm = new Map();
+      for (const r of rows) bucket(byNorm, dupNorm(r[primary.key], primary.type), r.id);
+      for (const [, ids] of byNorm) {
+        for (let i = 1; i < ids.length; i++) edges.push({ a: ids[0], b: ids[i], label: `Same ${primary.label.toLowerCase()} ignoring case, accents, spacing and punctuation` });
+      }
+      // prefix rule: sorted unique norms put every "s + word" right after s
+      const norms = [...byNorm.keys()].sort();
+      for (let i = 0; i < norms.length; i++) {
+        if (norms[i].length < 8) continue;
+        for (let j = i + 1; j < norms.length && norms[j].startsWith(norms[i] + " "); j++) {
+          edges.push({ a: byNorm.get(norms[i])[0], b: byNorm.get(norms[j])[0], label: `One ${primary.label.toLowerCase()} begins with the other` });
+        }
+      }
+    }
+    for (const f of cfg.fields) {
+      if (f.unique || f.isActive === false || f.primary) continue;
+      if (f.type !== "email" && f.type !== "url") continue;
+      const byVal = new Map();
+      for (const r of rows) {
+        const v = f.type === "email" ? String(r[f.key] ?? "").toLowerCase().trim() : dupHost(r[f.key]);
+        bucket(byVal, v, r.id);
+      }
+      const label = f.type === "email" ? `Same ${f.label.toLowerCase()}` : "Same web domain";
+      for (const [, ids] of byVal) {
+        for (let i = 1; i < ids.length; i++) edges.push({ a: ids[0], b: ids[i], label });
+      }
+    }
+    // union-find over the edges
+    const parent = new Map();
+    const find = (x) => {
+      let p = parent.get(x) ?? x;
+      if (p !== x) { p = find(p); parent.set(x, p); }
+      return p;
+    };
+    for (const e of edges) {
+      const ra = find(e.a); const rb = find(e.b);
+      if (ra !== rb) parent.set(ra, rb);
+    }
+    const groups = new Map(); // root → {ids:Set, reasons:Set}
+    for (const e of edges) {
+      const root = find(e.a);
+      if (!groups.has(root)) groups.set(root, { ids: new Set(), reasons: new Set() });
+      const g = groups.get(root);
+      g.ids.add(e.a); g.ids.add(e.b); g.reasons.add(e.label);
+    }
+    return [...groups.values()]
+      .map((g) => ({ ids: [...g.ids].sort(), reasons: [...g.reasons] }))
+      .sort((x, y) => (x.ids[0] < y.ids[0] ? -1 : 1));
   }
 
   /* live twin of uniqueResurrectMatch: an incoming unique value colliding with

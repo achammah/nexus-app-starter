@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArchiveRestore, BarChart3, Bookmark, Columns3, Download, GitMerge, Pencil, Plus, Search, Sigma, Trash2, Upload, X } from "lucide-react";
+import { ArchiveRestore, BarChart3, Bookmark, Columns3, CopyCheck, Download, GitMerge, Pencil, Plus, Search, Sigma, Trash2, Upload, X } from "lucide-react";
 import type { SortingState } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../ui/components/ui/dropdown-menu";
-import { api, type ImportResult, type ImportTotals } from "./api";
+import { api, type DupGroup, type ImportResult, type ImportTotals } from "./api";
 import { useToast } from "./App";
 import { t } from "./i18n";
 import { Button } from "../ui/primitives/Button";
@@ -337,13 +337,41 @@ export function ObjectView({
     }).catch((e) => toast(`Destroy failed: ${e.message}`));
   };
 
-  const openMerge = () => {
-    const ids = selectedIds.slice(0, 10);
+  const openMergeWith = (chosen: string[]) => {
+    const ids = chosen.slice(0, 10);
     setMerging({ ids, winnerId: ids[0], fields: null });
     api.mergePreview(config.key, ids, ids[0]).then((r) => {
       setMerging((m) => (m && m.winnerId === ids[0] ? { ...m, fields: r.fields } : m));
     }).catch((e) => toast(e.message));
   };
+  const openMerge = () => openMergeWith(selectedIds);
+
+  // duplicate sweep dialog state (groups from the read-only server sweep)
+  const [dupGroups, setDupGroups] = React.useState<DupGroup[] | null>(null);
+  const openSweep = () => {
+    api.duplicateGroups(config.key).then(setDupGroups).catch((e) => toast(e.message));
+  };
+
+  /* record-panel handoff: a "Review merge" click on the Possible-duplicates
+     section lands here with the pair in sessionStorage — select it and (rights
+     permitting) open the merge dialog preselected. Selection alone for viewers:
+     the panel informs everyone, merge rights gate the dialog. */
+  const pendingMergeDone = React.useRef(false);
+  React.useEffect(() => {
+    if (!rows || pendingMergeDone.current) return;
+    const raw = sessionStorage.getItem("nx-pending-merge");
+    if (!raw) return;
+    pendingMergeDone.current = true;
+    sessionStorage.removeItem("nx-pending-merge");
+    try {
+      const ids = (JSON.parse(raw) as string[]).filter((x) => rows.some((r) => r.id === x));
+      if (ids.length >= 2) {
+        setSelection(Object.fromEntries(ids.map((x) => [x, true])));
+        if (canEdit && canDelete) openMergeWith(ids);
+      }
+    } catch { /* malformed handoff — ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows]);
   const pickWinner = (id: string) => {
     setMerging((m) => (m ? { ...m, winnerId: id, fields: null } : m));
     api.mergePreview(config.key, merging?.ids ?? [], id).then((r) => {
@@ -600,6 +628,9 @@ export function ObjectView({
           {t("import.open")}
         </Button>
         )}
+        <Button size="md" variant="ghost" icon={<CopyCheck size={14} />} data-testid="dup-sweep-open" onClick={openSweep}>
+          {t("dup.open")}
+        </Button>
         {canCreate && (
         <Button variant="primary" size="md" icon={<Plus size={14} />} data-testid="new-record" onClick={() => setCreating(true)}>
           New {config.labelOne.toLowerCase()}
@@ -722,6 +753,45 @@ export function ObjectView({
               ))}
             </div>
           )}
+          </div>
+        </Dialog>
+      )}
+
+      {dupGroups !== null && (
+        <Dialog
+          open
+          onOpenChange={(v) => { if (!v) setDupGroups(null); }}
+          title={t("dup.title", { label: config.label.toLowerCase() })}
+        >
+          <div data-testid="dup-sweep-dialog" style={{ display: "grid", gap: 10, minWidth: 420 }}>
+            {dupGroups.length === 0 && (
+              <div data-testid="dup-sweep-empty" style={{ padding: 16, color: "var(--nx-fg-faint)" }}>
+                {t("dup.none")}
+              </div>
+            )}
+            {dupGroups.map((g, i) => (
+              <div className="nxCard" key={g.ids.join(":")} data-testid={`dup-group-${i}`} style={{ padding: 12, display: "grid", gap: 6 }}>
+                <span style={{ fontWeight: 600 }}>
+                  {g.ids.map((x) => formatCell(rows?.find((r) => r.id === x)?.[primary.key], primary.type) || x).join("  ·  ")}
+                </span>
+                <span style={{ font: "var(--nx-text-meta)", color: "var(--nx-fg-muted)" }}>{g.reasons.join(" · ")}</span>
+                {canEdit && canDelete && (
+                  <Button
+                    size="sm"
+                    icon={<GitMerge size={12} />}
+                    data-testid={`dup-group-merge-${i}`}
+                    style={{ justifySelf: "start" }}
+                    onClick={() => {
+                      setDupGroups(null);
+                      setSelection(Object.fromEntries(g.ids.map((x) => [x, true])));
+                      openMergeWith(g.ids);
+                    }}
+                  >
+                    {t("dup.review")}
+                  </Button>
+                )}
+              </div>
+            ))}
           </div>
         </Dialog>
       )}

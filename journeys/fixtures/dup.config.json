@@ -1,0 +1,57 @@
+{
+  "app": { "name": "Dup Fixture", "slug": "dup-fixture" },
+  "theme": {},
+  "users": [],
+  "objects": [
+    {
+      "key": "orgs",
+      "label": "Organizations",
+      "labelOne": "Organization",
+      "icon": "building-2",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "site", "label": "Website", "type": "url" },
+        { "key": "contact", "label": "Contact email", "type": "email" }
+      ],
+      "sampleRows": [
+        { "id": "og_1", "name": "Northwind Analytics", "site": "https://www.northwind.example/", "contact": "ops@northwind.example" },
+        { "id": "og_2", "name": "NORTHWIND — Analytics.", "site": "", "contact": "" },
+        { "id": "og_3", "name": "Aurora Freight", "site": "aurora.example", "contact": "hello@aurorafreight.example" },
+        { "id": "og_4", "name": "Aurora Logistics", "site": "https://aurora.example/about", "contact": "" },
+        { "id": "og_5", "name": "Meridian Supply", "site": "meridian.example", "contact": "sales@meridian.example" }
+      ]
+    },
+    {
+      "key": "contacts",
+      "label": "Contacts",
+      "labelOne": "Contact",
+      "icon": "users",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "email", "label": "Email", "type": "email" }
+      ],
+      "sampleRows": [
+        { "id": "ct_1", "name": "Alexandra Stone", "email": "alex@stone.example" },
+        { "id": "ct_2", "name": "Alexandra Stone Consulting", "email": "alex@stone.example" },
+        { "id": "ct_3", "name": "Boris Verhaegen", "email": "boris@verha.example" }
+      ]
+    },
+    {
+      "key": "assets",
+      "label": "Assets",
+      "labelOne": "Asset",
+      "icon": "building-2",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "tag", "label": "Tag", "type": "text" }
+      ],
+      "sampleRows": [
+        { "id": "as_1", "name": "Forklift 12", "tag": "warehouse" },
+        { "id": "as_2", "name": "Pallet Jack 7", "tag": "warehouse" }
+      ]
+    }
+  ]
+}

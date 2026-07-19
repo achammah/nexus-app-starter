@@ -2712,6 +2712,131 @@ const journeys = [
       }
     },
   },
+  // --- lane: dup-detect
+  {
+    name: "dup-panel", feature: "Possible duplicates panel (record page)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5200", CONFIG_PATH: "journeys/fixtures/dup.config.json" },
+      });
+      const B = "http://localhost:5200";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/o/contacts/r/ct_1");
+        await p2.waitForSelector('[data-testid="related-duplicates"]');
+        const panel = await p2.textContent('[data-testid="related-duplicates"]');
+        assert(panel?.includes("Alexandra Stone Consulting"), "panel lists the suspected duplicate");
+        assert(panel?.includes("begins with the other") && panel?.includes("Same email"),
+          "panel states BOTH matched rules (word-boundary prefix + same email)");
+        assert(panel?.includes("Review merge"), "the row announces its action before the click");
+        // one click → the list, with the EXISTING merge dialog preselected on the pair
+        await p2.click('[data-testid="related-duplicates-ct_2"]');
+        await p2.waitForSelector('[data-testid="merge-dialog"]');
+        assert((await p2.locator('[data-testid="merge-winner-ct_1"]').count()) === 1
+          && (await p2.locator('[data-testid="merge-winner-ct_2"]').count()) === 1,
+          "merge dialog opens with BOTH records as winner candidates");
+        // CANCEL INTEGRITY: closing must move NO data and keep the pair selected
+        await p2.click('[data-testid="merge-dialog"] button:has-text("Cancel")');
+        await p2.waitForFunction(() => !document.querySelector('[data-testid="merge-dialog"]'));
+        const bulk = await p2.textContent('[data-testid="bulk-bar"]');
+        assert(bulk?.includes("2"), "the pair stays SELECTED on the list after Cancel (one click to re-review)");
+        const a = await p2.request.get(B + "/api/objects/contacts/ct_1");
+        const b = await p2.request.get(B + "/api/objects/contacts/ct_2");
+        assert(a.status() === 200 && b.status() === 200, "both records intact after Cancel");
+        const trash = await (await p2.request.get(B + "/api/objects/contacts/trash")).json();
+        assert(trash.rows.length === 0, "nothing landed in the trash");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "dup-sweep", feature: "Duplicate sweep (find + review-merge)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5210", CONFIG_PATH: "journeys/fixtures/dup.config.json" },
+      });
+      const B = "http://localhost:5210";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/o/orgs");
+        await p2.waitForSelector('[data-testid="dup-sweep-open"]');
+        await p2.click('[data-testid="dup-sweep-open"]');
+        await p2.waitForSelector('[data-testid="dup-sweep-dialog"]');
+        assert((await p2.locator('[data-testid="dup-group-0"]').count()) === 1
+          && (await p2.locator('[data-testid="dup-group-1"]').count()) === 1
+          && (await p2.locator('[data-testid="dup-group-2"]').count()) === 0,
+          "sweep groups exactly the 2 planted pairs");
+        const dlg = await p2.textContent('[data-testid="dup-sweep-dialog"]');
+        assert(dlg?.includes("Northwind Analytics") && dlg?.includes("NORTHWIND — Analytics."),
+          "name-exact group names both spellings");
+        assert(dlg?.includes("Same name ignoring case, accents, spacing and punctuation"), "…with its rule");
+        assert(dlg?.includes("Aurora Freight") && dlg?.includes("Aurora Logistics") && dlg?.includes("Same web domain"),
+          "domain group names both orgs with its rule");
+        // per-group review-merge opens the EXISTING merge dialog preselected
+        await p2.click('[data-testid="dup-group-merge-1"]');
+        await p2.waitForSelector('[data-testid="merge-dialog"]');
+        assert((await p2.locator('[data-testid="merge-winner-og_3"]').count()) === 1
+          && (await p2.locator('[data-testid="merge-winner-og_4"]').count()) === 1,
+          "review-merge preselects the group's records");
+        await p2.click('[data-testid="merge-dialog"] button:has-text("Cancel")');
+        await p2.waitForFunction(() => !document.querySelector('[data-testid="merge-dialog"]'));
+        const rows = (await (await p2.request.get(B + "/api/objects/orgs")).json()).rows;
+        assert(rows.length === 5, "cancel moved no data (all 5 orgs intact)");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "dup-clean", feature: "Duplicate sweep (find + review-merge)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5220", CONFIG_PATH: "journeys/fixtures/dup.config.json" },
+      });
+      const B = "http://localhost:5220";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/o/assets");
+        await p2.waitForSelector('[data-testid="dup-sweep-open"]');
+        await p2.click('[data-testid="dup-sweep-open"]');
+        await p2.waitForSelector('[data-testid="dup-sweep-empty"]');
+        const empty = await p2.textContent('[data-testid="dup-sweep-empty"]');
+        assert(empty?.includes("No duplicates"), "a clean object reports none");
+        // and the clean record page carries NO duplicates panel at all
+        await p2.goto(B + "/#/o/assets/r/as_1");
+        await p2.waitForSelector('[data-testid="record-as_1"]');
+        assert((await p2.locator('[data-testid="related-duplicates"]').count()) === 0,
+          "no phantom panel on a clean record");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----
