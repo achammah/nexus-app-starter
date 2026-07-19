@@ -62,6 +62,15 @@ export class Store {
     return row;
   }
 
+  remove(objKey, id) {
+    const rows = this.rows[objKey] ?? [];
+    const i = rows.findIndex((r) => r.id === id);
+    if (i === -1) return false;
+    rows.splice(i, 1);
+    delete (this.events[objKey] ?? {})[id];
+    return true;
+  }
+
   timeline(objKey, id) {
     return [...((this.events[objKey] ?? {})[id] ?? [])].sort((a, b) => (a.ts < b.ts ? 1 : -1));
   }

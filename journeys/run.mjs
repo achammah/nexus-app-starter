@@ -140,6 +140,110 @@ const journeys = [
     },
   },
   {
+    name: "cmdk-navigates", feature: "Command palette (⌘K)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="nav"]');
+      await page.keyboard.press("Control+k");
+      await page.waitForSelector('[data-testid="palette-input"]', { timeout: 5000 });
+      await page.fill('[data-testid="palette-input"]', "cargolane dispatch");
+      await page.waitForSelector('[data-testid="palette-hit-de_3"]', { timeout: 6000 });
+      await page.click('[data-testid="palette-hit-de_3"]');
+      await page.waitForSelector('[data-testid="record-name"]');
+      const name = await page.textContent('[data-testid="record-name"]');
+      assert(name?.includes("Cargolane"), `palette jump lands on the record (${name})`);
+    },
+  },
+  {
+    name: "views-persist", feature: "Saved view (filter+view persist)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/people");
+      await page.waitForSelector('[data-testid="list-search"]');
+      await page.fill('[data-testid="list-search"]', "maya");
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-people"] tbody tr').length === 1);
+      await page.click('[data-testid="nav-deals"]');
+      await page.waitForSelector(".pageHead");
+      await page.click('[data-testid="nav-people"]');
+      await page.waitForSelector('[data-testid="list-search"]');
+      const v = await page.inputValue('[data-testid="list-search"]');
+      assert(v === "maya", `filter survives navigation (${v})`);
+      const n = await page.locator('[data-testid="table-people"] tbody tr').count();
+      assert(n === 1, "restored filter is APPLIED (1 row)");
+      await page.fill('[data-testid="list-search"]', "");
+    },
+  },
+  {
+    name: "relation-link", feature: "Relation link cells",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/deals");
+      await page.waitForSelector('[data-testid="view-switch"]');
+      await page.click('[data-testid="view-switch"] button:has-text("Table")');
+      await page.waitForSelector('[data-testid="rel-de_1-company"]');
+      await page.click('[data-testid="rel-de_1-company"]');
+      await page.waitForFunction(() => document.querySelector(".pageTitle")?.textContent?.includes("Companies"));
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 1, null, { timeout: 6000 });
+      const nm = await page.textContent("tbody tr:first-child .nxRowLink");
+      assert(nm?.includes("Brightline"), `relation click lands filtered on the target (${nm})`);
+      await page.fill('[data-testid="list-search"]', "");
+      await page.waitForTimeout(150);
+    },
+  },
+  {
+    name: "bulk-delete-csv", feature: "Bulk select · CSV export · reviewed delete",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="list-search"]');
+      await page.fill('[data-testid="list-search"]', "Journey Test");
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 1);
+      await page.click('tbody tr:first-child [role="checkbox"]');
+      await page.waitForSelector('[data-testid="bulk-bar"]');
+      const dl = page.waitForEvent("download", { timeout: 8000 });
+      await page.click('[data-testid="bulk-export"]');
+      const file = await dl;
+      assert(file.suggestedFilename().endsWith(".csv"), `CSV downloads (${file.suggestedFilename()})`);
+      await page.click('[data-testid="bulk-delete"]');
+      await page.waitForSelector('[data-testid="bulk-confirm"]');
+      const body = await page.textContent('[data-testid="bulk-confirm"]');
+      assert(body?.includes("Journey Test Co"), "review surface names the exact records");
+      await page.click('[data-testid="bulk-confirm-go"]');
+      await page.waitForSelector('[data-testid="toast"]');
+      await page.fill('[data-testid="list-search"]', "");
+      await page.waitForFunction(() => /^\d+$/.test(document.querySelector('[data-testid="row-count"]')?.textContent ?? "") && Number(document.querySelector('[data-testid="row-count"]')?.textContent) === 8, null, { timeout: 6000 });
+      assert(true, "count returns to 8 after reviewed delete");
+    },
+  },
+  {
+    name: "kit-demo-page", feature: "Custom pages + kit demo",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="nav-p-kit"]');
+      await page.click('[data-testid="nav-p-kit"]');
+      await page.waitForSelector('[data-testid="kit-form"]');
+      await page.click('[data-testid="kit-submit"]');
+      await page.waitForFunction(() =>
+        (document.querySelector('[data-testid="kit-name-error"]')?.textContent ?? "").length > 3);
+      assert(true, "zod validation error renders on empty submit");
+      const svg = await page.locator('[data-testid="kit-chart"] svg').count();
+      assert(svg >= 1, "chart renders an svg on the token palette");
+      await page.click('[data-testid="kit-sheet-open"]');
+      await page.waitForSelector('[data-testid="kit-sheet"]');
+      assert(true, "sheet opens as a side panel");
+      await page.keyboard.press("Escape");
+      await page.click('[data-testid="kit-acc-trigger"]');
+      await page.waitForSelector('[data-testid="kit-acc-content"]');
+      assert(true, "accordion expands");
+    },
+  },
+  {
+    name: "chat-dock-config", feature: "Embedded agent chat dock",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="nav"]');
+      const fab = await page.locator('[data-testid="chat-fab"]').count();
+      assert(fab === 0, "dock renders NOTHING while chat.embedUrl is unconfigured (deterministic)");
+    },
+  },
+  {
     name: "search-filters", feature: "Global search",
     async run(page) {
       await page.goto(URLBASE + "/#/o/companies");

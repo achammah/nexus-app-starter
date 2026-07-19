@@ -1,10 +1,21 @@
 import * as React from "react";
-import { Plus, Search } from "lucide-react";
+import { Download, Plus, Search, Trash2 } from "lucide-react";
 import { api } from "./api";
 import { useToast } from "./App";
+import { t } from "./i18n";
 import { Button } from "../ui/primitives/Button";
 import { Input, Badge } from "../ui/primitives/fields";
 import { Dialog } from "../ui/primitives/overlays";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/components/ui/alert-dialog";
 import { DataTable } from "../ui/record-core/DataTable";
 import { KanbanBoard } from "../ui/record-core/KanbanBoard";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
@@ -25,12 +36,36 @@ export function ObjectView({
   viewIcons: { table: React.ReactNode; kanban: React.ReactNode };
 }) {
   const toast = useToast();
+  // Saved view v0: q + view kind persist per object (localStorage) and restore on
+  // mount; a palette/relation jump can hand off a pending query via sessionStorage.
+  const saved = React.useMemo(() => {
+    try {
+      return JSON.parse(localStorage.getItem("nx-view-" + config.key) ?? "{}") as {
+        q?: string;
+        view?: "table" | "kanban";
+      };
+    } catch {
+      return {};
+    }
+  }, [config.key]);
+  const pendingQ = React.useMemo(() => {
+    const v = sessionStorage.getItem("nx-pending-q");
+    if (v !== null) sessionStorage.removeItem("nx-pending-q");
+    return v;
+  }, []);
   const [rows, setRows] = React.useState<RecordRow[] | null>(null);
-  const [q, setQ] = React.useState("");
-  const [view, setView] = React.useState<"table" | "kanban">(config.defaultView);
+  const [q, setQ] = React.useState(pendingQ ?? saved.q ?? "");
+  const [view, setView] = React.useState<"table" | "kanban">(saved.view ?? config.defaultView);
   const [creating, setCreating] = React.useState(false);
   const [draft, setDraft] = React.useState<Record<string, string>>({});
+  const [selection, setSelection] = React.useState<Record<string, boolean>>({});
+  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
   const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
+  const selectedIds = Object.keys(selection).filter((k) => selection[k]);
+
+  React.useEffect(() => {
+    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view }));
+  }, [config.key, q, view]);
 
   const load = React.useCallback(() => {
     api
@@ -58,6 +93,35 @@ export function ObjectView({
         toast(`Save failed: ${e.message}`);
         load(); // restore truth
       });
+  };
+
+  const exportCsv = () => {
+    const chosen = rows?.filter((r) => selection[r.id]) ?? [];
+    const cols = config.fields.map((f) => f.key);
+    const esc = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
+    const csv = [cols.join(","), ...chosen.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    a.download = `${config.key}-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast(t("bulk.exported", { n: chosen.length }));
+  };
+
+  const deleteSelected = async () => {
+    setConfirmingDelete(false);
+    let n = 0;
+    for (const id of selectedIds) {
+      try {
+        await api.remove(config.key, id);
+        n++;
+      } catch (e) {
+        toast(`Delete failed: ${(e as Error).message}`);
+      }
+    }
+    setSelection({});
+    toast(t("bulk.deleted", { n }));
+    load();
   };
 
   const create = () => {
@@ -113,6 +177,25 @@ export function ObjectView({
         </Button>
       </div>
 
+      {selectedIds.length > 0 && (
+        <div
+          className="nxCard"
+          data-testid="bulk-bar"
+          style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", marginBottom: 12 }}
+        >
+          <Badge tone="accent" dot>
+            {selectedIds.length} {t("bulk.selected")}
+          </Badge>
+          <span className="nxSpacer" style={{ flex: 1 }} />
+          <Button size="sm" icon={<Download size={13} />} data-testid="bulk-export" onClick={exportCsv}>
+            {t("bulk.exportCsv")}
+          </Button>
+          <Button size="sm" variant="danger" icon={<Trash2 size={13} />} data-testid="bulk-delete" onClick={() => setConfirmingDelete(true)}>
+            {t("bulk.delete")}
+          </Button>
+        </div>
+      )}
+
       {rows === null ? (
         <div className="nxCard" style={{ padding: 40, textAlign: "center", color: "var(--nx-fg-faint)" }} data-testid="list-loading">
           Loading {config.label.toLowerCase()}…
@@ -120,8 +203,40 @@ export function ObjectView({
       ) : view === "kanban" && config.stageField ? (
         <KanbanBoard config={config} rows={rows} onPatch={patch} onOpen={onOpen} />
       ) : (
-        <DataTable config={config} rows={rows} onOpen={onOpen} onPatch={patch} />
+        <DataTable
+          config={config}
+          rows={rows}
+          onOpen={onOpen}
+          onPatch={patch}
+          selection={selection}
+          onSelectionChange={setSelection}
+        />
       )}
+
+      <AlertDialog open={confirmingDelete} onOpenChange={setConfirmingDelete}>
+        <AlertDialogContent data-testid="bulk-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("bulk.confirmTitle", { n: selectedIds.length, label: config.label.toLowerCase() })}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("bulk.confirmBody")}
+              <span style={{ display: "block", marginTop: 8, color: "var(--nx-fg)" }}>
+                {(rows ?? [])
+                  .filter((r) => selection[r.id])
+                  .map((r) => String(r[primary.key] ?? r.id))
+                  .join(" · ")}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("bulk.cancel")}</AlertDialogCancel>
+            <AlertDialogAction data-testid="bulk-confirm-go" onClick={deleteSelected}>
+              {t("bulk.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog
         open={creating}

@@ -7,3 +7,10 @@ One row per ASK, appended THE TURN it arrives (the user's words, near-verbatim).
 | 1 | Starter boots with shell + three seeded objects (companies, people, deals) — clone-and-run | journey-green | journeys/core: shell-loads | starter v0.1 seed |
 | 2 | Records open, fields edit inline and persist, timeline records changes | journey-green | journeys/core: record-edit-persists | starter v0.1 seed |
 | 3 | Deals board drags across stages; stage change is visible + persisted | journey-green | journeys/core: stage-moves | starter v0.1 seed |
+| 4 | Real shadcn/ui vendored as the component base (“I don't want to recreate my own library”) — full useful registry set | journey-green (build+journeys on vendored kit) | nexus-ui .vendor-manifest.json (47 items) | user 2026-07-19 |
+| 5 | “ANY product can be built with our app starter and UI” — custom pages registry + full kit + config-driven objects | built | src/app/pages.tsx · #/p/<key> route | user 2026-07-19 |
+| 6 | ⌘K palette jumping to any record/object/page | journey-green | journeys: cmdk-navigates | comprehensiveness wave 2026-07-19 |
+| 7 | Bulk selection with CSV export + reviewed delete (review surface names records) | journey-green | journeys: bulk-delete-csv | comprehensiveness wave 2026-07-19 |
+| 8 | Relation cells navigate to the related record’s home, filtered | journey-green | journeys: relation-link | comprehensiveness wave 2026-07-19 |
+| 9 | Per-object saved view (filter + view kind) persists across navigation | journey-green | journeys: views-persist | comprehensiveness wave 2026-07-19 |
+| 10 | Embedded agent chat dock (EMBED rung 1) configurable via chat.embedUrl | journey-green (unconfigured-deterministic) | journeys: chat-dock-config · src/app/ChatDock.tsx | starter-guide contract 2026-07-19 |

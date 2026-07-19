@@ -4,6 +4,8 @@ import { api, type AppConfig } from "./api";
 import { ObjectView } from "./ObjectView";
 import { RecordView } from "./RecordView";
 import { customPages } from "./pages";
+import { CommandPalette } from "./CommandPalette";
+import { ChatDock } from "./ChatDock";
 import { Button } from "../ui/primitives/Button";
 import { Tip } from "../ui/primitives/fields";
 
@@ -133,7 +135,7 @@ export function App() {
         <div className="main">
           <header className="top">
             <span className="crumb">
-              <b>{active.label}</b>
+              <b>{route.page ? customPages.find((p) => p.key === route.page)?.label ?? route.page : active.label}</b>
               {route.recordId && <span>/ record</span>}
             </span>
             <label className="topSearch" data-testid="global-search">
@@ -147,7 +149,7 @@ export function App() {
                   }
                 }}
               />
-              <span className="kbd">⏎</span>
+              <span className="kbd">⌘K</span>
             </label>
             <Tip label="Toggle theme">
               <Button variant="ghost" size="sm" aria-label="Toggle theme" data-testid="theme-toggle" onClick={toggleTheme}
@@ -180,6 +182,9 @@ export function App() {
             <div className="toast" key={t.id} data-testid="toast">{t.text}</div>
           ))}
         </div>
+
+        <CommandPalette config={config} go={route.go} />
+        <ChatDock embedUrl={config.chat?.embedUrl} />
       </div>
     </ToastCtx.Provider>
   );

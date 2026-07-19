@@ -6,6 +6,9 @@
   "theme": {
     "accent": "#4f46e5"
   },
+  "chat": {
+    "embedUrl": ""
+  },
   "objects": [
     {
       "key": "companies",

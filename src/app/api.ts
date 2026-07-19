@@ -6,6 +6,7 @@ import type { ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/t
 export interface AppConfig {
   app: { name: string; slug: string };
   theme: { accent: string };
+  chat?: { embedUrl?: string };
   objects: ObjectConfig[];
 }
 
@@ -30,6 +31,8 @@ export const api = {
     j<RecordRow>(`/api/objects/${obj}/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   create: (obj: string, body: Record<string, unknown>) =>
     j<RecordRow>(`/api/objects/${obj}`, { method: "POST", body: JSON.stringify(body) }),
+  remove: (obj: string, id: string) =>
+    j<{ ok: boolean }>(`/api/objects/${obj}/${id}`, { method: "DELETE" }),
   timeline: (obj: string, id: string) =>
     j<{ events: TimelineEvent[] }>(`/api/objects/${obj}/${id}/timeline`).then((r) => r.events),
   addNote: (obj: string, id: string, text: string) =>

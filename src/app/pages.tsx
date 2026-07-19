@@ -22,4 +22,11 @@ export interface PageDef {
   component: React.ComponentType;
 }
 
-export const customPages: PageDef[] = [];
+import { Boxes } from "lucide-react";
+import { KitDemo } from "./pages/KitDemo";
+
+export const customPages: PageDef[] = [
+  // The kit demo proves this registry AND shows the deep component families live.
+  // Real apps replace it with their own pages (or delete it).
+  { key: "kit", label: "Kit demo", icon: <Boxes size={15} />, component: KitDemo },
+];

@@ -90,6 +90,9 @@ async function api(req, res, url) {
         const row = store.patch(objKey, id, patch);
         return row ? send(res, 200, row) : send(res, 404, { error: "not found" });
       }
+      if (req.method === "DELETE") {
+        return store.remove(objKey, id) ? send(res, 200, { ok: true }) : send(res, 404, { error: "not found" });
+      }
     }
     return send(res, 404, { error: "no route" });
   } catch (e) {
