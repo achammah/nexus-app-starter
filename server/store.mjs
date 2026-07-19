@@ -73,6 +73,69 @@ export class Store {
     return t.expires > Date.now() ? t : null;
   }
 
+  /* ---- teams: membership + invitations (records stay app-global; teams carry
+     roles — the permissions layer reads them) ---- */
+
+  teamAdd(name, ownerEmail, inviteCode) {
+    const base = String(name).toLowerCase().replaceAll(/[^a-z0-9]+/g, "-").replaceAll(/^-|-$/g, "") || "team";
+    let slug = base;
+    for (let i = 2; (this.teams ?? []).some((t) => t.slug === slug); i++) slug = `${base}-${i}`;
+    const team = { id: `t_${++this.n}`, slug, name, inviteCode, createdAt: new Date().toISOString() };
+    (this.teams ??= []).push(team);
+    this.memberAdd(team.id, ownerEmail, "owner", "active");
+    return team;
+  }
+
+  teamBySlug(slug) {
+    return (this.teams ?? []).find((t) => t.slug === slug) ?? null;
+  }
+
+  teamByCode(code) {
+    return (this.teams ?? []).find((t) => t.inviteCode === code) ?? null;
+  }
+
+  teamsFor(email) {
+    const mine = (this.members ?? []).filter((m) => m.email === email.toLowerCase() && m.status === "active");
+    return mine.map((m) => ({ ...this.teams.find((t) => t.id === m.teamId), role: m.role }));
+  }
+
+  memberAdd(teamId, email, role, status) {
+    const m = { teamId, email: email.toLowerCase(), role, status, addedAt: new Date().toISOString() };
+    (this.members ??= []).push(m);
+    return m;
+  }
+
+  memberOf(teamId, email) {
+    return (this.members ?? []).find((m) => m.teamId === teamId && m.email === String(email).toLowerCase()) ?? null;
+  }
+
+  memberList(teamId) {
+    return (this.members ?? []).filter((m) => m.teamId === teamId);
+  }
+
+  memberSetRole(teamId, email, role) {
+    const m = this.memberOf(teamId, email);
+    if (m) m.role = role;
+    return m;
+  }
+
+  memberRemove(teamId, email) {
+    const list = this.members ?? [];
+    const i = list.findIndex((m) => m.teamId === teamId && m.email === String(email).toLowerCase());
+    if (i === -1) return false;
+    list.splice(i, 1);
+    return true;
+  }
+
+  /* the caller's app-wide role: highest across active memberships; no team → member;
+     (auth disabled entirely → routes never ask) */
+  roleFor(email) {
+    const ranks = { owner: 3, admin: 2, member: 1 };
+    const mine = (this.members ?? []).filter((m) => m.email === String(email ?? "").toLowerCase() && m.status === "active");
+    if (mine.length === 0) return "member";
+    return mine.sort((a, b) => ranks[b.role] - ranks[a.role])[0].role;
+  }
+
   outboxAdd({ to, subject, text, kind }) {
     const m = { id: `m_${++this.n}`, to: to.toLowerCase(), subject, text, kind, ts: new Date().toISOString() };
     (this.outbox ??= []).push(m);

@@ -4,20 +4,24 @@ import { useToast } from "./App";
 import { RecordPage, type RelatedList } from "../ui/record-core/RecordPage";
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
 import { usePollRev } from "./usePollRev";
+import { can, type Role } from "./permissions";
 
 export function RecordView({
   appConfig,
   config,
   id,
+  role,
   onBack,
   go,
 }: {
   appConfig: AppConfig;
   config: ObjectConfig;
   id: string;
+  role?: Role;
   onBack: () => void;
   go: (hash: string) => void;
 }) {
+  const readOnly = !can(role, config, "edit");
   const toast = useToast();
   const [row, setRow] = React.useState<RecordRow | null>(null);
   const [timeline, setTimeline] = React.useState<TimelineEvent[]>([]);
@@ -100,6 +104,7 @@ export function RecordView({
       relationOptions={relationOptions}
       related={related}
       userOptions={appConfig.users ?? []}
+      readOnly={readOnly}
       onOpenRelation={(target, value) => {
         sessionStorage.setItem("nx-pending-q", value);
         go(`#/o/${target}`);

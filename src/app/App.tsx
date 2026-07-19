@@ -55,7 +55,7 @@ export function App() {
   const [err, setErr] = React.useState<string | null>(null);
   const [toasts, setToasts] = React.useState<Toast[]>([]);
   // auth gate: null = probing · {enabled,accounts,user} = known
-  const [auth, setAuth] = React.useState<{ enabled: boolean; accounts?: boolean; user: string | null; verified?: boolean } | null>(null);
+  const [auth, setAuth] = React.useState<{ enabled: boolean; accounts?: boolean; user: string | null; verified?: boolean; role?: "owner" | "admin" | "member" } | null>(null);
   const route = useHashRoute();
 
   const probeAuth = React.useCallback(() => {
@@ -79,8 +79,10 @@ export function App() {
     const handle = () => {
       const verify = window.location.hash.match(/#\/verify\?token=([^&]+)/);
       const del = window.location.hash.match(/#\/delete\?token=([^&]+)/);
+      const inv = window.location.hash.match(/#\/invite\?token=([^&]+)/);
       const hit = verify ? (["/api/auth/verify", verify[1], "Email verified"] as const)
-        : del ? (["/api/auth/delete-confirm", del[1], "Account deleted"] as const) : null;
+        : del ? (["/api/auth/delete-confirm", del[1], "Account deleted"] as const)
+        : inv ? (["/api/teams/accept", inv[1], "Invitation accepted"] as const) : null;
       if (!hit || handledToken.current === hit[1]) return;
       handledToken.current = hit[1];
       fetch(hit[0], { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ token: hit[1] }) })
@@ -112,7 +114,7 @@ export function App() {
         document.title = c.app.name;
         const skin = resolveSkin(c);
         if (skin) applySkin(skin);
-        if (!route.object && !route.page && !/^#\/(reset|verify|delete)\?/.test(window.location.hash)) {
+        if (!route.object && !route.page && !/^#\/(reset|verify|delete|invite)\?/.test(window.location.hash)) {
           route.go(c.objects[0] ? `#/o/${c.objects[0].key}` : customPages[0] ? `#/p/${customPages[0].key}` : "#/");
         }
         c.objects.forEach((o) => api.list(o.key).then((rows) => setCounts((m) => ({ ...m, [o.key]: rows.length }))).catch(() => {}));
@@ -251,6 +253,7 @@ export function App() {
                 /* keyed per record: tab choice + draft text must never leak
                    from one record's page into another's */
                 key={`${active.key}:${route.recordId}`}
+                role={auth?.role}
                 appConfig={config}
                 config={active}
                 id={route.recordId}
@@ -261,6 +264,7 @@ export function App() {
               <ObjectView
                 key={active.key}
                 config={active}
+                role={auth?.role}
                 users={config.users ?? []}
                 onOpen={(id) => route.go(`#/o/${active.key}/r/${id}`)}
                 onCountChange={onCount}

@@ -16,8 +16,10 @@ import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Store } from "./store.mjs";
-import { env } from "./env.mjs";
-import { handleAuth, gate } from "./auth.mjs";
+import { env, AUTH_ENABLED } from "./env.mjs";
+import { handleAuth, gate, readSession } from "./auth.mjs";
+import { handleTeams } from "./teams.mjs";
+import { can } from "./permissions.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DIST = path.join(ROOT, "dist");
@@ -52,6 +54,11 @@ async function api(req, res, url) {
   const parts = url.pathname.split("/").filter(Boolean); // ["api", ...]
   try {
     if (parts[1] === "config") return send(res, 200, { ...CONFIG, demo: store.demo });
+
+    const session = AUTH_ENABLED ? readSession(req, store) : null;
+    if (await handleTeams(req, res, url, readBody, send, store, session)) return;
+    // role for permission checks: auth off → owner-equivalent (open); on → from teams
+    const role = AUTH_ENABLED ? store.roleFor(session?.email) : "owner";
     if (parts[1] === "healthz") return send(res, 200, { ok: true, version: VERSION, app: CONFIG.app.slug });
 
     if (parts[1] === "outbox") {
@@ -73,13 +80,21 @@ async function api(req, res, url) {
       const objKey = parts[2];
       const cfg = CONFIG.objects.find((o) => o.key === objKey);
       if (!cfg) return send(res, 404, { error: `unknown object ${objKey}` });
+      // permission gate — config-declared, role from teams (server/permissions.mjs)
+      const deny = (action) => {
+        if (can(role, cfg, action)) return false;
+        send(res, 403, { error: `your role (${role}) cannot ${action} ${cfg.label.toLowerCase()}` });
+        return true;
+      };
 
       if (!parts[3]) {
         if (req.method === "GET") {
+          if (deny("view")) return;
           const q = Object.fromEntries(url.searchParams);
           return send(res, 200, { rows: store.list(objKey, q) });
         }
         if (req.method === "POST") {
+          if (deny("create")) return;
           const body = await readBody(req);
           const invalid = store.validate(objKey, body);
           if (invalid) return send(res, 400, { error: invalid });
@@ -90,13 +105,18 @@ async function api(req, res, url) {
       if (parts[3] === "rev") return send(res, 200, { rev: store.rev(objKey) });
 
       const id = parts[3];
-      if (parts[4] === "timeline") return send(res, 200, { events: store.timeline(objKey, id) });
+      if (parts[4] === "timeline") {
+        if (deny("view")) return;
+        return send(res, 200, { events: store.timeline(objKey, id) });
+      }
       if (parts[4] === "notes" && req.method === "POST") {
+        if (deny("edit")) return;
         const { text } = await readBody(req);
         if (!text) return send(res, 400, { error: "text required" });
         return send(res, 201, store.addNote(objKey, id, text));
       }
       if (parts[4] === "activities" && req.method === "POST") {
+        if (deny("edit")) return;
         const { kind, text } = await readBody(req);
         if (!["call", "email", "meeting"].includes(kind)) return send(res, 400, { error: "kind must be call|email|meeting" });
         if (!text) return send(res, 400, { error: "text required" });
@@ -104,8 +124,12 @@ async function api(req, res, url) {
       }
       if (parts[4] === "files") {
         if (!parts[5]) {
-          if (req.method === "GET") return send(res, 200, { files: store.fileList(objKey, id) });
+          if (req.method === "GET") {
+            if (deny("view")) return;
+            return send(res, 200, { files: store.fileList(objKey, id) });
+          }
           if (req.method === "POST") {
+            if (deny("edit")) return;
             const { name, mime, data } = await readBody(req);
             if (!name || typeof data !== "string") return send(res, 400, { error: "name + base64 data required" });
             if (data.length > 7_000_000) return send(res, 413, { error: "file too large (5 MB max)" });
@@ -125,6 +149,7 @@ async function api(req, res, url) {
          whose config carries `primitive`. Prod: replace the mockValue line with a
          platform call (task execute / workflow trigger) using primitive.id. */
       if (parts[4] === "enrich" && req.method === "POST") {
+        if (deny("edit")) return;
         const { field } = await readBody(req);
         const f = cfg.fields.find((x) => x.key === field);
         if (!f) return send(res, 400, { error: `unknown field ${field}` });
@@ -137,10 +162,12 @@ async function api(req, res, url) {
         return send(res, 200, store.enrich(objKey, id, field, mockValue, via));
       }
       if (req.method === "GET") {
+        if (deny("view")) return;
         const row = store.get(objKey, id);
         return row ? send(res, 200, row) : send(res, 404, { error: "not found" });
       }
       if (req.method === "PATCH") {
+        if (deny("edit")) return;
         const patch = await readBody(req);
         const invalid = store.validate(objKey, patch);
         if (invalid) return send(res, 400, { error: invalid });
@@ -148,6 +175,7 @@ async function api(req, res, url) {
         return row ? send(res, 200, row) : send(res, 404, { error: "not found" });
       }
       if (req.method === "DELETE") {
+        if (deny("delete")) return;
         return store.remove(objKey, id) ? send(res, 200, { ok: true }) : send(res, 404, { error: "not found" });
       }
     }

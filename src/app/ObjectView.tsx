@@ -28,6 +28,7 @@ import { KanbanBoard } from "../ui/record-core/KanbanBoard";
 import { ChartView } from "../ui/record-core/ChartView";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
 import { usePollRev } from "./usePollRev";
+import { can, type Role } from "./permissions";
 
 /* ObjectView — the list surface: view bar (search · filter chip · count · view switch ·
    New) + table or kanban. GLANCE → ZOOM → ACT: status visible per row, one click to
@@ -36,17 +37,24 @@ import { usePollRev } from "./usePollRev";
 export function ObjectView({
   config,
   users = [],
+  role,
   onOpen,
   onCountChange,
   viewIcons,
 }: {
   config: ObjectConfig;
   users?: string[];
+  role?: Role;
   onOpen: (id: string) => void;
   onCountChange: (key: string, n: number) => void;
   viewIcons: { table: React.ReactNode; kanban: React.ReactNode };
 }) {
   const toast = useToast();
+  // permission-driven affordances (the server is the real gate)
+  const canCreate = can(role, config, "create");
+  const canEdit = can(role, config, "edit");
+  const canDelete = can(role, config, "delete");
+  const canExport = can(role, config, "export");
   // Saved view v0: q + view kind persist per object (localStorage) and restore on
   // mount; a palette/relation jump can hand off a pending query via sessionStorage.
   const saved = React.useMemo(() => {
@@ -357,9 +365,11 @@ export function ObjectView({
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        {canCreate && (
         <Button variant="primary" size="md" icon={<Plus size={14} />} data-testid="new-record" onClick={() => setCreating(true)}>
           New {config.labelOne.toLowerCase()}
         </Button>
+        )}
       </div>
 
       {selectedIds.length > 0 && (
@@ -372,12 +382,16 @@ export function ObjectView({
             {selectedIds.length} {t("bulk.selected")}
           </Badge>
           <span className="nxSpacer" style={{ flex: 1 }} />
+          {canExport && (
           <Button size="sm" icon={<Download size={13} />} data-testid="bulk-export" onClick={exportCsv}>
             {t("bulk.exportCsv")}
           </Button>
+          )}
+          {canDelete && (
           <Button size="sm" variant="danger" icon={<Trash2 size={13} />} data-testid="bulk-delete" onClick={() => setConfirmingDelete(true)}>
             {t("bulk.delete")}
           </Button>
+          )}
         </div>
       )}
 
@@ -401,6 +415,7 @@ export function ObjectView({
           onOpen={onOpen}
           groupField={groupBy}
           groupOptions={groupFieldDef.type === "user" ? users : undefined}
+          readOnly={!canEdit}
         />
       ) : (
         <DataTable
@@ -408,6 +423,7 @@ export function ObjectView({
           rows={visibleRows}
           onOpen={onOpen}
           onPatch={patch}
+          readOnly={!canEdit}
           hiddenFields={hidden}
           sort={sort}
           onSortChange={setSort}

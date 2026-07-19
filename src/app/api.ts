@@ -47,6 +47,17 @@ export const api = {
   remove: (obj: string, id: string) =>
     j<{ ok: boolean }>(`/api/objects/${obj}/${id}`, { method: "DELETE" }),
   rev: (obj: string) => j<{ rev: number }>(`/api/objects/${obj}/rev`),
+  teams: () => j<{ teams: { slug: string; name: string; role: string }[]; role: string }>("/api/teams"),
+  teamCreate: (name: string) => j<{ slug: string; name: string }>("/api/teams", { method: "POST", body: JSON.stringify({ name }) }),
+  teamMembers: (slug: string) =>
+    j<{ members: { email: string; role: string; status: string }[]; inviteCode?: string }>(`/api/teams/${slug}/members`),
+  teamInvite: (slug: string, email: string, role: string) =>
+    j<{ ok: boolean }>(`/api/teams/${slug}/invites`, { method: "POST", body: JSON.stringify({ email, role }) }),
+  teamJoin: (code: string) => j<{ ok: boolean; team: { slug: string; name: string } }>("/api/teams/join", { method: "POST", body: JSON.stringify({ code }) }),
+  teamSetRole: (slug: string, email: string, role: string) =>
+    j<{ ok: boolean }>(`/api/teams/${slug}/members`, { method: "PATCH", body: JSON.stringify({ email, role }) }),
+  teamRemove: (slug: string, email: string) =>
+    j<{ ok: boolean }>(`/api/teams/${slug}/members?email=${encodeURIComponent(email)}`, { method: "DELETE" }),
   timeline: (obj: string, id: string) =>
     j<{ events: TimelineEvent[] }>(`/api/objects/${obj}/${id}/timeline`).then((r) => r.events),
   addNote: (obj: string, id: string, text: string) =>

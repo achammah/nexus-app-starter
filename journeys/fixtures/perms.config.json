@@ -1,0 +1,27 @@
+{
+  "app": { "name": "Perms Fixture", "slug": "perms-fixture" },
+  "theme": {},
+  "users": [],
+  "objects": [
+    {
+      "key": "accounts",
+      "label": "Accounts",
+      "labelOne": "Account",
+      "icon": "building-2",
+      "defaultView": "table",
+      "permissions": {
+        "admin": ["view", "create", "edit", "delete", "export"],
+        "member": ["view"]
+      },
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "tier", "label": "Tier", "type": "select", "options": ["Free", "Pro", "Enterprise"] },
+        { "key": "arr", "label": "ARR", "type": "currency" }
+      ],
+      "sampleRows": [
+        { "id": "ac_1", "name": "Northlake Systems", "tier": "Pro", "arr": 42000 },
+        { "id": "ac_2", "name": "Bluefin Logistics", "tier": "Enterprise", "arr": 180000 }
+      ]
+    }
+  ]
+}

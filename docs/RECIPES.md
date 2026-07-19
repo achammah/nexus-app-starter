@@ -52,5 +52,10 @@ Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:
 ## Wire real auth
 Set `AUTH_USERS` (`user:pass,user2:pass2`) + `APP_SECRET` (32+ chars) → the login gate arms. See `.env.example`. Swap the seam for SSO/OAuth in `server/auth.mjs` — the gate call-sites don't change.
 
+## Turn on accounts, teams, permissions
+1. `.env`: `AUTH_MODE=accounts` + `APP_SECRET` (32+ chars). Signup/verification/reset/deletion flows arm; mail lands in the dev outbox (`GET /api/outbox`) until `SMTP_URL` + a real transport are wired in `server/email.mjs`.
+2. Teams live at `/p/team`: create, invite by mail, or share the join code. Roles: owner > admin > member.
+3. Per-object permissions in the config: `"permissions": { "admin": ["view","create","edit","delete","export"], "member": ["view"] }` — omit the block and everything stays open. The server 403s uncovered actions; the UI hides their affordances (`src/app/permissions.ts` mirrors `server/permissions.mjs` — keep them in sync).
+
 ## Ship
 `npm run precheck` (tsc + build + journey-stamp freshness) → `docs/PRODUCTION_CHECKLIST.md` → push. CI runs the full journey suite; the deploy gate reads `journeys/.last-pass` + the manifest stamps.

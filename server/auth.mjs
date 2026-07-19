@@ -84,6 +84,7 @@ export async function handleAuth(req, res, url, readBody, send, store) {
       enabled: AUTH_ENABLED,
       accounts: ACCOUNTS_ENABLED,
       user: s?.email ?? null,
+      ...(s ? { role: store.roleFor(s.email) } : {}),
       ...(u ? { name: u.name, verified: u.verified } : {}),
     });
     return true;

@@ -525,6 +525,113 @@ const journeys = [
     },
   },
   {
+    name: "teams-invite-join", feature: "Teams (invitations, join code, roles)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4680", AUTH_MODE: "accounts", APP_SECRET: "journey-secret-16-chars-plus" },
+      });
+      const B = "http://localhost:4680";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        // ada (owner) drives the UI
+        const ctxA = await page.context().browser().newContext();
+        const pa = await ctxA.newPage();
+        await pa.request.post(B + "/api/auth/signup", { data: { email: "ada@fixture.example", name: "Ada", password: "owner-pass-123" } });
+        await pa.goto(B + "/#/p/team");
+        await pa.waitForSelector('[data-testid="team-create-name"]');
+        await pa.fill('[data-testid="team-create-name"]', "Fixture Crew");
+        await pa.click('[data-testid="team-create-go"]');
+        await pa.waitForSelector('[data-testid="team-fixture-crew"]');
+        await pa.fill('[data-testid="team-invite-email"]', "bob@fixture.example");
+        await pa.click('[data-testid="team-invite-go"]');
+        await pa.waitForSelector('[data-testid="member-row-bob@fixture.example"]');
+        const pendingRow = await pa.textContent('[data-testid="member-row-bob@fixture.example"]');
+        assert(pendingRow.includes("pending"), "invited member shows as PENDING before accepting");
+        // bob signs up and follows the invite mail's deep link
+        const invMail = (await (await pa.request.get(B + "/api/outbox")).json()).mail.find((m) => m.kind === "team-invite");
+        assert(!!invMail, "invitation mail is in the outbox");
+        const invToken = invMail.text.match(/token=([A-Za-z0-9_-]+)/)[1];
+        const ctxB = await page.context().browser().newContext();
+        const pb = await ctxB.newPage();
+        await pb.request.post(B + "/api/auth/signup", { data: { email: "bob@fixture.example", name: "Bob", password: "member-pass-123" } });
+        await pb.goto(`${B}/#/invite?token=${invToken}`);
+        await pb.waitForFunction(() =>
+          [...document.querySelectorAll('[data-testid="toast"]')].some((t) => t.textContent?.includes("Invitation accepted")),
+        );
+        const bobTeams = await (await pb.request.get(B + "/api/teams")).json();
+        assert(bobTeams.teams.some((t) => t.slug === "fixture-crew"), "accepting activates bob's membership");
+        // carol joins via the shareable code
+        const code = (await (await pa.request.get(B + "/api/teams/fixture-crew/members")).json()).inviteCode;
+        const ctxC = await page.context().browser().newContext();
+        const pc = await ctxC.newPage();
+        await pc.request.post(B + "/api/auth/signup", { data: { email: "carol@fixture.example", name: "Carol", password: "join-pass-1234" } });
+        await pc.goto(B + "/#/p/team");
+        await pc.waitForSelector('[data-testid="team-code-input"]');
+        await pc.fill('[data-testid="team-code-input"]', code);
+        await pc.click('[data-testid="team-join-go"]');
+        await pc.waitForSelector('[data-testid="team-fixture-crew"]');
+        assert(true, "join code adds carol as a member (UI)");
+        // duplicate invite answers explicitly, never a silent no-op
+        const dup = await pa.request.post(B + "/api/teams/fixture-crew/invites", { data: { email: "bob@fixture.example", role: "member" } });
+        assert(dup.status() === 409, "re-inviting an existing member is an explicit 409");
+        // owner promotes bob; the last owner cannot be demoted
+        await pa.request.patch(B + "/api/teams/fixture-crew/members", { data: { email: "bob@fixture.example", role: "admin" } });
+        const demote = await pa.request.patch(B + "/api/teams/fixture-crew/members", { data: { email: "ada@fixture.example", role: "member" } });
+        assert(demote.status() === 409, "the last owner cannot be demoted");
+        await ctxA.close(); await ctxB.close(); await ctxC.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "permissions-enforced", feature: "Permissions (config-declared, role-enforced)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: {
+          ...process.env, PORT: "4690", AUTH_MODE: "accounts",
+          APP_SECRET: "journey-secret-16-chars-plus", CONFIG_PATH: "journeys/fixtures/perms.config.json",
+        },
+      });
+      const B = "http://localhost:4690";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        // dana has no team → role "member" → view-only on accounts
+        await p2.request.post(B + "/api/auth/signup", { data: { email: "dana@fixture.example", name: "Dana", password: "viewer-pass-12" } });
+        await p2.goto(B + "/#/o/accounts");
+        await p2.waitForSelector('[data-testid="table-accounts"] tbody tr');
+        assert((await p2.locator('[data-testid="new-record"]').count()) === 0, "member sees NO create button");
+        assert((await p2.locator('[data-testid="table-accounts"] tbody input').count()) === 0, "cells render read-only (no inline editors)");
+        const patchTry = await p2.request.patch(B + "/api/objects/accounts/ac_1", { data: { name: "Hacked" } });
+        assert(patchTry.status() === 403, "the API itself 403s an edit (server is the gate)");
+        const readTry = await p2.request.get(B + "/api/objects/accounts/ac_1");
+        assert(readTry.status() === 200, "viewing stays allowed");
+        // an owner (via a team) gets the full surface back
+        const po = await ctx.newPage();
+        await po.request.post(B + "/api/auth/signup", { data: { email: "erin@fixture.example", name: "Erin", password: "owner-pass-1234" } });
+        await po.request.post(B + "/api/teams", { data: { name: "Ops" } });
+        await po.goto(B + "/#/o/accounts");
+        await po.waitForSelector('[data-testid="new-record"]');
+        assert(true, "an owner sees the create button again");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
     name: "org-reskin", feature: "Skin system (org brand as data)",
     async run(page) {
       // default app carries the nexus skin
