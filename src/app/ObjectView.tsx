@@ -24,6 +24,8 @@ import {
   AlertDialogTitle,
 } from "../ui/components/ui/alert-dialog";
 import { csvCell, DataTable, formatCell } from "../ui/record-core/DataTable";
+import { AddressField, FullNameField, ListField, listValidators, MoneyField } from "../ui/record-core/RecordPage";
+import type { RelationItem } from "../ui/record-core/types";
 import { KanbanBoard } from "../ui/record-core/KanbanBoard";
 import { ChartView } from "../ui/record-core/ChartView";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
@@ -63,6 +65,7 @@ function parseCsv(text: string): string[][] {
 }
 
 export function ObjectView({
+  appConfig,
   config,
   users = [],
   role,
@@ -70,6 +73,8 @@ export function ObjectView({
   onCountChange,
   viewIcons,
 }: {
+  /* the whole app config — relation targets' primaries resolve create-dialog labels */
+  appConfig?: { objects: ObjectConfig[] };
   config: ObjectConfig;
   users?: string[];
   role?: Role;
@@ -112,7 +117,7 @@ export function ObjectView({
   const [selFilters, setSelFilters] = React.useState<Record<string, string[]>>(
     (saved as { selFilters?: Record<string, string[]> }).selFilters ?? {},
   );
-  const [relOpts, setRelOpts] = React.useState<Record<string, string[]>>({});
+  const [relOpts, setRelOpts] = React.useState<Record<string, RelationItem[]>>({});
   // board can group by ANY select/user field (stageField is just the default)
   const groupables = activeFields(config.fields).filter((f) => f.type === "select" || f.type === "user");
   const [groupBy, setGroupBy] = React.useState<string>(
@@ -142,7 +147,7 @@ export function ObjectView({
   const bulkCancel = React.useRef(false);
   const [creating, setCreating] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
-  const [draft, setDraft] = React.useState<Record<string, string>>({});
+  const [draft, setDraft] = React.useState<Record<string, unknown>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
   const [confirmingDelete, setConfirmingDelete] = React.useState(false);
   // trash dialog: null = closed; rows load on open
@@ -152,6 +157,12 @@ export function ObjectView({
   const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
   // display text for a row's primary value — shaped primaries (fullName) render joined, never "[object Object]"
   const primaryLabel = (r: RecordRow | undefined | null) => (r ? formatCell(r[primary.key], primary.type) || r.id : "");
+  // create gate: a string primary needs text; a shaped primary (fullName) needs any non-empty part
+  const draftHasPrimary = (() => {
+    const v = draft[primary.key];
+    if (typeof v === "string") return !!v.trim();
+    return v !== null && typeof v === "object" && Object.values(v as Record<string, unknown>).some((x) => String(x ?? "").trim() !== "");
+  })();
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
 
   // palette actions target the ACTIVE list via events (the palette lives app-level)
@@ -171,18 +182,32 @@ export function ObjectView({
     localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, groupBy, measure, aggregate }));
   }, [config.key, q, view, hidden, sort, selFilters, groupBy, measure, aggregate]);
 
-  // relation options for the create dialog (fetched once the dialog opens)
+  // relation items for the create dialog (fetched once the dialog opens) —
+  // {id, label, type}: options save by ID, labels come from the target's
+  // primary via formatCell (a fullName-primary target lists joined)
   React.useEffect(() => {
     if (!creating) return;
     config.fields
-      .filter((f) => f.type === "relation" && f.relation)
+      .filter((f) => f.type === "relation" && !f.multiple)
       .forEach((f) => {
-        api
-          .list(f.relation!)
-          .then((rows) => setRelOpts((m) => ({ ...m, [f.key]: rows.map((r) => String(r.name ?? r.title ?? r.id)) })))
+        const targets = f.relationTargets ?? (f.relation ? [f.relation] : []);
+        Promise.all(
+          targets.map(async (tKey) => {
+            const target = appConfig?.objects.find((o) => o.key === tKey);
+            const tPrimary = target ? target.fields.find((x) => x.primary) ?? target.fields[0] : undefined;
+            const rows = await api.list(tKey).catch(() => [] as RecordRow[]);
+            return rows.map((r) => ({
+              id: r.id,
+              label: tPrimary ? formatCell(r[tPrimary.key], tPrimary.type) || r.id : String(r.name ?? r.title ?? r.id),
+              type: tKey,
+              typeLabel: target?.labelOne ?? tKey,
+            }));
+          }),
+        )
+          .then((lists) => setRelOpts((m) => ({ ...m, [f.key]: lists.flat() })))
           .catch(() => {});
       });
-  }, [creating, config.fields]);
+  }, [creating, config.fields, appConfig]);
 
   const activeSelFilters = Object.entries(selFilters).filter(([, vals]) => vals.length > 0);
   const visibleRows = React.useMemo(
@@ -901,7 +926,7 @@ export function ObjectView({
         footer={
           <>
             <Button onClick={() => setCreating(false)}>Cancel</Button>
-            <Button variant="primary" data-testid="create-confirm" onClick={create} disabled={!draft[primary.key]?.trim()}>
+            <Button variant="primary" data-testid="create-confirm" onClick={create} disabled={!draftHasPrimary}>
               Create
             </Button>
           </>
@@ -909,27 +934,44 @@ export function ObjectView({
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {activeFields(config.fields)
-            .filter((f) => !["json", "array", "rating", "boolean"].includes(f.type))
+            .filter((f) => !["json", "array", "rating", "boolean"].includes(f.type) && !(f.type === "relation" && f.multiple))
             .slice(0, 6)
             .map((f) => (
               <label key={f.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <span className="nxMicro">{f.label}</span>
                 {f.type === "relation" ? (
+                  // saves the target's ID (grouped by type when polymorphic)
                   <select
                     className="nxInput"
-                    value={draft[f.key] ?? ""}
+                    value={typeof draft[f.key] === "object" && draft[f.key] !== null ? `${(draft[f.key] as { object: string }).object}:${(draft[f.key] as { id: string }).id}` : String(draft[f.key] ?? "")}
                     data-testid={`new-${f.key}`}
-                    onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setDraft((d) => ({
+                        ...d,
+                        [f.key]: !v ? "" : f.relationTargets ? { object: v.split(":")[0], id: v.split(":")[1] } : v,
+                      }));
+                    }}
                   >
                     <option value="">—</option>
-                    {(relOpts[f.key] ?? []).map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
+                    {f.relationTargets ? (
+                      [...new Set((relOpts[f.key] ?? []).map((o) => o.type))].map((t) => (
+                        <optgroup key={t} label={(relOpts[f.key] ?? []).find((o) => o.type === t)?.typeLabel ?? t}>
+                          {(relOpts[f.key] ?? []).filter((o) => o.type === t).map((o) => (
+                            <option key={`${o.type}:${o.id}`} value={`${o.type}:${o.id}`}>{o.label}</option>
+                          ))}
+                        </optgroup>
+                      ))
+                    ) : (
+                      (relOpts[f.key] ?? []).map((o) => (
+                        <option key={o.id} value={o.id}>{o.label}</option>
+                      ))
+                    )}
                   </select>
                 ) : f.type === "select" ? (
                   <select
                     className="nxInput"
-                    value={draft[f.key] ?? optionValues(f.options)[0] ?? ""}
+                    value={String(draft[f.key] ?? optionValues(f.options)[0] ?? "")}
                     data-testid={`new-${f.key}`}
                     onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
                   >
@@ -937,10 +979,25 @@ export function ObjectView({
                       <option key={o.value} value={o.value}>{o.label}</option>
                     ); })}
                   </select>
+                ) : f.type === "money" ? (
+                  <MoneyField fieldKey={`new-${f.key}`} label={f.label} value={draft[f.key]} onSave={(v) => setDraft((d) => ({ ...d, [f.key]: v }))} />
+                ) : f.type === "emails" || f.type === "phones" || f.type === "links" ? (
+                  <ListField
+                    fieldKey={`new-${f.key}`}
+                    label={f.label}
+                    value={draft[f.key]}
+                    placeholder={f.type === "emails" ? "Add an email…" : f.type === "phones" ? "Add a phone…" : "Add a URL…"}
+                    validate={listValidators[f.type](f.label)}
+                    onSave={(vals) => setDraft((d) => ({ ...d, [f.key]: vals }))}
+                  />
+                ) : f.type === "address" ? (
+                  <AddressField fieldKey={`new-${f.key}`} label={f.label} value={draft[f.key]} onSave={(v) => setDraft((d) => ({ ...d, [f.key]: v }))} />
+                ) : f.type === "fullName" ? (
+                  <FullNameField fieldKey={`new-${f.key}`} label={f.label} value={draft[f.key]} onSave={(v) => setDraft((d) => ({ ...d, [f.key]: v }))} />
                 ) : (
                   <Input
                     data-testid={`new-${f.key}`}
-                    value={draft[f.key] ?? ""}
+                    value={String(draft[f.key] ?? "")}
                     onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
                   />
                 )}

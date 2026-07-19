@@ -512,6 +512,7 @@ export function App() {
             ) : (
               <ObjectView
                 key={`${active.key}:${activeTeam ?? ""}`}
+                appConfig={config}
                 config={active}
                 role={roleFor(active)}
                 users={config.users ?? []}
