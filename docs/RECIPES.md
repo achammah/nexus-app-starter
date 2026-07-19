@@ -20,6 +20,10 @@ Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:
 3. `user` fields read the top-level `users[]` directory; `multiselect` needs `options`.
 4. Shaped values: `money {amount, code}` (renders “€12,500”, sums by `amount` in rollups/charts) · `emails/phones/links` are `string[]` (chips in cells, list editor on the record page; links anchor with the bare host) · `address {street, city, postcode, country}` (cells show “street, city”) · `fullName {first, last}` (cells show “First Last”; may be `primary` — the row link and record title render the joined name). CSV export flattens them (`12500 EUR` · `a; b` · joined).
 
+## Relations (identity model: store ids, read labels)
+
+Relation fields persist target row IDS — single: `"co_1"` · many (`multiple: true`): `["ce_1", …]` · polymorphic (`relationTargets: ["a","b"]` instead of `relation`): `{ "object": "a", "id": "a_1" }`. Every read projects the target's PRIMARY label into the field itself (the API returns label strings, exactly as before) and adds `_refs` — the raw ids per relation field — for identity-aware UI. Writes accept an id, an `{object?, id}` ref, or a primary-label string: a label resolving to ONE live target normalizes to its id; two candidates → 400 naming them; no match → the string stays verbatim (a dangling label). Because links are ids: renaming a target updates every inbound cell with no sweep; merging re-points losers' ids to the winner; a TRASHED target keeps projecting (restore heals); DESTROYING a target severs its inbound links. `inverseLabel` on a relation field names the reverse related-list section on the target object. Seed rows may use labels — they normalize to ids once at boot. The create dialog authors single relations by id (poly selects grouped per type); `multiple` relations attach on the record page via the checkbox picker, which commits ONE write when it closes.
+
 ## Make a field AI-enrichable
 1. On the field: `"primitive": { "kind": "task" | "workflow", "id": "<platform id>", "label": "Company research" }`.
 2. The record page shows a sparkle Run button → `POST /api/objects/:o/:id/enrich`.

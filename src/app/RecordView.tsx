@@ -4,7 +4,8 @@ import { useToast } from "./App";
 import { t } from "./i18n";
 import { RecordPage, type RelatedList } from "../ui/record-core/RecordPage";
 import { formatCell } from "../ui/record-core/DataTable";
-import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
+import type { FileMeta, ObjectConfig, RecordRow, RelationItem, TimelineEvent } from "../ui/record-core/types";
+import { rowRefs } from "../ui/record-core/types";
 import { usePollRev } from "./usePollRev";
 import { can, type Role } from "./permissions";
 import { favHas, favToggle } from "./favorites";
@@ -31,7 +32,7 @@ export function RecordView({
   const [row, setRow] = React.useState<RecordRow | null>(null);
   const [timeline, setTimeline] = React.useState<TimelineEvent[]>([]);
   const [missing, setMissing] = React.useState(false);
-  const [relationOptions, setRelationOptions] = React.useState<Record<string, string[]>>({});
+  const [relationItems, setRelationItems] = React.useState<Record<string, RelationItem[]>>({});
   const [related, setRelated] = React.useState<RelatedList[]>([]);
   const [dups, setDups] = React.useState<DupCandidate[]>([]);
   const [files, setFiles] = React.useState<FileMeta[]>([]);
@@ -56,48 +57,75 @@ export function RecordView({
     if (sessionUser) api.watchers(config.key, id).then((w) => setWatchState({ on: w.me, count: w.count })).catch(() => {});
   }, [config.key, id, sessionUser]);
 
-  // Relation OPTIONS: target object → its primary values (feeds the pickers).
+  // Relation ITEMS: target object(s) → {id, label} pairs (feeds identity-aware
+  // pickers; the label comes from the target's primary via formatCell, so a
+  // fullName-primary target lists as its joined name — never [object Object]).
   React.useEffect(() => {
-    const rels = config.fields.filter((f) => f.type === "relation" && f.relation);
+    const rels = config.fields.filter((f) => f.type === "relation");
     rels.forEach((f) => {
-      const target = appConfig.objects.find((o) => o.key === f.relation);
-      if (!target) return;
-      const tPrimary = target.fields.find((x) => x.primary) ?? target.fields[0];
-      api
-        .list(target.key)
-        .then((rows) =>
-          setRelationOptions((m) => ({ ...m, [f.key]: rows.map((r) => String(r[tPrimary.key] ?? r.id)) })),
-        )
+      const targetKeys = f.relationTargets ?? (f.relation ? [f.relation] : []);
+      Promise.all(
+        targetKeys.map(async (tKey) => {
+          const target = appConfig.objects.find((o) => o.key === tKey);
+          if (!target) return [] as RelationItem[];
+          const tPrimary = target.fields.find((x) => x.primary) ?? target.fields[0];
+          const rows = await api.list(target.key).catch(() => [] as RecordRow[]);
+          return rows.map((r) => ({
+            id: r.id,
+            label: formatCell(r[tPrimary.key], tPrimary.type) || r.id,
+            type: tKey,
+            typeLabel: target.labelOne,
+          }));
+        }),
+      )
+        .then((lists) => setRelationItems((m) => ({ ...m, [f.key]: lists.flat() })))
         .catch(() => {});
     });
   }, [appConfig, config]);
 
-  // RELATED lists: every object with a relation field pointing AT this object,
-  // filtered to rows whose value equals this record's primary value.
+  // RELATED lists: every object with a relation field pointing AT this object
+  // (single, many, or polymorphic), matched by STABLE ID via the rows' _refs —
+  // a dangling label still matches by text as a fallback. Sections take the
+  // field's inverseLabel when the config names one.
   React.useEffect(() => {
     if (!row) return;
-    const mine = String(row[primary.key] ?? "");
+    const mine = formatCell(row[primary.key], primary.type);
     const reverse = appConfig.objects.flatMap((o) =>
-      o.fields.filter((f) => f.type === "relation" && f.relation === config.key).map((f) => ({ o, f })),
+      o.fields
+        .filter((f) => f.type === "relation" && (f.relation === config.key || f.relationTargets?.includes(config.key)))
+        .map((f) => ({ o, f })),
     );
+    const pointsAtMe = (r: RecordRow, f: (typeof reverse)[number]["f"]) => {
+      const ref = rowRefs(r)[f.key];
+      if (Array.isArray(ref))
+        return ref.some((x) => (typeof x === "object" && x !== null ? (x as { object: string; id: string }).object === config.key && (x as { id: string }).id === id : x === id));
+      if (typeof ref === "object" && ref !== null) return ref.object === config.key && ref.id === id;
+      if (typeof ref === "string") return ref === id;
+      return mine !== "" && String(r[f.key] ?? "") === mine; // dangling-label fallback
+    };
     Promise.all(
       reverse.map(async ({ o, f }) => {
         const oPrimary = o.fields.find((x) => x.primary) ?? o.fields[0];
         const meta = o.fields.find((x) => !x.primary && x.key !== f.key);
-        const rows = (await api.list(o.key).catch(() => [] as RecordRow[])).filter(
-          (r) => String(r[f.key] ?? "") === mine,
-        );
+        const rows = (await api.list(o.key).catch(() => [] as RecordRow[])).filter((r) => pointsAtMe(r, f));
         return {
           key: o.key,
-          label: o.label,
+          fieldKey: f.key,
+          label: f.inverseLabel ?? o.label,
           rows,
           primaryKey: oPrimary.key,
           metaKey: meta?.key,
           onOpen: (rid: string) => go(`#/o/${o.key}/r/${rid}`),
-        } satisfies RelatedList;
+        };
       }),
-    ).then(setRelated);
-  }, [appConfig, config.key, row, primary.key, go]);
+    ).then((lists) => {
+      // an object pointing here through TWO fields gets suffixed section keys;
+      // the common single-field case keeps its historical `related-<object>` testid
+      const byObj = new Map<string, number>();
+      for (const l of lists) byObj.set(l.key, (byObj.get(l.key) ?? 0) + 1);
+      setRelated(lists.map(({ fieldKey, ...l }) => ((byObj.get(l.key) ?? 0) > 1 ? { ...l, key: `${l.key}-${fieldKey}` } : l) satisfies RelatedList));
+    });
+  }, [appConfig, config.key, row, primary.key, primary.type, id, go]);
 
   if (missing)
     return (
@@ -135,7 +163,7 @@ export function RecordView({
       row={row}
       timeline={timeline}
       onBack={onBack}
-      relationOptions={relationOptions}
+      relationItems={relationItems}
       related={dups.length ? [...related, dupSection] : related}
       userOptions={appConfig.users ?? []}
       readOnly={readOnly}
@@ -174,8 +202,12 @@ export function RecordView({
         const tPrimary = target.fields.find((x) => x.primary) ?? target.fields[0];
         api.create(target.key, { [tPrimary.key]: title })
           .then((created) =>
-            api.patch(config.key, id, { [f.key]: title }).then(() => {
-              setRelationOptions((m) => ({ ...m, [fieldKey]: [...(m[fieldKey] ?? []), title] }));
+            // attach by the new record's ID — the stable link (labels are projection)
+            api.patch(config.key, id, { [f.key]: created.id }).then(() => {
+              setRelationItems((m) => ({
+                ...m,
+                [fieldKey]: [...(m[fieldKey] ?? []), { id: created.id, label: title, type: target.key, typeLabel: target.labelOne }],
+              }));
               toast(`${target.labelOne} “${title}” created & linked`);
               load();
               go(`#/o/${target.key}/r/${created.id}`);

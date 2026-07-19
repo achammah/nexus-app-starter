@@ -1,8 +1,42 @@
 {
+  "_note": "Convention: relation TARGETS are listed before the objects that point at them (certifications/reps → vendors → vendorNotes).",
   "app": { "name": "Depth Fixture", "slug": "depth-fixture" },
   "theme": {},
   "users": ["you", "Iris Lang"],
   "objects": [
+    {
+      "key": "certifications",
+      "label": "Certifications",
+      "labelOne": "Certification",
+      "icon": "badge-check",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "authority", "label": "Authority", "type": "text" }
+      ],
+      "sampleRows": [
+        { "id": "ce_1", "name": "ISO 9001", "authority": "ISO" },
+        { "id": "ce_2", "name": "SOC 2", "authority": "AICPA" },
+        { "id": "ce_3", "name": "GDPR Ready", "authority": "EU" }
+      ]
+    },
+    {
+      "key": "reps",
+      "label": "Sales reps",
+      "labelOne": "Sales rep",
+      "icon": "user-round",
+      "defaultView": "table",
+      "fields": [
+        { "key": "personName", "label": "Name", "type": "fullName", "primary": true },
+        { "key": "region", "label": "Region", "type": "select", "options": ["EMEA", "AMER"] },
+        { "key": "quota", "label": "Quota", "type": "money" }
+      ],
+      "sampleRows": [
+        { "id": "re_1", "personName": { "first": "Nora", "last": "Lindqvist" }, "region": "EMEA", "quota": { "amount": 250000, "code": "EUR" } },
+        { "id": "re_2", "personName": { "first": "Jules", "last": "Okafor" }, "region": "AMER", "quota": { "amount": 300000, "code": "USD" } },
+        { "id": "re_3", "personName": { "first": "Atlas" }, "region": "AMER", "quota": { "amount": 180000, "code": "EUR" } }
+      ]
+    },
     {
       "key": "vendors",
       "label": "Vendors",
@@ -35,28 +69,31 @@
         { "key": "sites", "label": "Web presence", "type": "links" },
         { "key": "hq", "label": "HQ address", "type": "address" },
         { "key": "accountManager", "label": "Account manager", "type": "fullName" },
+        { "key": "rep", "label": "Sales rep", "type": "relation", "relation": "reps", "inverseLabel": "Vendors covered" },
+        { "key": "certifications", "label": "Certifications", "type": "relation", "relation": "certifications", "multiple": true, "inverseLabel": "Certified vendors" },
         { "key": "legacyRef", "label": "Legacy ref", "type": "text", "isActive": false }
       ],
       "sampleRows": [
         { "id": "ve_1", "name": "Brightline Analytics", "code": "V-001", "tier": "Strategic", "active": true, "score": 4, "lastAudit": "2026-06-11T14:30:00.000Z", "labels": ["priority", "eu-region"], "notes": "Escalation path agreed with their CTO office.", "meta": { "sla": "gold" }, "contract": { "amount": 12500, "code": "EUR" }, "contacts": ["ada.reyes@brightline.example", "billing@brightline.example"], "phoneNumbers": ["+32 2 555 01 44"], "sites": ["https://brightline.example/pricing?plans=gold,silver", "https://status.brightline.example"], "hq": { "street": "Rue de la Loi 12", "city": "Brussels", "postcode": "1000", "country": "BE" }, "accountManager": { "first": "Nora", "last": "Lindqvist" }, "legacyRef": "OLD-77" },
-        { "id": "ve_2", "name": "Cargolane", "code": "V-002", "tier": "Watchlist", "active": false, "score": 2, "lastAudit": "2026-05-03T09:00:00.000Z", "labels": ["at-risk"], "notes": "Two missed deliveries in Q2.", "meta": { "sla": "silver" }, "contract": { "amount": 4800, "code": "USD" }, "contacts": ["ops@cargolane.example"], "phoneNumbers": ["+1 415 555 0199", "020 7946 0958"], "sites": ["cargolane.example"], "hq": { "street": "Dockside 4", "city": "Rotterdam" }, "accountManager": { "first": "Jules", "last": "Okafor" } },
-        { "id": "ve_3", "name": "GreenCrate Foods", "code": "V-003", "tier": "Preferred", "active": true, "score": 5, "lastAudit": "2026-07-01T11:15:00.000Z", "labels": ["renewal"], "notes": "Renewal drafted.", "meta": { "sla": "gold" } }
+        { "id": "ve_2", "name": "Cargolane", "code": "V-002", "tier": "Watchlist", "active": false, "score": 2, "lastAudit": "2026-05-03T09:00:00.000Z", "labels": ["at-risk"], "notes": "Two missed deliveries in Q2.", "meta": { "sla": "silver" }, "contract": { "amount": 4800, "code": "USD" }, "contacts": ["ops@cargolane.example"], "phoneNumbers": ["+1 415 555 0199", "020 7946 0958"], "sites": ["cargolane.example"], "hq": { "street": "Dockside 4", "city": "Rotterdam" }, "accountManager": { "first": "Jules", "last": "Okafor" }, "rep": "Jules Okafor", "certifications": ["ISO 9001", "ce_2"] },
+        { "id": "ve_3", "name": "GreenCrate Foods", "code": "V-003", "tier": "Preferred", "active": true, "score": 5, "lastAudit": "2026-07-01T11:15:00.000Z", "labels": ["renewal"], "notes": "Renewal drafted.", "meta": { "sla": "gold" } },
+        { "id": "ve_4", "name": "Atlas", "code": "V-004", "tier": "Standard", "active": true }
       ]
     },
     {
-      "key": "reps",
-      "label": "Sales reps",
-      "labelOne": "Sales rep",
-      "icon": "user-round",
+      "key": "vendorNotes",
+      "label": "Vendor notes",
+      "labelOne": "Vendor note",
+      "icon": "sticky-note",
       "defaultView": "table",
       "fields": [
-        { "key": "personName", "label": "Name", "type": "fullName", "primary": true },
-        { "key": "region", "label": "Region", "type": "select", "options": ["EMEA", "AMER"] },
-        { "key": "quota", "label": "Quota", "type": "money" }
+        { "key": "title", "label": "Title", "type": "text", "primary": true },
+        { "key": "about", "label": "About", "type": "relation", "relationTargets": ["vendors", "reps"], "inverseLabel": "Notes" },
+        { "key": "body", "label": "Body", "type": "longText" }
       ],
       "sampleRows": [
-        { "id": "re_1", "personName": { "first": "Nora", "last": "Lindqvist" }, "region": "EMEA", "quota": { "amount": 250000, "code": "EUR" } },
-        { "id": "re_2", "personName": { "first": "Jules", "last": "Okafor" }, "region": "AMER", "quota": { "amount": 300000, "code": "USD" } }
+        { "id": "vn_1", "title": "Escalation follow-up", "about": "Brightline Analytics", "body": "CTO office confirmed the new path." },
+        { "id": "vn_2", "title": "Quota review", "about": { "object": "reps", "id": "re_1" }, "body": "Q3 quota holds." }
       ]
     }
   ]
