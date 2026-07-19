@@ -40,6 +40,10 @@ Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:
 1. `starter.config.json` → `theme.skin` = the org's brand as JSON (or `theme.skinPreset` for a built-in; `theme.accent` for the one-knob shortcut). Full knob set → `src/ui/docs/THEMING.md`: brand ramp, dark/brand chrome shell, radius personality (0 = squared, reaches the vendored shadcn kit), fonts, labels, semantic palette, logo mark/wordmark, raw token overrides.
 2. Reload — the whole app re-brands, dark mode derives from the same brand. Reference example: the `ember` preset (dark chrome + sharp corners + own palette).
 
+## Put the nav on top
+
+`starter.config.json` → `"app": { …, "nav": "top" }` — the left sidebar is replaced by one horizontal bar: brand, object/page items (with live counts), and search/theme/sign-out on the right; favorites and the team switcher become compact controls in the bar. Omit the field (or set `"side"`) for the default sidebar. Both modes are mobile-responsive out of the box: at ≤768px the nav collapses to a burger that opens a drawer (objects, pages, favorites, team switcher, search, sign-out), and the side peek becomes a full-screen sheet.
+
 ## Change the base theme
 `src/ui/tokens/tokens.css` holds the `--nx-*` canvas (light + dark) — the static layer skins write over. Fix tokens in nexus-ui, re-sync.
 
