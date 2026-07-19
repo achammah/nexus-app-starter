@@ -9,6 +9,7 @@
   "chat": {
     "embedUrl": ""
   },
+  "users": ["you", "Maya Verstraete", "Jonas Peeters", "Sofia Marchetti"],
   "objects": [
     {
       "key": "companies",
@@ -44,10 +45,11 @@
         { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
         { "key": "email", "label": "Email", "type": "email", "width": 220 },
         { "key": "role", "label": "Role", "type": "text", "width": 160 },
+        { "key": "tags", "label": "Tags", "type": "multiselect", "options": ["Champion", "Decision maker", "Technical", "Finance", "Ops"], "width": 200 },
         { "key": "company", "label": "Company", "type": "relation", "relation": "companies", "width": 180 }
       ],
       "sampleRows": [
-        { "id": "pe_1", "name": "Maya Verstraete", "email": "maya@brightline.example", "role": "CTO", "company": "Brightline Analytics" },
+        { "id": "pe_1", "name": "Maya Verstraete", "email": "maya@brightline.example", "role": "CTO", "tags": ["Champion", "Technical"], "company": "Brightline Analytics" },
         { "id": "pe_2", "name": "Jonas Peeters", "email": "jonas@nordwind.example", "role": "Ops Director", "company": "Nordwind Retail" },
         { "id": "pe_3", "name": "Lena Dubois", "email": "lena@cargolane.example", "role": "Head of Fleet", "company": "Cargolane" },
         { "id": "pe_4", "name": "Karim El Amrani", "email": "karim@veldkliniek.example", "role": "CIO", "company": "Veldkliniek Group" },
@@ -70,7 +72,7 @@
         { "key": "amount", "label": "Amount", "type": "currency", "width": 120 },
         { "key": "closeDate", "label": "Close date", "type": "date", "width": 130 },
         { "key": "company", "label": "Company", "type": "relation", "relation": "companies", "width": 180 },
-        { "key": "owner", "label": "Owner", "type": "text", "width": 140 }
+        { "key": "owner", "label": "Owner", "type": "user", "width": 150 }
       ],
       "sampleRows": [
         { "id": "de_1", "name": "Brightline platform rollout", "stage": "Qualified", "amount": 48000, "closeDate": "2026-08-14", "company": "Brightline Analytics", "owner": "you" },

@@ -305,11 +305,11 @@ const journeys = [
     },
   },
   {
-    // The LITMUS TEST (not a shipped product): can the building blocks assemble an
-    // ATS-class app — the hardest known topology (two-sided relations, a staged
-    // pipeline, dates, scores) — from config alone? The fixture exists to FAIL when
-    // a block is missing; it is not an ATS offering.
-    name: "blocks-coverage-litmus", feature: "Building-blocks litmus (ATS-class by config)",
+    // The LITMUS TEST (not a shipped product): can the building blocks assemble the
+    // hardest known topology — two-sided relations, a staged pipeline, dates,
+    // scores — from config alone? The fixture exists to FAIL when a block is
+    // missing; it is a test artifact, never a template.
+    name: "blocks-coverage-litmus", feature: "Building-blocks litmus (record-system class by config)",
     async run(page) {
       const { spawn } = await import("node:child_process");
       const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
@@ -337,7 +337,7 @@ const journeys = [
         await p2.click('[data-testid="nav-applications"]');
         await p2.waitForSelector('[data-testid="kanban-applications"]');
         const interview = await p2.locator('[data-testid="col-Interview"] [data-testid="card-ap_1"]').count();
-        assert(interview === 1, "applications kanban has ATS stages with the seeded card in Interview");
+        assert(interview === 1, "applications kanban has the pipeline stages with the seeded card in Interview");
         await p2.click('[data-testid="card-ap_1"]');
         await p2.waitForSelector('[data-testid="related-"]', { timeout: 1500 }).catch(() => {});
         await p2.waitForSelector('[data-testid="field-candidate-value"]');
@@ -409,6 +409,59 @@ const journeys = [
       assert(v?.includes("20") && v?.includes("Aug"), `date persisted across reload (${v})`);
       const tl = await page.textContent('[data-testid="timeline"]');
       assert(tl?.includes("closeDate:"), "timeline records the date change");
+    },
+  },
+  {
+    name: "user-field-picker", feature: "User (assignee) fields",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/deals");
+      await page.waitForSelector('[data-testid="view-switch"]');
+      await page.click('[data-testid="view-switch"] button:has-text("Table")');
+      await page.waitForSelector(".nxRowLink");
+      await page.click('.nxRowLink:has-text("Nordwind store copilot")');
+      await page.waitForSelector('[data-testid="field-owner"]');
+      await page.click('[data-testid="field-owner"]');
+      await page.waitForSelector('[data-testid="field-owner-opt-maya-verstraete"]');
+      await page.fill('[data-testid="field-owner-search"]', "maya");
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await page.waitForSelector('[data-testid="toast"]');
+      await page.waitForFunction(() =>
+        document.querySelector('[data-testid="field-owner-value"]')?.textContent?.includes("Maya"));
+      assert(true, "owner picked from the app users directory");
+      await page.goBack();
+      await page.waitForFunction(() =>
+        document.querySelector('[data-testid="table-deals"]')?.textContent?.includes("Maya Verstraete"));
+      assert(true, "table renders the user cell (avatar + name)");
+      await page.request.patch(URLBASE + "/api/objects/deals/de_2", { data: { owner: "you" } });
+    },
+  },
+  {
+    name: "tags-multiselect", feature: "Multiselect (tags) fields",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/people");
+      await page.waitForSelector('[data-testid="table-people"]');
+      const cell = await page.textContent('[data-testid="row-pe_1"]');
+      assert(cell?.includes("Champion"), "tag chips render in the table");
+      await page.click('[data-testid="filter-tags"]');
+      await page.waitForSelector('[data-testid="filter-tags-champion"]');
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter"); // Champion (first option)
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-people"] tbody tr').length === 1);
+      assert(true, "contains-any tag filter narrows to the tagged person");
+      await page.click('[data-testid="filters-clear"]');
+      await page.click(".nxRowLink >> nth=0");
+      await page.waitForSelector('[data-testid="field-tags"]');
+      await page.click('[data-testid="field-tags"]');
+      await page.waitForSelector('[data-testid="field-tags-opt-finance"]');
+      await page.click('[data-testid="field-tags-opt-finance"]');
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[data-testid="toast"]');
+      await page.reload();
+      await page.waitForSelector('[data-testid="field-tags-chip-finance"]');
+      assert(true, "toggled tag persists across reload");
+      await page.request.patch(URLBASE + "/api/objects/people/pe_1", { data: { tags: ["Champion", "Technical"] } });
     },
   },
   {

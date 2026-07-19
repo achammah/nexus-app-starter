@@ -98,7 +98,13 @@ export function ObjectView({
   const activeSelFilters = Object.entries(selFilters).filter(([, vals]) => vals.length > 0);
   const visibleRows = React.useMemo(
     () =>
-      rows?.filter((r) => activeSelFilters.every(([k, vals]) => vals.includes(String(r[k] ?? "")))) ?? null,
+      rows?.filter((r) =>
+        activeSelFilters.every(([k, vals]) => {
+          const v = r[k];
+          // multiselect fields match on ANY overlap; scalar fields on equality
+          return Array.isArray(v) ? v.some((x) => vals.includes(String(x))) : vals.includes(String(v ?? ""));
+        }),
+      ) ?? null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [rows, selFilters],
   );
@@ -202,7 +208,7 @@ export function ObjectView({
           </Badge>
         )}
         {config.fields
-          .filter((f) => f.type === "select" && f.key !== config.stageField)
+          .filter((f) => (f.type === "select" || f.type === "multiselect") && f.key !== config.stageField)
           .map((f) => {
             const active = selFilters[f.key] ?? [];
             return (

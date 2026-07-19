@@ -7,6 +7,8 @@ export interface AppConfig {
   app: { name: string; slug: string };
   theme: { accent: string };
   chat?: { embedUrl?: string };
+  /* the app's people directory — `user`-type fields pick from this list */
+  users?: string[];
   objects: ObjectConfig[];
 }
 

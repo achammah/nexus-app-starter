@@ -94,6 +94,7 @@ export function RecordView({
       onBack={onBack}
       relationOptions={relationOptions}
       related={related}
+      userOptions={appConfig.users ?? []}
       onOpenRelation={(target, value) => {
         sessionStorage.setItem("nx-pending-q", value);
         go(`#/o/${target}`);

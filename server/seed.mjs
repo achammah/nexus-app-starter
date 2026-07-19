@@ -9,10 +9,18 @@ const LAST = ["Verstraete", "Peeters", "Dubois", "El Amrani", "Marchetti", "Jans
 const WORDS = ["Bright", "Nord", "Cargo", "Veld", "Meridian", "Pixel", "Green", "Tidal", "Atlas", "Silver", "Cedar", "Quartz"];
 const CITY = ["Ghent", "Antwerp", "Rotterdam", "Leuven", "Brussels", "Lille", "Utrecht", "Hamburg"];
 
-function typedValue(field, i, rowsByObject) {
+function typedValue(field, i, rowsByObject, config) {
   switch (field.type) {
     case "select":
       return field.options?.[i % (field.options.length || 1)] ?? "";
+    case "multiselect": {
+      const opts = field.options ?? [];
+      return opts.length ? [...new Set([opts[i % opts.length], opts[(i + 1) % opts.length]])] : [];
+    }
+    case "user": {
+      const users = config?.users ?? [];
+      return users.length ? users[i % users.length] : "you";
+    }
     case "number":
       return (i + 1) * 7 + 20;
     case "currency":
@@ -69,7 +77,7 @@ export function seed(config) {
       for (let i = 0; i < n; i++) {
         const id = `${obj.key.slice(0, 2)}_${i + 1}`;
         const row = { id };
-        for (const f of obj.fields) row[f.key] = typedValue(f, i, rows);
+        for (const f of obj.fields) row[f.key] = typedValue(f, i, rows, config);
         row.__primary = String(row[primary.key] ?? id);
         out.push(row);
       }
