@@ -17,7 +17,7 @@ export interface AppConfig {
   /* server-set: seeded fictional rows are present (drives the Demo badge) */
   demo?: boolean;
   /* server-set: feature flags (one env flag gates nav + page + API) */
-  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean; tasks?: boolean };
+  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean; tasks?: boolean; schema?: boolean };
   objects: ObjectConfig[];
 }
 
@@ -140,6 +140,13 @@ export const api = {
     j<{ candidates: DupCandidate[] }>(`/api/objects/${obj}/${id}/duplicates`).then((r) => r.candidates),
   duplicateGroups: (obj: string) =>
     j<{ groups: DupGroup[] }>(`/api/objects/${obj}/duplicates`).then((r) => r.groups),
+  schemaState: () => j<{ enabled: boolean; role: string; objects: ObjectConfig[] }>("/api/schema"),
+  schemaAddObject: (body: Record<string, unknown>) =>
+    j<ObjectConfig>("/api/schema/objects", { method: "POST", body: JSON.stringify(body) }),
+  schemaAddField: (obj: string, body: Record<string, unknown>) =>
+    j<Record<string, unknown>>(`/api/schema/objects/${obj}/fields`, { method: "POST", body: JSON.stringify(body) }),
+  schemaUpdateField: (obj: string, fieldKey: string, patch: Record<string, unknown>) =>
+    j<Record<string, unknown>>(`/api/schema/objects/${obj}/fields/${fieldKey}`, { method: "PATCH", body: JSON.stringify(patch) }),
 };
 
 export interface DupCandidate { id: string; name: string; reasons: string[] }

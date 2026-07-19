@@ -1042,4 +1042,121 @@ export class Store {
     this.state.push(e);
     return e;
   }
+
+  /* ---- runtime schema (config-as-data): the command log IS the delta store ----
+     These LOGGED ops mutate the live config IN PLACE — the same object
+     /api/config spreads and every route/validator/identity read shares — so a
+     mutation is instantly the merged truth. The config FILE stays the
+     immutable seed; boot = seed → replay, deltas re-applying at their original
+     seq, strictly interleaved with the data writes that depend on them. Guard
+     failures throw {status:400} and thrown ops are never logged. A replayed
+     add colliding with a NEWER seed's key trips its duplicate-key guard and
+     replay's skip-and-warn absorbs it: seed wins, deterministically. */
+
+  _schemaThrow(msg) {
+    const e = new Error(msg);
+    e.status = 400;
+    throw e;
+  }
+
+  _slugOk(s) {
+    return /^[a-z][a-zA-Z0-9]*$/.test(String(s ?? ""));
+  }
+
+  schemaObjectAdd(def) {
+    const { key, label, labelOne, icon, primaryField } = def ?? {};
+    if (!this._slugOk(key)) this._schemaThrow(`object key must be a slug like "invoices" (got "${key ?? ""}")`);
+    if (this.config.objects.some((o) => o.key === key)) this._schemaThrow(`an object "${key}" already exists`);
+    if (!label || !labelOne) this._schemaThrow("label and labelOne are required");
+    const pf = primaryField ?? {};
+    if (!this._slugOk(pf.key)) this._schemaThrow(`primary field key must be a slug (got "${pf.key ?? ""}")`);
+    const obj = {
+      key,
+      label: String(label),
+      labelOne: String(labelOne),
+      ...(icon ? { icon: String(icon) } : {}),
+      defaultView: "table",
+      fields: [{ key: pf.key, label: String(pf.label || "Name"), type: "text", primary: true }],
+    };
+    this.config.objects.push(obj);
+    this.rows[key] ??= [];
+    this._bump(key);
+    return obj;
+  }
+
+  schemaFieldAdd(objKey, fieldDef) {
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    if (!cfg) this._schemaThrow(`no object "${objKey}"`);
+    const f = { ...(fieldDef ?? {}) };
+    if (!this._slugOk(f.key)) this._schemaThrow(`field key must be a slug (got "${f.key ?? ""}")`);
+    if (cfg.fields.some((x) => x.key === f.key)) this._schemaThrow(`${objKey} already has a field "${f.key}" — field keys are unique and immutable`);
+    if (!f.label) this._schemaThrow("label is required");
+    if (!SCHEMA_FIELD_TYPES.includes(f.type)) this._schemaThrow(`unsupported type "${f.type}" — one of: ${SCHEMA_FIELD_TYPES.join(", ")}`);
+    if ((f.type === "select" || f.type === "multiselect") && !(Array.isArray(f.options) && f.options.length))
+      this._schemaThrow(`${f.type} fields need at least one option`);
+    if (f.type === "relation") {
+      const targets = Array.isArray(f.relationTargets) && f.relationTargets.length ? f.relationTargets : f.relation ? [f.relation] : [];
+      if (!targets.length) this._schemaThrow("relation fields need relation or relationTargets");
+      for (const t of targets) if (!this.config.objects.some((o) => o.key === t)) this._schemaThrow(`relation target "${t}" does not exist`);
+    }
+    if (f.primary) this._schemaThrow("a new field cannot be primary — the object already has its display field");
+    cfg.fields.push(f);
+    this._bump(objKey);
+    return f;
+  }
+
+  schemaFieldUpdate(objKey, fieldKey, patch) {
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    if (!cfg) this._schemaThrow(`no object "${objKey}"`);
+    const f = cfg.fields.find((x) => x.key === fieldKey);
+    if (!f) this._schemaThrow(`no field "${fieldKey}" on ${objKey}`);
+    const p = { ...(patch ?? {}) };
+    if ("key" in p && p.key !== fieldKey) this._schemaThrow("field keys are immutable after creation");
+    delete p.key;
+    const ALLOWED = ["label", "options", "isActive", "width", "scale", "inverseLabel", "unique", "type"];
+    for (const k of Object.keys(p)) if (!ALLOWED.includes(k)) this._schemaThrow(`"${k}" cannot be edited (allowed: ${ALLOWED.join(", ")})`);
+    const hasVal = (r) => {
+      const v = r[fieldKey];
+      return !(v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0));
+    };
+    const holders = (this.rows[objKey] ?? []).filter((r) => !r._deletedAt && hasVal(r));
+    if ("type" in p && p.type !== f.type) {
+      if (!SCHEMA_FIELD_TYPES.includes(p.type)) this._schemaThrow(`unsupported type "${p.type}"`);
+      if (holders.length) this._schemaThrow(`cannot change ${f.label}'s type while ${holders.length} row(s) hold values — create a new field instead`);
+    }
+    if (p.isActive === false && f.primary) this._schemaThrow("the primary field cannot be retired — every surface renders it");
+    if (p.unique === true && !f.unique) {
+      const seen = new Map();
+      for (const r of holders) {
+        const v = String(r[fieldKey]);
+        if (!seen.has(v)) seen.set(v, 0);
+        seen.set(v, seen.get(v) + 1);
+      }
+      const dupes = [...seen.entries()].filter(([, n]) => n > 1).map(([v]) => `"${v}"`);
+      if (dupes.length) this._schemaThrow(`cannot make ${f.label} unique — duplicate values exist: ${dupes.join(", ")}`);
+    }
+    if ("options" in p && (f.type === "select" || f.type === "multiselect")) {
+      // BLOCK removing an option live rows still hold (a rename is remove+add,
+      // so it inherits this rule); adding options or recoloring is always free
+      const val = (o) => (typeof o === "string" ? o : o.value);
+      const next = new Set((p.options ?? []).map(val));
+      const removed = (f.options ?? []).map(val).filter((v) => !next.has(v));
+      const held = removed.filter((v) =>
+        (this.rows[objKey] ?? []).some((r) =>
+          !r._deletedAt && (f.type === "multiselect" ? Array.isArray(r[fieldKey]) && r[fieldKey].includes(v) : String(r[fieldKey] ?? "") === v),
+        ),
+      );
+      if (held.length) this._schemaThrow(`cannot remove option(s) still in use: ${held.join(", ")} — reassign those rows first`);
+    }
+    Object.assign(f, p);
+    this._bump(objKey);
+    return f;
+  }
 }
+
+/* every type the runtime schema editor may add (the RECIPES list) */
+const SCHEMA_FIELD_TYPES = [
+  "text", "longText", "number", "boolean", "rating", "select", "multiselect", "array",
+  "date", "dateTime", "currency", "email", "url", "json", "relation", "user",
+  "money", "emails", "phones", "links", "address", "fullName",
+];
