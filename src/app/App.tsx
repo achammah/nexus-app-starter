@@ -3,10 +3,11 @@ import { Building2, Handshake, LayoutGrid, Moon, Sun, Users, Table2, Kanban } fr
 import { api, type AppConfig } from "./api";
 import { ObjectView } from "./ObjectView";
 import { RecordView } from "./RecordView";
+import { customPages } from "./pages";
 import { Button } from "../ui/primitives/Button";
 import { Tip } from "../ui/primitives/fields";
 
-/* Hash routes: #/o/<object> · #/o/<object>/r/<id>. Hand-rolled (no router dep). */
+/* Hash routes: #/o/<object> · #/o/<object>/r/<id> · #/p/<page>. Hand-rolled (no router dep). */
 function useHashRoute() {
   const [hash, setHash] = React.useState(window.location.hash || "#/");
   React.useEffect(() => {
@@ -18,6 +19,7 @@ function useHashRoute() {
   return {
     object: parts[0] === "o" ? parts[1] : undefined,
     recordId: parts[2] === "r" ? parts[3] : undefined,
+    page: parts[0] === "p" ? parts[1] : undefined,
     go: (h: string) => (window.location.hash = h),
   };
 }
@@ -59,7 +61,9 @@ export function App() {
       .then((c) => {
         setConfig(c);
         document.title = c.app.name;
-        if (!route.object) route.go(`#/o/${c.objects[0].key}`);
+        if (!route.object && !route.page) {
+          route.go(c.objects[0] ? `#/o/${c.objects[0].key}` : customPages[0] ? `#/p/${customPages[0].key}` : "#/");
+        }
         c.objects.forEach((o) => api.list(o.key).then((rows) => setCounts((m) => ({ ...m, [o.key]: rows.length }))).catch(() => {}));
       })
       .catch((e) => setErr(String(e.message ?? e)));
@@ -67,9 +71,7 @@ export function App() {
   }, []);
 
   const toggleTheme = () => {
-    const cur = document.documentElement.dataset.theme
-      ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    const next = cur === "dark" ? "light" : "dark";
+    const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     localStorage.setItem("nx-theme", next);
   };
@@ -101,13 +103,24 @@ export function App() {
               {config.objects.map((o) => (
                 <button
                   key={o.key}
-                  className={`navItem ${o.key === active.key && !route.recordId ? "navItem--active" : ""}`}
+                  className={`navItem ${o.key === active.key && !route.recordId && !route.page ? "navItem--active" : ""}`}
                   data-testid={`nav-${o.key}`}
                   onClick={() => route.go(`#/o/${o.key}`)}
                 >
                   <span className="navIcon">{ICONS[o.icon ?? ""] ?? <LayoutGrid size={15} />}</span>
                   {o.label}
                   <span className="navCount">{counts[o.key] ?? ""}</span>
+                </button>
+              ))}
+              {customPages.map((p) => (
+                <button
+                  key={p.key}
+                  className={`navItem ${route.page === p.key ? "navItem--active" : ""}`}
+                  data-testid={`nav-p-${p.key}`}
+                  onClick={() => route.go(`#/p/${p.key}`)}
+                >
+                  <span className="navIcon">{p.icon ?? <LayoutGrid size={15} />}</span>
+                  {p.label}
                 </button>
               ))}
             </nav>
@@ -143,7 +156,12 @@ export function App() {
           </header>
 
           <main className="content">
-            {route.recordId ? (
+            {route.page ? (
+              (() => {
+                const P = customPages.find((p) => p.key === route.page)?.component;
+                return P ? <P /> : <div className="nxCard" style={{ padding: 32 }}>Unknown page.</div>;
+              })()
+            ) : route.recordId ? (
               <RecordView config={active} id={route.recordId} onBack={() => route.go(`#/o/${active.key}`)} />
             ) : (
               <ObjectView

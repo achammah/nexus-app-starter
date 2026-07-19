@@ -1,13 +1,21 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "../ui/tokens/tokens.css";
+import "../ui/styles/shadcn.css";
+import "../ui/primitives/primitives.css";
+import "../ui/record-core/record-core.css";
 import "./app.css";
 import { App } from "./App";
 
-// Theme boot: stored choice wins; else OS. Stamped on <html> so [data-theme] overrides
-// the media query in both directions (tokens.css contract).
+// Theme boot: stored choice wins, else the OS preference — ALWAYS stamped on <html>
+// so both the token overrides and shadcn's `dark:` variant key off one source.
 const stored = localStorage.getItem("nx-theme");
-if (stored === "light" || stored === "dark") document.documentElement.dataset.theme = stored;
+document.documentElement.dataset.theme =
+  stored === "light" || stored === "dark"
+    ? stored
+    : matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
