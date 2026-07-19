@@ -23,7 +23,7 @@ export function RecordView({
   onBack: () => void;
   go: (hash: string) => void;
 }) {
-  const readOnly = !can(role, config, "edit");
+  // own-aware: editOwn grants kick in on rows this user created (_createdBy)
   const toast = useToast();
   const [row, setRow] = React.useState<RecordRow | null>(null);
   const [timeline, setTimeline] = React.useState<TimelineEvent[]>([]);
@@ -102,6 +102,8 @@ export function RecordView({
       </div>
     );
   if (!row) return <div className="nxCard" style={{ padding: 40, textAlign: "center", color: "var(--nx-fg-faint)" }} data-testid="record-loading">Loading…</div>;
+  const own = !!(sessionUser && row._createdBy === sessionUser);
+  const readOnly = !can(role, config, "edit", { own });
 
   return (
     <RecordPage

@@ -130,10 +130,27 @@ export class Store {
   /* the caller's app-wide role: highest across active memberships; no team → member;
      (auth disabled entirely → routes never ask) */
   roleFor(email) {
-    const ranks = { owner: 3, admin: 2, member: 1 };
+    const ranks = { owner: 4, admin: 3, member: 2, viewer: 1 };
     const mine = (this.members ?? []).filter((m) => m.email === String(email ?? "").toLowerCase() && m.status === "active");
     if (mine.length === 0) return "member";
     return mine.sort((a, b) => ranks[b.role] - ranks[a.role])[0].role;
+  }
+
+  /* per-team role — the one that governs teamScoped objects */
+  roleIn(teamId, email) {
+    const m = this.memberOf(teamId, email);
+    return m && m.status === "active" ? m.role : null;
+  }
+
+  /* team audit trail: who invited/joined/changed whom */
+  teamEvent(teamId, kind, summary, actor) {
+    const ev = { id: `te_${++this.n}`, teamId, kind, summary, actor: actor ?? null, ts: new Date().toISOString() };
+    (this.teamEvents ??= []).push(ev);
+    return ev;
+  }
+
+  teamActivity(teamId) {
+    return (this.teamEvents ?? []).filter((e) => e.teamId === teamId).reverse().slice(0, 50);
   }
 
   /* ---- record subscriptions (watchers) ---- */
@@ -223,8 +240,10 @@ export class Store {
     return null;
   }
 
-  create(objKey, body) {
+  create(objKey, body, meta = {}) {
     const row = { id: `${objKey.slice(0, 2)}_${++this.n}`, ...body };
+    if (meta.createdBy) row._createdBy = meta.createdBy;
+    if (meta.teamId) row._team = meta.teamId;
     (this.rows[objKey] ??= []).push(row);
     this._ev(objKey, row.id, "created", `Created`);
     return row;

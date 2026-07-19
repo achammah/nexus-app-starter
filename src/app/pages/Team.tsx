@@ -11,6 +11,7 @@ import { Input, Badge, Micro } from "../../ui/primitives/fields";
 type Me = { enabled: boolean; accounts?: boolean; user: string | null; role?: string };
 type Team = { slug: string; name: string; role: string };
 type Member = { email: string; role: string; status: string };
+type TeamEvent = { id: string; kind: string; summary: string; ts: string };
 
 export function TeamPage() {
   const toast = useToast();
@@ -23,6 +24,7 @@ export function TeamPage() {
   const [invEmail, setInvEmail] = React.useState("");
   const [invRole, setInvRole] = React.useState("member");
   const [joinCode, setJoinCode] = React.useState("");
+  const [activity, setActivity] = React.useState<TeamEvent[]>([]);
 
   const loadTeams = React.useCallback(() => {
     api.teams().then((r) => {
@@ -42,6 +44,7 @@ export function TeamPage() {
       setMembers(r.members);
       setInviteCode(r.inviteCode);
     }).catch(() => {});
+    api.teamActivity(active).then((r) => setActivity(r.events)).catch(() => {});
   }, [active]);
   React.useEffect(loadMembers, [loadMembers]);
 
@@ -145,7 +148,7 @@ export function TeamPage() {
                       api.teamSetRole(active, m.email, e.target.value).then(loadMembers).catch((err) => toast(err.message))
                     }
                   >
-                    {["owner", "admin", "member"].map((r) => <option key={r} value={r}>{r}</option>)}
+                    {["owner", "admin", "member", "viewer"].map((r) => <option key={r} value={r}>{r}</option>)}
                   </select>
                 ) : (
                   <Badge>{m.role}</Badge>
@@ -165,6 +168,7 @@ export function TeamPage() {
               <select className="nxCellEdit" style={{ width: 110 }} value={invRole} data-testid="team-invite-role" onChange={(e) => setInvRole(e.target.value)}>
                 <option value="member">member</option>
                 <option value="admin">admin</option>
+                <option value="viewer">viewer</option>
               </select>
               <Button
                 variant="primary" icon={<UserPlus size={13} />} data-testid="team-invite-go"
@@ -180,6 +184,19 @@ export function TeamPage() {
               </Button>
             </div>
           )}
+          <div style={{ marginTop: 16 }}>
+            <Micro>Activity</Micro>
+            <div className="nxFieldList" data-testid="team-activity" style={{ marginTop: 6 }}>
+              {activity.length === 0 && <div style={{ padding: 8, color: "var(--nx-fg-faint)", font: "var(--nx-text-meta)" }}>Nothing yet.</div>}
+              {activity.map((ev) => (
+                <div className="nxFieldRow" key={ev.id} style={{ gridTemplateColumns: "auto 1fr auto" }}>
+                  <Badge>{ev.kind}</Badge>
+                  <span style={{ font: "var(--nx-text-meta)" }}>{ev.summary}</span>
+                  <span className="nxFieldLabel">{new Date(ev.ts).toLocaleTimeString()}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

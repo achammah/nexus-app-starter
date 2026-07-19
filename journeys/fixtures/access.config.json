@@ -1,0 +1,92 @@
+{
+  "app": {
+    "name": "Access Fixture",
+    "slug": "access-fixture"
+  },
+  "theme": {},
+  "users": [],
+  "objects": [
+    {
+      "key": "projects",
+      "label": "Projects",
+      "labelOne": "Project",
+      "icon": "layout-grid",
+      "defaultView": "table",
+      "teamScoped": true,
+      "permissions": {
+        "admin": [
+          "view",
+          "create",
+          "edit",
+          "delete",
+          "export"
+        ],
+        "member": [
+          "view",
+          "create",
+          "editOwn",
+          "deleteOwn"
+        ],
+        "viewer": [
+          "view"
+        ]
+      },
+      "fields": [
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "Active",
+            "Done"
+          ]
+        }
+      ],
+      "seedCount": 0
+    },
+    {
+      "key": "contacts",
+      "label": "Contacts",
+      "labelOne": "Contact",
+      "icon": "users",
+      "defaultView": "table",
+      "permissions": {
+        "admin": [
+          "view",
+          "create",
+          "edit",
+          "delete",
+          "export"
+        ],
+        "member": [
+          "view",
+          "create",
+          "editOwn"
+        ],
+        "viewer": [
+          "view"
+        ]
+      },
+      "fields": [
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true
+        },
+        {
+          "key": "email",
+          "label": "Email",
+          "type": "email"
+        }
+      ],
+      "seedCount": 0
+    }
+  ]
+}

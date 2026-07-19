@@ -525,6 +525,147 @@ const journeys = [
     },
   },
   {
+    name: "team-scoped-records", feature: "Team-scoped objects (per-team visibility + roles)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: {
+          ...process.env, PORT: "4667", AUTH_MODE: "accounts",
+          APP_SECRET: "journey-secret-16-chars-plus", CONFIG_PATH: "journeys/fixtures/access.config.json",
+        },
+      });
+      const B = "http://localhost:4667";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctxE = await page.context().browser().newContext();
+        const pe = await ctxE.newPage();
+        await pe.request.post(B + "/api/auth/signup", { data: { email: "erin@fixture.example", name: "Erin", password: "alpha-pass-123" } });
+        await pe.request.post(B + "/api/teams", { data: { name: "Alpha" } });
+        // no team context → the API refuses; with it → the row lands in Alpha
+        const noCtx = await pe.request.post(B + "/api/objects/projects", { data: { name: "Skunkworks" } });
+        assert(noCtx.status() === 400, "team-scoped writes REQUIRE a team context");
+        const created = await pe.request.post(B + "/api/objects/projects", {
+          data: { name: "Skunkworks", status: "Active" }, headers: { "x-nx-team": "alpha" },
+        });
+        const row = await created.json();
+        assert(created.status() === 201 && row._team, "the row is stamped with the team");
+        // frank (team Beta) sees NOTHING of Alpha's data — list empty, direct id 404
+        const ctxF = await page.context().browser().newContext();
+        const pf = await ctxF.newPage();
+        await pf.request.post(B + "/api/auth/signup", { data: { email: "frank@fixture.example", name: "Frank", password: "beta-pass-1234" } });
+        await pf.request.post(B + "/api/teams", { data: { name: "Beta" } });
+        const bList = await (await pf.request.get(B + "/api/objects/projects", { headers: { "x-nx-team": "beta" } })).json();
+        assert(bList.rows.length === 0, "another team's list is EMPTY");
+        const peek = await pf.request.get(B + `/api/objects/projects/${row.id}`, { headers: { "x-nx-team": "beta" } });
+        assert(peek.status() === 404, "another team's record 404s even by direct id");
+        const foreign = await pf.request.get(B + "/api/objects/projects", { headers: { "x-nx-team": "alpha" } });
+        assert(foreign.status() === 403, "using a team you don't belong to is refused");
+        // erin's UI: the switcher shows Alpha and the row renders
+        await pe.goto(B + "/");
+        await pe.evaluate(() => localStorage.setItem("nx-team", "alpha"));
+        await pe.goto(B + "/#/o/projects");
+        await pe.waitForSelector('[data-testid="team-switch"]');
+        await pe.waitForFunction(() => document.querySelector('[data-testid="table-projects"]')?.textContent?.includes("Skunkworks"));
+        assert(true, "the sidebar team switcher + the team's rows render");
+        await ctxE.close(); await ctxF.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "own-records", feature: "Own-record grants (editOwn/deleteOwn)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: {
+          ...process.env, PORT: "4668", AUTH_MODE: "accounts",
+          APP_SECRET: "journey-secret-16-chars-plus", CONFIG_PATH: "journeys/fixtures/access.config.json",
+        },
+      });
+      const B = "http://localhost:4668";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctxG = await page.context().browser().newContext();
+        const pg = await ctxG.newPage();
+        await pg.request.post(B + "/api/auth/signup", { data: { email: "gina@fixture.example", name: "Gina", password: "gina-pass-1234" } });
+        const created = await (await pg.request.post(B + "/api/objects/contacts", { data: { name: "Nora Client", email: "nora@x.example" } })).json();
+        assert(created._createdBy === "gina@fixture.example", "rows are stamped with their creator");
+        const ownEdit = await pg.request.patch(B + `/api/objects/contacts/${created.id}`, { data: { name: "Nora C." } });
+        assert(ownEdit.status() === 200, "the creator edits their own row (editOwn)");
+        // hank (also just a member) cannot touch gina's row
+        const ctxH = await page.context().browser().newContext();
+        const ph = await ctxH.newPage();
+        await ph.request.post(B + "/api/auth/signup", { data: { email: "hank@fixture.example", name: "Hank", password: "hank-pass-1234" } });
+        const foreignEdit = await ph.request.patch(B + `/api/objects/contacts/${created.id}`, { data: { name: "Hijacked" } });
+        assert(foreignEdit.status() === 403, "someone else's row 403s (no blanket edit grant)");
+        const foreignDelete = await ph.request.fetch(B + `/api/objects/contacts/${created.id}`, { method: "DELETE" });
+        assert(foreignDelete.status() === 403, "delete is refused too (no deleteOwn on contacts)");
+        // hank's record PAGE renders read-only for gina's row; his own row is editable
+        await ph.goto(B + `/#/o/contacts/r/${created.id}`);
+        await ph.waitForSelector(`[data-testid="record-${created.id}"]`);
+        assert((await ph.locator('[data-testid="field-name"]').evaluate((el) => el.tagName)) === "SPAN",
+          "another creator's record renders read-only fields");
+        const hankRow = await (await ph.request.post(B + "/api/objects/contacts", { data: { name: "Hank Lead", email: "lead@x.example" } })).json();
+        await ph.goto(B + `/#/o/contacts/r/${hankRow.id}`);
+        await ph.waitForSelector(`[data-testid="record-${hankRow.id}"]`);
+        assert((await ph.locator('[data-testid="field-name"]').evaluate((el) => el.tagName)) === "INPUT",
+          "his OWN record stays editable (own-aware UI)");
+        await ctxG.close(); await ctxH.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    name: "team-audit-revoke", feature: "Team activity log + invitation revocation",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4669", AUTH_MODE: "accounts", APP_SECRET: "journey-secret-16-chars-plus" },
+      });
+      const B = "http://localhost:4669";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const pa = await ctx.newPage();
+        await pa.request.post(B + "/api/auth/signup", { data: { email: "ada@fixture.example", name: "Ada", password: "audit-pass-123" } });
+        await pa.request.post(B + "/api/teams", { data: { name: "Crew" } });
+        await pa.request.post(B + "/api/teams/crew/invites", { data: { email: "bob@fixture.example", role: "viewer" } });
+        const token = (await (await pa.request.get(B + "/api/outbox")).json()).mail
+          .find((m) => m.kind === "team-invite").text.match(/token=([A-Za-z0-9_-]+)/)[1];
+        // revoke BEFORE bob accepts → the token must die with the pending membership
+        await pa.request.fetch(B + "/api/teams/crew/members?email=bob@fixture.example", { method: "DELETE" });
+        const ctxB = await page.context().browser().newContext();
+        const pb = await ctxB.newPage();
+        await pb.request.post(B + "/api/auth/signup", { data: { email: "bob@fixture.example", name: "Bob", password: "late-pass-1234" } });
+        const attempt = await pb.request.post(B + "/api/teams/accept", { data: { token } });
+        assert(attempt.status() === 400, "a revoked invitation's token is dead");
+        // the audit trail shows the whole story in the UI
+        await pa.goto(B + "/#/p/team");
+        await pa.waitForSelector('[data-testid="team-activity"]');
+        const log = await pa.textContent('[data-testid="team-activity"]');
+        assert(log.includes("created the team") && log.includes("invited bob@fixture.example as viewer") && log.includes("revoked the invitation"),
+          "the team activity log records create → invite → revoke");
+        await ctx.close(); await ctxB.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
     name: "mcp-protocol", feature: "MCP server (AI assistant over the data model)",
     async run(page) {
       const { spawn } = await import("node:child_process");

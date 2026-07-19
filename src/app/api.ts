@@ -23,8 +23,15 @@ export interface AppConfig {
 async function j<T>(path: string, init?: RequestInit): Promise<T> {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 15000);
+  // the ACTIVE TEAM context rides every call — team-scoped objects resolve
+  // visibility + the caller's per-team role from it
+  const team = localStorage.getItem("nx-team");
   try {
-    const res = await fetch(path, { ...init, signal: ctrl.signal, headers: { "content-type": "application/json", ...(init?.headers ?? {}) } });
+    const res = await fetch(path, {
+      ...init,
+      signal: ctrl.signal,
+      headers: { "content-type": "application/json", ...(team ? { "x-nx-team": team } : {}), ...(init?.headers ?? {}) },
+    });
     if (!res.ok) {
       // surface the server's own message ("email must be a valid address"),
       // not just a bare status code
@@ -56,6 +63,8 @@ export const api = {
   teamInvite: (slug: string, email: string, role: string) =>
     j<{ ok: boolean }>(`/api/teams/${slug}/invites`, { method: "POST", body: JSON.stringify({ email, role }) }),
   teamJoin: (code: string) => j<{ ok: boolean; team: { slug: string; name: string } }>("/api/teams/join", { method: "POST", body: JSON.stringify({ code }) }),
+  teamActivity: (slug: string) =>
+    j<{ events: { id: string; kind: string; summary: string; ts: string }[] }>(`/api/teams/${slug}/activity`),
   teamSetRole: (slug: string, email: string, role: string) =>
     j<{ ok: boolean }>(`/api/teams/${slug}/members`, { method: "PATCH", body: JSON.stringify({ email, role }) }),
   usersDirectory: () => j<{ users: string[] }>("/api/users").then((r) => r.users),

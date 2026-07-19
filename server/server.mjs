@@ -101,10 +101,23 @@ async function api(req, res, url) {
       const objKey = parts[2];
       const cfg = CONFIG.objects.find((o) => o.key === objKey);
       if (!cfg) return send(res, 404, { error: `unknown object ${objKey}` });
-      // permission gate — config-declared, role from teams (server/permissions.mjs)
-      const deny = (action) => {
-        if (can(role, cfg, action)) return false;
-        send(res, 403, { error: `your role (${role}) cannot ${action} ${cfg.label.toLowerCase()}` });
+      // TEAM-SCOPED objects: rows belong to a team; the caller acts under the
+      // x-nx-team context and their PER-TEAM role (not the app-wide highest)
+      const scoped = !!cfg.teamScoped && AUTH_ENABLED;
+      let teamCtx = null;
+      let effRole = role;
+      if (scoped) {
+        const slug = String(req.headers["x-nx-team"] ?? "");
+        teamCtx = slug ? store.teamBySlug(slug) : null;
+        if (!teamCtx) return send(res, 400, { error: `${cfg.label.toLowerCase()} are team-scoped — pick a team (x-nx-team header)` });
+        const r = store.roleIn(teamCtx.id, session?.email);
+        if (!r) return send(res, 403, { error: `you are not a member of ${teamCtx.name}` });
+        effRole = r;
+      }
+      // permission gate — config-declared (server/permissions.mjs); ctx.own covers editOwn/deleteOwn
+      const deny = (action, ctx) => {
+        if (can(effRole, cfg, action, ctx)) return false;
+        send(res, 403, { error: `your role (${effRole}) cannot ${action} ${cfg.label.toLowerCase()}` });
         return true;
       };
 
@@ -112,14 +125,17 @@ async function api(req, res, url) {
         if (req.method === "GET") {
           if (deny("view")) return;
           const q = Object.fromEntries(url.searchParams);
-          return send(res, 200, { rows: store.list(objKey, q) });
+          let rows = store.list(objKey, q);
+          // scoped: only the active team's rows (rows with NO team stay visible — seed/global)
+          if (scoped) rows = rows.filter((r) => !r._team || r._team === teamCtx.id);
+          return send(res, 200, { rows });
         }
         if (req.method === "POST") {
           if (deny("create")) return;
           const body = await readBody(req);
           const invalid = store.validate(objKey, body);
           if (invalid) return send(res, 400, { error: invalid });
-          const created = store.create(objKey, body);
+          const created = store.create(objKey, body, { createdBy: session?.email, teamId: teamCtx?.id });
           emitEvent(store, `${objKey}.created`, { row: created });
           return send(res, 201, created);
         }
@@ -128,12 +144,15 @@ async function api(req, res, url) {
       if (parts[3] === "rev") return send(res, 200, { rev: store.rev(objKey) });
 
       const id = parts[3];
+      const row0 = store.get(objKey, id);
+      if (scoped && row0?._team && row0._team !== teamCtx.id) return send(res, 404, { error: "not found" });
+      const own = !!(row0 && session?.email && row0._createdBy === session.email);
       if (parts[4] === "timeline") {
         if (deny("view")) return;
         return send(res, 200, { events: store.timeline(objKey, id) });
       }
       if (parts[4] === "notes" && req.method === "POST") {
-        if (deny("edit")) return;
+        if (deny("edit", { own })) return;
         const { text } = await readBody(req);
         if (!text) return send(res, 400, { error: "text required" });
         const note = store.addNote(objKey, id, text);
@@ -146,7 +165,7 @@ async function api(req, res, url) {
         return send(res, 201, note);
       }
       if (parts[4] === "activities" && req.method === "POST") {
-        if (deny("edit")) return;
+        if (deny("edit", { own })) return;
         const { kind, text } = await readBody(req);
         if (!["call", "email", "meeting"].includes(kind)) return send(res, 400, { error: "kind must be call|email|meeting" });
         if (!text) return send(res, 400, { error: "text required" });
@@ -161,7 +180,7 @@ async function api(req, res, url) {
             return send(res, 200, { files: store.fileList(objKey, id) });
           }
           if (req.method === "POST") {
-            if (deny("edit")) return;
+            if (deny("edit", { own })) return;
             const { name, mime, data } = await readBody(req);
             if (!name || typeof data !== "string") return send(res, 400, { error: "name + base64 data required" });
             if (data.length > 7_000_000) return send(res, 413, { error: "file too large (5 MB max)" });
@@ -191,7 +210,7 @@ async function api(req, res, url) {
          whose config carries `primitive`. Prod: replace the mockValue line with a
          platform call (task execute / workflow trigger) using primitive.id. */
       if (parts[4] === "enrich" && req.method === "POST") {
-        if (deny("edit")) return;
+        if (deny("edit", { own })) return;
         const { field } = await readBody(req);
         const f = cfg.fields.find((x) => x.key === field);
         if (!f) return send(res, 400, { error: `unknown field ${field}` });
@@ -209,7 +228,7 @@ async function api(req, res, url) {
         return row ? send(res, 200, row) : send(res, 404, { error: "not found" });
       }
       if (req.method === "PATCH") {
-        if (deny("edit")) return;
+        if (deny("edit", { own })) return;
         const patch = await readBody(req);
         const invalid = store.validate(objKey, patch);
         if (invalid) return send(res, 400, { error: invalid });
@@ -221,7 +240,7 @@ async function api(req, res, url) {
         return row ? send(res, 200, row) : send(res, 404, { error: "not found" });
       }
       if (req.method === "DELETE") {
-        if (deny("delete")) return;
+        if (deny("delete", { own })) return;
         const removed = store.remove(objKey, id);
         if (removed) emitEvent(store, `${objKey}.deleted`, { id });
         return removed ? send(res, 200, { ok: true }) : send(res, 404, { error: "not found" });

@@ -36,6 +36,7 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
     const { name } = await readBody(req);
     if (!String(name ?? "").trim()) { send(res, 400, { error: "name required" }); return true; }
     const team = store.teamAdd(String(name).trim(), me, newCode());
+    store.teamEvent(team.id, "created", `${me} created the team`, me);
     send(res, 201, { ...team, role: "owner" });
     return true;
   }
@@ -49,6 +50,7 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
     if (existing?.status === "active") { send(res, 409, { error: "you are already a member" }); return true; }
     if (existing) existing.status = "active";
     else store.memberAdd(team.id, me, "member", "active");
+    store.teamEvent(team.id, "joined", `${me} joined via the team code`, me);
     send(res, 200, { ok: true, team: { slug: team.slug, name: team.name } });
     return true;
   }
@@ -66,7 +68,12 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
     }
     const teamId = t.teamId;
     const m = store.memberOf(teamId, me);
-    if (m) m.status = "active";
+    if (!m) {
+      send(res, 400, { error: "this invitation was revoked" });
+      return true;
+    }
+    m.status = "active";
+    store.teamEvent(teamId, "joined", `${me} accepted their invitation`, me);
     const team = (store.teams ?? []).find((x) => x.id === teamId);
     send(res, 200, { ok: true, team: team ? { slug: team.slug, name: team.name } : null });
     return true;
@@ -78,6 +85,11 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
   const myMembership = store.memberOf(team.id, me);
   if (!myMembership || myMembership.status !== "active") {
     send(res, 403, { error: "not a member of this team" });
+    return true;
+  }
+
+  if (parts[3] === "activity" && req.method === "GET") {
+    send(res, 200, { events: store.teamActivity(team.id) });
     return true;
   }
 
@@ -94,8 +106,9 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
     const existing = store.memberOf(team.id, norm);
     if (existing?.status === "active") { send(res, 409, { error: `${norm} is already a member` }); return true; }
     if (existing?.status === "pending") { send(res, 409, { error: `${norm} already has a pending invitation` }); return true; }
-    const r = ["admin", "member"].includes(role) ? role : "member";
+    const r = ["admin", "member", "viewer"].includes(role) ? role : "member";
     store.memberAdd(team.id, norm, r, "pending");
+    store.teamEvent(team.id, "invited", `${me} invited ${norm} as ${r}`, me);
     const t = store.tokenIssue({ kind: "team-invite", email: norm, ttlMinutes: 60 * 24 * 7, token: newCode() + newCode() });
     t.teamId = team.id;
     sendMail(store, { to: norm, kind: "team-invite", ...inviteMail(team.name, t.token) });
@@ -106,7 +119,7 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
   if (parts[3] === "members" && req.method === "PATCH") {
     if (myMembership.role !== "owner") { send(res, 403, { error: "only owners change roles" }); return true; }
     const { email, role } = await readBody(req);
-    if (!["owner", "admin", "member"].includes(role)) { send(res, 400, { error: "role must be owner|admin|member" }); return true; }
+    if (!["owner", "admin", "member", "viewer"].includes(role)) { send(res, 400, { error: "role must be owner|admin|member|viewer" }); return true; }
     const target = store.memberOf(team.id, String(email ?? ""));
     if (!target) { send(res, 404, { error: "no such member" }); return true; }
     const owners = store.memberList(team.id).filter((m) => m.role === "owner" && m.status === "active");
@@ -115,6 +128,7 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
       return true;
     }
     store.memberSetRole(team.id, target.email, role);
+    store.teamEvent(team.id, "role_changed", `${me} made ${target.email} ${role}`, me);
     send(res, 200, { ok: true });
     return true;
   }
@@ -127,7 +141,9 @@ export async function handleTeams(req, res, url, readBody, send, store, session)
     if (!m) { send(res, 404, { error: "no such member" }); return true; }
     const owners = store.memberList(team.id).filter((x) => x.role === "owner" && x.status === "active");
     if (m.role === "owner" && owners.length === 1) { send(res, 409, { error: "a team needs at least one owner" }); return true; }
+    const wasPending = m.status === "pending";
     store.memberRemove(team.id, target);
+    store.teamEvent(team.id, wasPending ? "revoked" : "removed", `${me} ${wasPending ? "revoked the invitation for" : "removed"} ${target}`, me);
     send(res, 200, { ok: true });
     return true;
   }

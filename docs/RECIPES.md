@@ -55,7 +55,8 @@ Set `AUTH_USERS` (`user:pass,user2:pass2`) + `APP_SECRET` (32+ chars) → the lo
 ## Turn on accounts, teams, permissions
 1. `.env`: `AUTH_MODE=accounts` + `APP_SECRET` (32+ chars). Signup/verification/reset/deletion flows arm; mail lands in the dev outbox (`GET /api/outbox`) until `SMTP_URL` + a real transport are wired in `server/email.mjs`.
 2. Teams live at `/p/team`: create, invite by mail, or share the join code. Roles: owner > admin > member.
-3. Per-object permissions in the config: `"permissions": { "admin": ["view","create","edit","delete","export"], "member": ["view"] }` — omit the block and everything stays open. The server 403s uncovered actions; the UI hides their affordances (`src/app/permissions.ts` mirrors `server/permissions.mjs` — keep them in sync).
+3. Per-object permissions in the config: `"permissions": { "admin": [...], "member": ["view","create","editOwn"], "viewer": ["view"] }` — omit the block and everything stays open. Roles: owner > admin > member > viewer. `editOwn`/`deleteOwn` grant the action only on rows the caller created (`_createdBy`). The server 403s uncovered actions; the UI hides their affordances (`src/app/permissions.ts` mirrors `server/permissions.mjs` — keep them in sync).
+4. Team-scoped data: `"teamScoped": true` on an object → rows belong to the creator's ACTIVE team (the sidebar switcher; `x-nx-team` header), other teams can't see or reach them, and the caller's PER-TEAM role governs. The team page also carries the audit trail (invites, joins, role changes, revocations); removing a pending member kills their invite token.
 
 ## Point an AI assistant at the app (MCP)
 `claude mcp add my-app -- node scripts/mcp-server.mjs` (the app must be running; `NX_APP_URL` overrides the target). Read-only tools: `list_entities · describe_entity · query_records · get_record · get_timeline`. Claude Desktop config lives in the header of `scripts/mcp-server.mjs`.

@@ -55,7 +55,9 @@ export function App() {
   const [err, setErr] = React.useState<string | null>(null);
   const [toasts, setToasts] = React.useState<Toast[]>([]);
   // auth gate: null = probing · {enabled,accounts,user} = known
-  const [auth, setAuth] = React.useState<{ enabled: boolean; accounts?: boolean; user: string | null; verified?: boolean; role?: "owner" | "admin" | "member" } | null>(null);
+  const [auth, setAuth] = React.useState<{ enabled: boolean; accounts?: boolean; user: string | null; verified?: boolean; role?: "owner" | "admin" | "member" | "viewer" } | null>(null);
+  const [teams, setTeams] = React.useState<{ slug: string; name: string; role: string }[]>([]);
+  const [activeTeam, setActiveTeam] = React.useState<string | null>(localStorage.getItem("nx-team"));
   const route = useHashRoute();
 
   const probeAuth = React.useCallback(() => {
@@ -65,6 +67,21 @@ export function App() {
       .catch(() => setAuth({ enabled: false, user: null }));
   }, []);
   React.useEffect(probeAuth, [probeAuth]);
+  // team context: load my teams once signed in; default the active team to the first
+  React.useEffect(() => {
+    if (!auth?.user) return;
+    api.teams().then((r) => {
+      setTeams(r.teams);
+      const stored = localStorage.getItem("nx-team");
+      const valid = r.teams.some((t) => t.slug === stored);
+      const next = valid ? stored : r.teams[0]?.slug ?? null;
+      if (next !== stored) {
+        if (next) localStorage.setItem("nx-team", next);
+        else localStorage.removeItem("nx-team");
+      }
+      setActiveTeam(next);
+    }).catch(() => {});
+  }, [auth?.user]);
 
   const toast = React.useCallback((text: string) => {
     const id = Date.now() + Math.random();
@@ -149,6 +166,10 @@ export function App() {
 
   const active = config.objects.find((o) => o.key === route.object) ?? config.objects[0];
   const logo = resolveSkin(config)?.logo;
+  // team-scoped objects act under the PER-TEAM role; others under the app-wide one
+  const activeTeamRole = teams.find((t) => t.slug === activeTeam)?.role as
+    | "owner" | "admin" | "member" | "viewer" | undefined;
+  const roleFor = (o: typeof active) => (o.teamScoped && auth?.enabled ? activeTeamRole ?? "viewer" : auth?.role);
 
   return (
     <ToastCtx.Provider value={toast}>
@@ -167,6 +188,22 @@ export function App() {
               {logo?.wordmarkAccent ? <> <b>{logo.wordmarkAccent}</b></> : null}
             </span>
           </div>
+          {teams.length > 0 && (
+            <select
+              className="nxCellEdit"
+              data-testid="team-switch"
+              value={activeTeam ?? ""}
+              style={{ margin: "0 8px", width: "calc(100% - 16px)", background: "var(--nx-chrome-active-bg)", color: "var(--nx-chrome-fg)", borderColor: "var(--nx-chrome-border)" }}
+              onChange={(e) => {
+                localStorage.setItem("nx-team", e.target.value);
+                setActiveTeam(e.target.value);
+              }}
+            >
+              {teams.map((t) => (
+                <option key={t.slug} value={t.slug}>{t.name} · {t.role}</option>
+              ))}
+            </select>
+          )}
           <div className="sideSection">
             <span className="nxMicro">Records</span>
             <nav className="sideNav" data-testid="nav">
@@ -257,8 +294,8 @@ export function App() {
               <RecordView
                 /* keyed per record: tab choice + draft text must never leak
                    from one record's page into another's */
-                key={`${active.key}:${route.recordId}`}
-                role={auth?.role}
+                key={`${active.key}:${route.recordId}:${activeTeam ?? ""}`}
+                role={roleFor(active)}
                 sessionUser={auth?.user}
                 appConfig={config}
                 config={active}
@@ -268,9 +305,9 @@ export function App() {
               />
             ) : (
               <ObjectView
-                key={active.key}
+                key={`${active.key}:${activeTeam ?? ""}`}
                 config={active}
-                role={auth?.role}
+                role={roleFor(active)}
                 users={config.users ?? []}
                 onOpen={(id) => route.go(`#/o/${active.key}/r/${id}`)}
                 onCountChange={onCount}
