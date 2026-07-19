@@ -305,12 +305,16 @@ const journeys = [
     },
   },
   {
-    name: "ats-by-config", feature: "ATS by config alone",
+    // The LITMUS TEST (not a shipped product): can the building blocks assemble an
+    // ATS-class app — the hardest known topology (two-sided relations, a staged
+    // pipeline, dates, scores) — from config alone? The fixture exists to FAIL when
+    // a block is missing; it is not an ATS offering.
+    name: "blocks-coverage-litmus", feature: "Building-blocks litmus (ATS-class by config)",
     async run(page) {
       const { spawn } = await import("node:child_process");
       const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
         stdio: "ignore",
-        env: { ...process.env, PORT: "4700", CONFIG_PATH: "examples/ats.config.json" },
+        env: { ...process.env, PORT: "4700", CONFIG_PATH: "journeys/fixtures/coverage.config.json" },
       });
       try {
         for (let i = 0; i < 20; i++) {
@@ -325,7 +329,7 @@ const journeys = [
         await p2.goto("http://localhost:4700/");
         await p2.waitForSelector('[data-testid="app-name"]');
         const nm = await p2.textContent('[data-testid="app-name"]');
-        assert(nm === "Atlas ATS", `the app IS the config (${nm})`);
+        assert(nm === "Coverage Fixture", `the app IS the config (${nm})`);
         await p2.click('[data-testid="nav-candidates"]');
         await p2.waitForSelector('[data-testid="table-candidates"] tbody tr');
         const n = await p2.locator('[data-testid="table-candidates"] tbody tr').count();
@@ -339,7 +343,7 @@ const journeys = [
         await p2.waitForSelector('[data-testid="field-candidate-value"]');
         const cand = await p2.textContent('[data-testid="field-candidate-value"]');
         assert(cand?.includes("Nadia"), "application record links its candidate via the relation picker");
-        await p2.screenshot({ path: path.join(SHOTS, "journey-ats-by-config.png"), fullPage: true });
+        await p2.screenshot({ path: path.join(SHOTS, "journey-blocks-coverage.png"), fullPage: true });
         await ctx.close();
       } finally {
         proc.kill();

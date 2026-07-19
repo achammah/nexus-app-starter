@@ -11,15 +11,9 @@ The org's runnable app skeleton for ANY product on Nexus — clone, configure, a
 
 ## The config IS the app
 
-`starter.config.json` defines the entities, their fields/stages/relations, the views, AND the demo data (`sampleRows`). Swap it and the same build becomes a different product:
+`starter.config.json` defines the entities, their fields/stages/relations, the views, AND the demo data (`sampleRows`); `CONFIG_PATH=<file>` boots the same build as a different product. Relation fields get pickers (combobox over the target object) and reverse **related lists** on record pages automatically; select fields get filter chips; objects without `sampleRows` are filled by a typed deterministic generator.
 
-```bash
-CONFIG_PATH=examples/ats.config.json npm run serve
-# → "Atlas ATS": companies · jobs · candidates + an Applied→…→Hired applications
-#   pipeline with relation pickers and related lists — zero code changes.
-```
-
-Relation fields get pickers (combobox over the target object) and reverse **related lists** on record pages automatically; select fields get filter chips; objects without `sampleRows` are filled by a typed deterministic generator.
+The **building-blocks litmus** (`npm run journeys` → `blocks-coverage-litmus`) proves the point continuously: a fixture config with the hardest known topology — two-sided relations, a staged pipeline, dates, scores (an ATS-class shape) — must assemble into a working app with zero code changes. When a product class needs a block the fixture can't express, the block gets built in `nexus-ui`/here and the fixture grows to cover it; the fixture is a TEST, never a shipped template.
 
 ## Quick start
 

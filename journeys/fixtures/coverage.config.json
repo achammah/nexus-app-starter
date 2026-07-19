@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "Atlas ATS",
-    "slug": "atlas-ats"
+    "name": "Coverage Fixture",
+    "slug": "coverage-fixture"
   },
   "theme": {
     "accent": "#0e7490"
