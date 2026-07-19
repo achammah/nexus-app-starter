@@ -1941,9 +1941,11 @@ const journeys = [
       assert(true, "palette 'New company' opens the create dialog");
       await page.keyboard.press("Escape");
       await page.waitForSelector('[role="dialog"]', { state: "detached", timeout: 6000 });
-      // record context: favorite toggle
-      await page.click('.nxRowLink:has-text("Brightline Analytics")');
-      await page.waitForSelector('[data-testid="peek-panel"]');
+      // record context: favorite toggle — on the FULL record page. Cmd/Ctrl+K over an
+      // OPEN panel now routes to the panel's actions page (covered by `panel-actions`),
+      // so the palette's record-context coverage lives here, where no panel can be open.
+      await page.goto(URLBASE + "/#/o/companies/r/co_1");
+      await page.waitForSelector('[data-testid="record-name"]');
       await page.keyboard.press(process.platform === "darwin" ? "Meta+k" : "Control+k");
       await page.waitForSelector('[data-testid="palette-act-fav"]');
       await page.click('[data-testid="palette-act-fav"]');
@@ -1953,7 +1955,6 @@ const journeys = [
       // unpin round trip via the record's own star (palette add is already proven)
       await page.click('[data-testid="fav-toggle"]');
       await page.waitForFunction(() => !document.querySelector('[data-testid="fav-shelf"]'));
-      await page.keyboard.press("Escape");
     },
   },
   {
