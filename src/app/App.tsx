@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, Sun, Users, Table2, Kanban, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, Sun, Users, Table2, Kanban, X, Zap } from "lucide-react";
 import { api, type AppConfig } from "./api";
 import { favList, favToggle, type Fav } from "./favorites";
 import { formatCell } from "../ui/record-core/DataTable";
@@ -10,6 +10,8 @@ import { ObjectView } from "./ObjectView";
 import { RecordView } from "./RecordView";
 import { customPages } from "./pages";
 import { CommandPalette } from "./CommandPalette";
+import { PanelSearch, PanelActions } from "./PanelPages";
+import { t } from "./i18n";
 import { ChatDock } from "./ChatDock";
 import { Login } from "./Login";
 import { Button } from "../ui/primitives/Button";
@@ -43,6 +45,13 @@ const ICONS: Record<string, React.ReactNode> = {
   handshake: <Handshake size={15} />,
 };
 
+/* One panel, several page kinds: the record peek plus ephemeral search/actions
+   pages, all entries in the same stack (one back/crumbs/Escape model). */
+export type PanelPage =
+  | { kind: "record"; obj: string; id: string }
+  | { kind: "search" }
+  | { kind: "actions" };
+
 type Toast = { id: number; text: string };
 const ToastCtx = React.createContext<(text: string) => void>(() => {});
 export const useToast = () => React.useContext(ToastCtx);
@@ -73,26 +82,40 @@ export function App() {
   }, []);
   // mobile nav drawer: burger (≤768px, both nav modes) opens a left Sheet
   const [drawerOpen, setDrawerOpen] = React.useState(false);
-  /* ---- side peek: one right-edge panel, records stack onto it (open a related
-     record → push; Escape/back → pop; empty → close). The list stays behind. ---- */
-  const [peek, setPeek] = React.useState<{ stack: { obj: string; id: string }[]; set: string[] } | null>(null);
+  /* ---- side peek: one right-edge panel hosting a typed page STACK — records
+     (the peek proper), search, and actions all push onto the same navigation
+     history (crumbs/back/Escape ladder). The list stays behind. Only a RECORD
+     root rides the URL; search/actions pages are ephemeral (in-memory), so a
+     reload lands on the record root or closed — never a stale search page. ---- */
+  const [peek, setPeek] = React.useState<{ stack: PanelPage[]; set: string[] } | null>(null);
+  // the search page's query lives HERE so stepping back from a pushed record restores it
+  const [panelQ, setPanelQ] = React.useState("");
   const openPeek = React.useCallback((obj: string, id: string, set: string[] = []) => {
-    setPeek({ stack: [{ obj, id }], set });
+    setPeek({ stack: [{ kind: "record", obj, id }], set });
     // root in the URL: reload and share both land back on this peek
     const h = `#/o/${obj}?peek=${id}`;
     if (window.location.hash !== h) window.history.replaceState(null, "", h);
   }, []);
-  const pushPeek = React.useCallback((obj: string, id: string) => setPeek((p) => (p ? { ...p, stack: [...p.stack, { obj, id }] } : { stack: [{ obj, id }], set: [] })), []);
+  const pushPeek = React.useCallback((obj: string, id: string) => setPeek((p) => (p ? { ...p, stack: [...p.stack, { kind: "record", obj, id }] } : { stack: [{ kind: "record", obj, id }], set: [] })), []);
+  // ephemeral pages (search/actions): push onto the open panel, or open the panel with
+  // the page as root; pushing the page already on top is a no-op (no dup stacking)
+  const pushPanel = React.useCallback((page: Extract<PanelPage, { kind: "search" | "actions" }>) => {
+    setPeek((p) => {
+      if (!p) return { stack: [page], set: [] };
+      if (p.stack[p.stack.length - 1].kind === page.kind) return p;
+      return { ...p, stack: [...p.stack, page] };
+    });
+  }, []);
   const popPeek = React.useCallback(() => setPeek((p) => {
     if (p && p.stack.length > 1) return { ...p, stack: p.stack.slice(0, -1) };
     const root = p?.stack[0];
-    if (root) window.history.replaceState(null, "", `#/o/${root.obj}`);
+    if (root?.kind === "record") window.history.replaceState(null, "", `#/o/${root.obj}`);
     return null;
   }), []);
   const closePeek = React.useCallback(() => {
     setPeek((p) => {
       const root = p?.stack[0];
-      if (root) window.history.replaceState(null, "", `#/o/${root.obj}`);
+      if (root?.kind === "record") window.history.replaceState(null, "", `#/o/${root.obj}`);
       return null;
     });
   }, []);
@@ -143,12 +166,45 @@ export function App() {
 
   React.useEffect(() => {
     if (route.peekId && route.object) {
-      setPeek((p) => (p && p.stack[0]?.id === route.peekId ? p : { stack: [{ obj: route.object as string, id: route.peekId as string }], set: p?.set ?? [] }));
+      setPeek((p) => {
+        const root = p?.stack[0];
+        return root?.kind === "record" && root.id === route.peekId
+          ? p
+          : { stack: [{ kind: "record", obj: route.object as string, id: route.peekId as string }], set: p?.set ?? [] };
+      });
     } else {
       setPeek(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [route.object, route.page, route.recordId, route.peekId]);
+
+  /* `/` opens the panel's SEARCH page — after yielding to everything that owns the
+     key: (1) a consumer that already handled it (the grid's type-to-edit prevents
+     default), (2) modified presses, (3) focused inputs/editors, (4) any open Radix
+     layer (palette, dialogs, nav drawer), (5) a focused table CELL (the grid owns
+     printables there even when it swallows nothing). Row focus is navigation, not
+     typing — it deliberately does NOT block. */
+  const peekRef = React.useRef(peek);
+  peekRef.current = peek;
+  React.useEffect(() => {
+    const onSlash = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      if (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+      if (document.querySelector('[data-slot="dialog-content"], [data-slot="sheet-content"], [role="dialog"]')) return;
+      if (document.querySelector("td[data-cell-focus]")) return;
+      e.preventDefault();
+      // a FRESH panel starts with a clean query; pushing onto an open one keeps it
+      if (!peekRef.current) setPanelQ("");
+      setPeek((p) => {
+        if (!p) return { stack: [{ kind: "search" }], set: [] };
+        if (p.stack[p.stack.length - 1].kind === "search") return p;
+        return { ...p, stack: [...p.stack, { kind: "search" }] };
+      });
+    };
+    window.addEventListener("keydown", onSlash);
+    return () => window.removeEventListener("keydown", onSlash);
+  }, []);
 
   const toast = React.useCallback((text: string) => {
     const id = Date.now() + Math.random();
@@ -317,13 +373,18 @@ export function App() {
     </Tip>
   );
 
-  // palette actions follow what's on screen: a record (peek or full page) beats the list
-  const curRec = peek ? peek.stack[peek.stack.length - 1] : route.recordId ? { obj: active.key, id: route.recordId } : null;
-  const paletteActions: { id: string; label: string; run: () => void }[] = [];
+  /* context actions — ONE source feeding two surfaces (the ⌘K palette and the
+     panel's actions page). They follow what's on screen: the deepest RECORD page
+     in the panel stack (an actions/search page on top still targets the record
+     beneath it), else the full record page, else the list. */
+  const curRec = peek
+    ? [...peek.stack].reverse().find((p): p is Extract<PanelPage, { kind: "record" }> => p.kind === "record") ?? null
+    : route.recordId ? { kind: "record" as const, obj: active.key, id: route.recordId } : null;
+  const contextActions: { id: string; label: string; run: () => void }[] = [];
   if (curRec) {
     const recCfg = config.objects.find((o) => o.key === curRec.obj);
-    if (peek) paletteActions.push({ id: "promote", label: "Open full page", run: () => route.go(`#/o/${curRec.obj}/r/${curRec.id}`) });
-    paletteActions.push({
+    if (peek) contextActions.push({ id: "promote", label: "Open full page", run: () => route.go(`#/o/${curRec.obj}/r/${curRec.id}`) });
+    contextActions.push({
       id: "fav",
       label: favs.some((f) => f.obj === curRec.obj && f.id === curRec.id) ? "Remove from favorites" : "Add to favorites",
       run: () => {
@@ -334,9 +395,18 @@ export function App() {
       },
     });
   } else if (!route.page) {
-    paletteActions.push({ id: "new", label: `New ${active.labelOne.toLowerCase()}`, run: () => window.dispatchEvent(new Event("nx-new-record")) });
-    paletteActions.push({ id: "trash", label: "Open trash", run: () => window.dispatchEvent(new Event("nx-open-trash")) });
+    contextActions.push({ id: "new", label: `New ${active.labelOne.toLowerCase()}`, run: () => window.dispatchEvent(new Event("nx-new-record")) });
+    contextActions.push({ id: "trash", label: "Open trash", run: () => window.dispatchEvent(new Event("nx-open-trash")) });
   }
+  // ⌘K over an OPEN panel goes to the panel's actions page (the palette consults
+  // this only on its opening edge); a second ⌘K on the actions page pops it back
+  const paletteIntercept = () => {
+    const p = peekRef.current;
+    if (!p) return false;
+    if (p.stack[p.stack.length - 1].kind === "actions") popPeek();
+    else pushPanel({ kind: "actions" });
+    return true;
+  };
 
   return (
     <ToastCtx.Provider value={toast}>
@@ -528,24 +598,29 @@ export function App() {
 
         {peek && (() => {
           const top = peek.stack[peek.stack.length - 1];
-          const cfg = config.objects.find((o) => o.key === top.obj);
-          if (!cfg) return null;
-          const rootIdx = peek.set.indexOf(peek.stack[0].id);
-          const canPage = peek.stack.length === 1 && rootIdx >= 0 && peek.set.length > 1;
+          const cfg = top.kind === "record" ? config.objects.find((o) => o.key === top.obj) : undefined;
+          if (top.kind === "record" && !cfg) return null;
+          const root = peek.stack[0];
+          // record-to-record paging exists only on a lone RECORD root
+          const rootIdx = root.kind === "record" ? peek.set.indexOf(root.id) : -1;
+          const canPage = peek.stack.length === 1 && root.kind === "record" && rootIdx >= 0 && peek.set.length > 1;
           const step = (d: number) => {
+            if (root.kind !== "record") return;
             const next = peek.set[(rootIdx + d + peek.set.length) % peek.set.length];
-            openPeek(peek.stack[0].obj, next, peek.set);
+            openPeek(root.obj, next, peek.set);
           };
           return (
             <div className="peekPanel" data-testid="peek-panel">
               <div className="peekHead">
                 {peek.stack.length > 1 && (
-                  <Button variant="ghost" size="sm" icon={<ArrowLeft size={13} />} aria-label="Back one record" data-testid="peek-back" onClick={popPeek} />
+                  <Button variant="ghost" size="sm" icon={<ArrowLeft size={13} />} aria-label="Back one page" data-testid="peek-back" onClick={popPeek} />
                 )}
                 <span className="peekCrumbs" data-testid="peek-crumbs">
                   {peek.stack.map((s, i) => {
-                    const c = config.objects.find((o) => o.key === s.obj);
-                    return <span key={`${s.obj}:${s.id}:${i}`} className="peekCrumb">{c?.labelOne ?? s.obj}</span>;
+                    const label = s.kind === "record"
+                      ? config.objects.find((o) => o.key === s.obj)?.labelOne ?? s.obj
+                      : s.kind === "search" ? t("panel.search") : t("panel.actions");
+                    return <span key={`${s.kind}:${i}`} className="peekCrumb">{label}</span>;
                   })}
                 </span>
                 <span className="nxSpacer" style={{ flex: 1 }} />
@@ -556,27 +631,47 @@ export function App() {
                     <Button variant="ghost" size="sm" icon={<ChevronRight size={13} />} aria-label="Next record" data-testid="peek-next" onClick={() => step(1)} />
                   </span>
                 )}
-                <Tip label="Open full page">
-                  <Button variant="ghost" size="sm" icon={<Maximize2 size={13} />} aria-label="Open full page" data-testid="peek-promote"
-                    onClick={() => route.go(`#/o/${top.obj}/r/${top.id}`)} />
-                </Tip>
+                {top.kind === "record" && (
+                  <>
+                    <Tip label={t("panel.actions")}>
+                      <Button variant="ghost" size="sm" icon={<Zap size={13} />} aria-label="Actions" data-testid="peek-actions"
+                        onClick={() => pushPanel({ kind: "actions" })} />
+                    </Tip>
+                    <Tip label="Open full page">
+                      <Button variant="ghost" size="sm" icon={<Maximize2 size={13} />} aria-label="Open full page" data-testid="peek-promote"
+                        onClick={() => route.go(`#/o/${top.obj}/r/${top.id}`)} />
+                    </Tip>
+                  </>
+                )}
                 <Button variant="ghost" size="sm" icon={<X size={14} />} aria-label="Close panel" data-testid="peek-close" onClick={closePeek} />
               </div>
               <div className="peekBody">
-                <RecordView
-                  key={`peek:${top.obj}:${top.id}:${activeTeam ?? ""}`}
-                  role={roleFor(cfg)}
-                  sessionUser={auth?.user}
-                  appConfig={config}
-                  config={cfg}
-                  id={top.id}
-                  onBack={popPeek}
-                  go={(hash) => {
-                    const m = hash.match(/^#\/o\/([^/]+)\/r\/([^/?]+)/);
-                    if (m) pushPeek(m[1], m[2]);
-                    else { setPeek(null); route.go(hash); }
-                  }}
-                />
+                {top.kind === "record" && cfg ? (
+                  <RecordView
+                    key={`peek:${top.obj}:${top.id}:${activeTeam ?? ""}`}
+                    role={roleFor(cfg)}
+                    sessionUser={auth?.user}
+                    appConfig={config}
+                    config={cfg}
+                    id={top.id}
+                    onBack={popPeek}
+                    go={(hash) => {
+                      const m = hash.match(/^#\/o\/([^/]+)\/r\/([^/?]+)/);
+                      if (m) pushPeek(m[1], m[2]);
+                      else { setPeek(null); route.go(hash); }
+                    }}
+                  />
+                ) : top.kind === "search" ? (
+                  <PanelSearch
+                    config={config}
+                    q={panelQ}
+                    onQ={setPanelQ}
+                    onOpen={(obj, id) => pushPeek(obj, id)}
+                    onPop={popPeek}
+                  />
+                ) : (
+                  <PanelActions actions={contextActions} onSearch={() => pushPanel({ kind: "search" })} />
+                )}
               </div>
             </div>
           );
@@ -647,7 +742,7 @@ export function App() {
           </SheetContent>
         </Sheet>
 
-        <CommandPalette config={config} go={route.go} actions={paletteActions} />
+        <CommandPalette config={config} go={route.go} actions={contextActions} intercept={paletteIntercept} />
         <ChatDock embedUrl={config.chat?.embedUrl} />
       </div>
     </ToastCtx.Provider>

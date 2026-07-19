@@ -21,21 +21,33 @@ export function CommandPalette({
   config,
   go,
   actions = [],
+  intercept,
 }: {
   config: AppConfig;
   go: (hash: string) => void;
   /* context actions (what's on screen decides): New record, trash, favorite, promote… */
   actions?: { id: string; label: string; run: () => void }[];
+  /* consulted ONLY on the OPENING edge: palette open → self-toggle closes it (never
+     yields); closed → intercept() true = another surface (the side panel) owns this
+     Cmd/Ctrl+K and the palette stays closed */
+  intercept?: () => boolean;
 }) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
   const [hits, setHits] = React.useState<{ obj: string; row: RecordRow; name: string }[]>([]);
+  // refs so the mount-once key listener sees live values without re-subscribing
+  const openRef = React.useRef(open);
+  openRef.current = open;
+  const interceptRef = React.useRef(intercept);
+  interceptRef.current = intercept;
 
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((o) => !o);
+        if (openRef.current) { setOpen(false); return; }
+        if (interceptRef.current?.()) return;
+        setOpen(true);
       }
     };
     window.addEventListener("keydown", onKey);
