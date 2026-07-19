@@ -1,4 +1,5 @@
 {
+  "_note": "Convention: relation TARGETS are listed before the objects that point at them (certifications/reps → vendors → vendorNotes).",
   "app": { "name": "Depth Fixture", "slug": "depth-fixture" },
   "theme": {},
   "users": ["you", "Iris Lang"],
