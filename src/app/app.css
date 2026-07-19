@@ -81,6 +81,37 @@
 }
 .viewSwitch button[data-active="true"] { background: var(--nx-bg-raised); color: var(--nx-fg); box-shadow: var(--nx-shadow-1); }
 
+/* ---------- top nav (config app.nav: "top") — one bar replaces sidebar + topbar ---------- */
+.shell.shell--top { display: flex; flex-direction: column; }
+.shell--top .main { flex: 1; min-height: 0; }
+.topNav {
+  display: flex; align-items: center; gap: var(--nx-gap-2);
+  background: var(--nx-chrome-bg); color: var(--nx-chrome-fg);
+  border-bottom: 1px solid var(--nx-chrome-border);
+  padding: 6px var(--nx-gap-4); min-height: 50px; flex: none;
+}
+.topNav .sideBrand { padding: 0 6px 0 0; flex: none; }
+.topNavItems { display: flex; align-items: center; gap: 2px; overflow-x: auto; min-width: 0; }
+.topNavItems .navItem { width: auto; white-space: nowrap; }
+.topNavTools { display: flex; align-items: center; gap: var(--nx-gap-2); min-width: 0; }
+.topNav .topSearch { margin-left: 0; min-width: 170px; }
+.topNavTeam { width: 150px; background: var(--nx-chrome-active-bg); color: var(--nx-chrome-fg); border-color: var(--nx-chrome-border); }
+.topNavFavs, .topNavSignout { width: auto; white-space: nowrap; }
+
+/* burger — hidden on desktop, shown ≤768px in both nav modes */
+.navBurger { display: none; width: auto; }
+
+/* ---------- mobile nav drawer (vendored Sheet, chrome palette) ---------- */
+.navDrawer { background: var(--nx-chrome-bg); color: var(--nx-chrome-fg); width: min(320px, 86vw); max-width: none; padding: 12px; gap: 10px; }
+.navDrawer [data-slot="sheet-title"] { color: var(--nx-chrome-fg); }
+.navDrawer [data-slot="sheet-description"] { color: var(--nx-chrome-fg-muted); }
+.navDrawer .drawerBody { display: flex; flex-direction: column; gap: var(--nx-gap-3); overflow-y: auto; min-height: 0; }
+.navDrawer .sideNav { margin-top: 0; }
+.navDrawer .topSearch { margin-left: 0; background: var(--nx-chrome-active-bg); border-color: var(--nx-chrome-border); }
+.navDrawer .topSearch input { color: var(--nx-chrome-fg); }
+.navDrawer .drawerTeam { background: var(--nx-chrome-active-bg); color: var(--nx-chrome-fg); border-color: var(--nx-chrome-border); }
+.navDrawer .nxMicro { color: var(--nx-chrome-fg-faint); }
+
 /* toast */
 .toastWrap { position: fixed; bottom: 18px; right: 18px; display: flex; flex-direction: column; gap: 8px; z-index: 60; }
 .toast {
@@ -91,18 +122,22 @@
 }
 @keyframes toastIn { from { opacity: 0; transform: translateY(6px); } }
 
-/* mobile */
-@media (max-width: 760px) {
+/* mobile (≤768px) — nav collapses behind a burger + drawer in BOTH nav modes */
+@media (max-width: 768px) {
   .shell { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: 100dvh; }
-  .side { flex-direction: row; align-items: center; overflow-x: auto; border-right: 0; border-bottom: 1px solid var(--nx-chrome-border); padding: 8px 12px; }
-  .sideBrand { padding: 0 8px 0 0; }
-  .sideSection { margin: 0; display: flex; align-items: center; }
-  .sideSection .nxMicro, .sideFoot { display: none; }
-  .sideNav { flex-direction: row; margin: 0; gap: 4px; }
-  .navItem { white-space: nowrap; padding: 6px 10px; }
-  .navCount { display: none; }
+  /* side mode: the sidebar compacts to a slim bar — brand + burger; the rest lives in the drawer */
+  .side { flex-direction: row; align-items: center; border-right: 0; border-bottom: 1px solid var(--nx-chrome-border); padding: 8px 12px; gap: 8px; }
+  .sideBrand { padding: 0; }
+  .side .sideSection { margin: 0 0 0 auto; display: flex; align-items: center; }
+  .side .sideSection .nxMicro, .sideFoot, .sideTeam, .sideFavs { display: none; }
+  .side .sideNav { flex-direction: row; margin: 0; gap: 4px; }
+  .side .sideNav .navItem { display: none; }
+  .side .sideNav .navBurger { display: flex; }
+  /* top mode: items + tools collapse behind the same burger */
+  .topNavItems, .topNavTools, .topNavSignout { display: none; }
+  .topNav .navBurger { display: flex; }
   .content { padding: var(--nx-gap-3); }
-  .topSearch { display: none; }
+  .top .topSearch { display: none; }
 }
 
 /* ---- side peek: the record panel that floats over the list ---- */
@@ -127,6 +162,14 @@
 .peekCrumb + .peekCrumb::before { content: none; }
 .peekPager { display: inline-flex; align-items: center; gap: 2px; font: var(--nx-text-meta); color: var(--nx-fg-muted); }
 .peekBody { overflow-y: auto; padding: 14px 16px; }
+
+/* mobile: the peek becomes a full-screen sheet (after the base rules — same specificity) */
+@media (max-width: 768px) {
+  .peekPanel { top: 0; right: 0; bottom: 0; left: 0; width: 100vw; height: 100dvh; border-radius: 0; }
+  /* deliberate: N-of-M paging is a desktop affordance — hidden, not left to wrap broken */
+  .peekPager { display: none; }
+  .peekCrumb { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
 
 /* dialogs open/close INSTANTLY — enter/exit animations on stacked layers (palette →
    create dialog → peek) can wedge mid-flight and strand an invisible overlay over

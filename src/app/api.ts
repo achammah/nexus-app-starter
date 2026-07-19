@@ -6,7 +6,8 @@ import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/rec
 import type { Skin } from "../ui/skins/skin";
 
 export interface AppConfig {
-  app: { name: string; slug: string };
+  /* nav: "side" (default) = left sidebar · "top" = one horizontal bar, no sidebar */
+  app: { name: string; slug: string; nav?: "side" | "top" };
   /* skinPreset names a built-in (nexus, ember); skin is a full inline Skin object
      (an org's brand as data); accent alone is the one-knob shortcut */
   theme: { accent?: string; skinPreset?: string; skin?: Skin };
