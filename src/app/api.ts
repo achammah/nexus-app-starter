@@ -17,7 +17,7 @@ export interface AppConfig {
   /* server-set: seeded fictional rows are present (drives the Demo badge) */
   demo?: boolean;
   /* server-set: feature flags (one env flag gates nav + page + API) */
-  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean; tasks?: boolean };
+  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean; tasks?: boolean; gallery?: boolean };
   objects: ObjectConfig[];
 }
 

@@ -3305,6 +3305,88 @@ const journeys = [
       }
     },
   },
+  // --- lane: ui-gallery
+  {
+    name: "gallery-renders", feature: "UI gallery (catalog + live skin switching)",
+    async run(page) {
+      const errs = [];
+      page.on("console", (m) => m.type() === "error" && errs.push(m.text()));
+      page.on("pageerror", (e) => errs.push(String(e)));
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="nav-p-gallery"]');
+      assert(true, "nav shows the Gallery page");
+      await page.click('[data-testid="nav-p-gallery"]');
+      for (const s of ["gallery-skins", "gallery-primitives", "gallery-shadcn", "gallery-inventory", "gallery-recordcore", "gallery-fields"]) {
+        await page.waitForSelector(`[data-testid="${s}"]`, { timeout: 8000 });
+      }
+      assert(true, "skin bar + all five sections render");
+      const stale = await page.getAttribute('[data-testid="gallery-inventory-stamp"]', "data-stale");
+      assert(stale === "false", "inventory snapshot matches the live src/ui copy (self-enforcing stamp)");
+      const inv = await page.textContent('[data-testid="gallery-inventory"]');
+      assert(inv?.includes("alert-dialog") && inv?.includes("RecordPage"), "inventory lists vendored AND record-core entries");
+      // per-section anchor: the TOC scrolls (hash router keeps the route)
+      await page.click('[data-testid="gallery-toc-gallery-fields"]');
+      await page.waitForFunction(() => {
+        const el = document.querySelector('[data-testid="gallery-fields"]');
+        return el && el.getBoundingClientRect().top < window.innerHeight;
+      });
+      assert(page.url().includes("#/p/gallery"), "TOC scroll never clobbers the hash route");
+      assert(errs.length === 0, `zero console/page errors (${errs.slice(0, 2).join(" | ")})`);
+    },
+  },
+  {
+    name: "gallery-skin-swap", feature: "UI gallery (catalog + live skin switching)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/gallery");
+      await page.waitForSelector('[data-testid="gallery-skins"]');
+      const accent0 = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim());
+      const cache0 = await page.evaluate(() => localStorage.getItem("nx-skin-css"));
+      await page.click('[data-testid="gallery-skin-ember"]');
+      await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim().toLowerCase() === "#ff7900");
+      assert(true, `ember repaints the page instantly (accent ${accent0} → #FF7900)`);
+      const cacheDuring = await page.evaluate(() => localStorage.getItem("nx-skin-css"));
+      assert(cacheDuring === cache0, "preview never touches the nx-skin-css boot cache");
+      await page.click('[data-testid="gallery-skin-reset"]');
+      await page.waitForFunction((a) => getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim() === a, accent0);
+      assert(true, "reset restores the app skin (it was never displaced)");
+      const cacheAfter = await page.evaluate(() => localStorage.getItem("nx-skin-css"));
+      assert(cacheAfter === cache0, "cache byte-identical after preview → reset");
+      // the app behind is unaffected
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="table-companies"] tbody tr');
+      const accentApp = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim());
+      assert(accentApp === accent0, "the rest of the app keeps its own skin after the preview session");
+    },
+  },
+  {
+    name: "gallery-interactive", feature: "Gallery record-core sandbox (local rows)",
+    async run(page) {
+      const apiReqs = [];
+      page.on("request", (r) => { if (r.url().includes("/api/")) apiReqs.push(r.url()); });
+      await page.goto(URLBASE + "/#/p/gallery");
+      await page.waitForSelector('[data-testid="table-g_deals"] tbody tr');
+      await page.waitForTimeout(900); // app-shell fetches settle (config/me/counts)
+      const before = apiReqs.length;
+      await page.focus('[data-testid="table-g_deals"]');
+      await page.keyboard.press("ArrowDown");
+      await page.waitForSelector("tr[data-row-focus]");
+      await page.keyboard.press("Enter");
+      await page.waitForSelector("td[data-cell-focus]");
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("ArrowRight"); // → Owner (a text column)
+      await page.keyboard.press("Z"); // type-to-edit seeds the editor
+      await page.waitForSelector("td[data-cell-focus] input, td input.nxCellEdit");
+      await page.keyboard.type("oe");
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => document.querySelector('[data-testid="table-g_deals"]')?.textContent?.includes("Zoe"));
+      assert(true, "the mini table's keyboard grid commits a VISIBLE local edit (Zoe)");
+      assert(apiReqs.length - before === 0, `zero /api requests during the interaction (delta ${apiReqs.length - before})`);
+      // the kanban beside it re-renders from the same local rows
+      const board = await page.textContent('[data-testid="kanban-g_deals"]');
+      assert(board?.includes("Harbor expansion"), "the mini kanban renders the same local rows");
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----
