@@ -239,9 +239,111 @@ const journeys = [
       assert(body?.includes("Journey Test Co"), "review surface names the exact records");
       await page.click('[data-testid="bulk-confirm-go"]');
       await page.waitForSelector('[data-testid="toast"]');
+      const toastTxt = await page.textContent('[data-testid="toast"]');
       await page.fill('[data-testid="list-search"]', "");
-      await page.waitForFunction(() => /^\d+$/.test(document.querySelector('[data-testid="row-count"]')?.textContent ?? "") && Number(document.querySelector('[data-testid="row-count"]')?.textContent) === 8, null, { timeout: 6000 });
-      assert(true, "count returns to 8 after reviewed delete");
+      let count = -1;
+      for (let i = 0; i < 40; i++) {
+        const t = await page.textContent('[data-testid="row-count"]').catch(() => "");
+        if (/^\d+$/.test(t ?? "")) count = Number(t);
+        if (count === 8) break;
+        await page.waitForTimeout(250);
+      }
+      const truth = await (await page.request.get(URLBASE + "/api/objects/companies")).json();
+      assert(count === 8,
+        `count returns to 8 after reviewed delete (ui=${count}, server=${truth.rows.length}, toast="${toastTxt}")`);
+    },
+  },
+  {
+    name: "select-filters", feature: "Select-field filter chips",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="filter-industry"]');
+      await page.click('[data-testid="filter-industry"]');
+      await page.waitForSelector('[data-testid="filter-industry-software"]');
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter"); // Software (first option)
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 2);
+      assert(true, "Industry=Software narrows to the 2 software companies");
+      await page.click('[data-testid="filters-clear"]');
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length >= 8);
+      assert(true, "clear-all restores the full list");
+    },
+  },
+  {
+    name: "relations-deep", feature: "Relation picker + related lists",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector(".nxRowLink");
+      await page.click('.nxRowLink:has-text("Brightline Analytics")');
+      await page.waitForSelector('[data-testid="related-people"]');
+      const ppl = await page.textContent('[data-testid="related-people"]');
+      assert(ppl?.includes("Maya Verstraete"), "related People lists the linked person");
+      await page.waitForSelector('[data-testid="related-deals"]');
+      const dls = await page.textContent('[data-testid="related-deals"]');
+      assert(dls?.includes("Brightline platform rollout"), "related Deals lists the linked deal");
+      await page.click('[data-testid="related-deals-de_1"]');
+      await page.waitForSelector('[data-testid="field-company"]');
+      assert(true, "clicking a related row opens ITS record");
+      await page.click('[data-testid="field-company"]');
+      await page.waitForSelector('[data-testid="field-company-search"]');
+      await page.fill('[data-testid="field-company-search"]', "cargo");
+      await page.waitForSelector('[data-testid="field-company-opt-cargolane"]');
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await page.waitForSelector('[data-testid="toast"]');
+      await page.waitForFunction(() =>
+        document.querySelector('[data-testid="field-company-value"]')?.textContent?.includes("Cargolane"));
+      assert(true, "picker sets the relation (Cargolane) and saves");
+      await page.click('[data-testid="field-company-jump"]');
+      await page.waitForFunction(() => document.querySelector(".pageTitle")?.textContent?.includes("Companies"));
+      await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 1);
+      assert(true, "jump lands on Companies filtered to the picked target");
+      await page.fill('[data-testid="list-search"]', "");
+      // restore the seed relation for later journeys
+      await page.request.patch(URLBASE + "/api/objects/deals/de_1", { data: { company: "Brightline Analytics" } });
+    },
+  },
+  {
+    name: "ats-by-config", feature: "ATS by config alone",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4700", CONFIG_PATH: "examples/ats.config.json" },
+      });
+      try {
+        for (let i = 0; i < 20; i++) {
+          try {
+            const r = await fetch("http://localhost:4700/api/healthz", { signal: AbortSignal.timeout(1500) });
+            if (r.ok) break;
+          } catch { /* booting */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto("http://localhost:4700/");
+        await p2.waitForSelector('[data-testid="app-name"]');
+        const nm = await p2.textContent('[data-testid="app-name"]');
+        assert(nm === "Atlas ATS", `the app IS the config (${nm})`);
+        await p2.click('[data-testid="nav-candidates"]');
+        await p2.waitForSelector('[data-testid="table-candidates"] tbody tr');
+        const n = await p2.locator('[data-testid="table-candidates"] tbody tr').count();
+        assert(n === 4, `candidates table renders from config sampleRows (${n})`);
+        await p2.click('[data-testid="nav-applications"]');
+        await p2.waitForSelector('[data-testid="kanban-applications"]');
+        const interview = await p2.locator('[data-testid="col-Interview"] [data-testid="card-ap_1"]').count();
+        assert(interview === 1, "applications kanban has ATS stages with the seeded card in Interview");
+        await p2.click('[data-testid="card-ap_1"]');
+        await p2.waitForSelector('[data-testid="related-"]', { timeout: 1500 }).catch(() => {});
+        await p2.waitForSelector('[data-testid="field-candidate-value"]');
+        const cand = await p2.textContent('[data-testid="field-candidate-value"]');
+        assert(cand?.includes("Nadia"), "application record links its candidate via the relation picker");
+        await p2.screenshot({ path: path.join(SHOTS, "journey-ats-by-config.png"), fullPage: true });
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
     },
   },
   {

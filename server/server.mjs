@@ -21,7 +21,9 @@ import { handleAuth, gate } from "./auth.mjs";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const DIST = path.join(ROOT, "dist");
-const CONFIG = JSON.parse(readFileSync(path.join(ROOT, "starter.config.json"), "utf8"));
+const CONFIG = JSON.parse(
+  readFileSync(path.join(ROOT, env.CONFIG_PATH || "starter.config.json"), "utf8"),
+);
 const VERSION = readFileSync(path.join(ROOT, "VERSION"), "utf8").trim();
 const store = new Store(CONFIG);
 

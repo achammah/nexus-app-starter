@@ -67,6 +67,10 @@ export function ObjectView({
   const [view, setView] = React.useState<"table" | "kanban">(saved.view ?? config.defaultView);
   const [hidden, setHidden] = React.useState<string[]>(saved.hidden ?? []);
   const [sort, setSort] = React.useState<SortingState>(saved.sort ?? []);
+  const [selFilters, setSelFilters] = React.useState<Record<string, string[]>>(
+    (saved as { selFilters?: Record<string, string[]> }).selFilters ?? {},
+  );
+  const [relOpts, setRelOpts] = React.useState<Record<string, string[]>>({});
   const [creating, setCreating] = React.useState(false);
   const [draft, setDraft] = React.useState<Record<string, string>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
@@ -75,8 +79,29 @@ export function ObjectView({
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
 
   React.useEffect(() => {
-    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort }));
-  }, [config.key, q, view, hidden, sort]);
+    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters }));
+  }, [config.key, q, view, hidden, sort, selFilters]);
+
+  // relation options for the create dialog (fetched once the dialog opens)
+  React.useEffect(() => {
+    if (!creating) return;
+    config.fields
+      .filter((f) => f.type === "relation" && f.relation)
+      .forEach((f) => {
+        api
+          .list(f.relation!)
+          .then((rows) => setRelOpts((m) => ({ ...m, [f.key]: rows.map((r) => String(r.name ?? r.title ?? r.id)) })))
+          .catch(() => {});
+      });
+  }, [creating, config.fields]);
+
+  const activeSelFilters = Object.entries(selFilters).filter(([, vals]) => vals.length > 0);
+  const visibleRows = React.useMemo(
+    () =>
+      rows?.filter((r) => activeSelFilters.every(([k, vals]) => vals.includes(String(r[k] ?? "")))) ?? null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [rows, selFilters],
+  );
 
   const load = React.useCallback(() => {
     api
@@ -176,6 +201,50 @@ export function ObjectView({
             “{q}” <button style={{ border: 0, background: "none", cursor: "pointer", color: "inherit", font: "inherit" }} onClick={() => setQ("")} aria-label="Clear filter">×</button>
           </Badge>
         )}
+        {config.fields
+          .filter((f) => f.type === "select" && f.key !== config.stageField)
+          .map((f) => {
+            const active = selFilters[f.key] ?? [];
+            return (
+              <DropdownMenu key={f.key}>
+                <DropdownMenuTrigger asChild>
+                  <Button size="sm" variant={active.length ? "primary" : "ghost"} data-testid={`filter-${f.key}`}>
+                    {f.label}
+                    {active.length > 0 && ` · ${active.length}`}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {(f.options ?? []).map((o) => (
+                    <DropdownMenuCheckboxItem
+                      key={o}
+                      checked={active.includes(o)}
+                      data-testid={`filter-${f.key}-${o.replaceAll(/\W+/g, "-").toLowerCase()}`}
+                      onCheckedChange={(on) =>
+                        setSelFilters((m) => ({
+                          ...m,
+                          [f.key]: on ? [...(m[f.key] ?? []), o] : (m[f.key] ?? []).filter((x) => x !== o),
+                        }))
+                      }
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      {o}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            );
+          })}
+        {activeSelFilters.length > 0 && (
+          <Badge tone="accent">
+            <button
+              style={{ border: 0, background: "none", cursor: "pointer", color: "inherit", font: "inherit" }}
+              data-testid="filters-clear"
+              onClick={() => setSelFilters({})}
+            >
+              clear all ×
+            </button>
+          </Badge>
+        )}
         <span className="nxSpacer" />
         {view === "table" && (
           <DropdownMenu>
@@ -233,16 +302,16 @@ export function ObjectView({
         </div>
       )}
 
-      {rows === null ? (
+      {visibleRows === null ? (
         <div className="nxCard" style={{ padding: 40, textAlign: "center", color: "var(--nx-fg-faint)" }} data-testid="list-loading">
           Loading {config.label.toLowerCase()}…
         </div>
       ) : view === "kanban" && config.stageField ? (
-        <KanbanBoard config={config} rows={rows} onPatch={patch} onOpen={onOpen} />
+        <KanbanBoard config={config} rows={visibleRows} onPatch={patch} onOpen={onOpen} />
       ) : (
         <DataTable
           config={config}
-          rows={rows}
+          rows={visibleRows}
           onOpen={onOpen}
           onPatch={patch}
           hiddenFields={hidden}
@@ -293,12 +362,23 @@ export function ObjectView({
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {config.fields
-            .filter((f) => f.type !== "relation")
-            .slice(0, 5)
+            .slice(0, 6)
             .map((f) => (
               <label key={f.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                 <span className="nxMicro">{f.label}</span>
-                {f.type === "select" ? (
+                {f.type === "relation" ? (
+                  <select
+                    className="nxInput"
+                    value={draft[f.key] ?? ""}
+                    data-testid={`new-${f.key}`}
+                    onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
+                  >
+                    <option value="">—</option>
+                    {(relOpts[f.key] ?? []).map((o) => (
+                      <option key={o}>{o}</option>
+                    ))}
+                  </select>
+                ) : f.type === "select" ? (
                   <select
                     className="nxInput"
                     value={draft[f.key] ?? f.options?.[0] ?? ""}

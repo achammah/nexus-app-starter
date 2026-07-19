@@ -9,6 +9,18 @@
 
 The org's runnable app skeleton for ANY product on Nexus — clone, configure, and you have a working, journey-verified app with the platform wiring in place. The config-driven **record-core** (tables/kanban/record pages from `starter.config.json`) covers record-system classes; everything else is a **custom page** (`src/app/pages.tsx` registry — ordinary React over the full vendored shadcn kit); both hang off the same shell, tokens, data spine, and journeys harness.
 
+## The config IS the app
+
+`starter.config.json` defines the entities, their fields/stages/relations, the views, AND the demo data (`sampleRows`). Swap it and the same build becomes a different product:
+
+```bash
+CONFIG_PATH=examples/ats.config.json npm run serve
+# → "Atlas ATS": companies · jobs · candidates + an Applied→…→Hired applications
+#   pipeline with relation pickers and related lists — zero code changes.
+```
+
+Relation fields get pickers (combobox over the target object) and reverse **related lists** on record pages automatically; select fields get filter chips; objects without `sampleRows` are filled by a typed deterministic generator.
+
 ## Quick start
 
 ```bash

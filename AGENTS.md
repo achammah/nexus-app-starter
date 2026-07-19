@@ -13,7 +13,8 @@ You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the st
 ## Common tasks
 | Task | Do |
 |---|---|
-| Add an entity (table/board/record page) | add an object to `starter.config.json` (fields, stageField, defaultView) + seed rows in `server/seed.mjs` → the surfaces exist; add a manifest row + a journey |
+| Add an entity (table/board/record page) | add an object to `starter.config.json` (fields, stageField, defaultView, `sampleRows` demo data — or `seedCount` for generated rows) → the surfaces, relation pickers, related lists, and filters exist; add a manifest row + a journey |
+| Become a different product | write a config (see `examples/ats.config.json`) → `CONFIG_PATH=<file> npm run serve`; relation targets are listed BEFORE the objects that point at them |
 | Add a non-record surface (dashboard, console, wizard…) | create the component under `src/app/pages/`, register in `src/app/pages.tsx` → nav + `#/p/<key>` route appear; full vendored kit available |
 | Add a feature journey | append to `journeys/run.mjs` (assert a VISIBLE outcome — a value changed, a card moved; never a bare 200) + a manifest row; `npm run journeys` |
 | Wire the platform | `src/lib/nexusClient.mjs` (api-key client, server-side only) · `connectFlow.mjs` (vendor OAuth via platform credentials) · `scripts/register-as-tool.mjs` (archetype 1/2 close-out) · `appState` (swap `server/store.mjs` for the warehouse twin; the /api surface doesn't change) |

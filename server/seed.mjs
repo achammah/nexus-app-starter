@@ -1,63 +1,88 @@
-/* Deterministic seed — realistic FICTIONAL data (never real orgs/people), stable
-   across boots so journeys can assert on known rows. */
+/* Config-driven seed — the CONFIG is the whole app, demo data included.
+   Per object: `sampleRows` in the config wins (curated, journey-stable ids
+   `<obj2char>_<n>`); absent → a deterministic typed generator fills `seedCount`
+   (default 6) rows with FICTIONAL values. Relations resolve to the target object's
+   primary values so link cells and pickers work out of the box. */
 
-const COMPANIES = [
-  ["Brightline Analytics", "brightline.example", "Software", 140, "Ghent"],
-  ["Nordwind Retail", "nordwind.example", "Retail", 900, "Antwerp"],
-  ["Cargolane", "cargolane.example", "Logistics", 320, "Rotterdam"],
-  ["Veldkliniek Group", "veldkliniek.example", "Health", 210, "Leuven"],
-  ["Meridian Capital", "meridian.example", "Finance", 75, "Brussels"],
-  ["Pixelforge Studio", "pixelforge.example", "Software", 28, "Lille"],
-  ["GreenCrate Foods", "greencrate.example", "Retail", 460, "Utrecht"],
-  ["Tidal Freight", "tidalfreight.example", "Logistics", 150, "Hamburg"],
-];
+const FIRST = ["Maya", "Jonas", "Lena", "Karim", "Sofia", "Tom", "Anouk", "Erik", "Nadia", "Pieter", "Iris", "Marco"];
+const LAST = ["Verstraete", "Peeters", "Dubois", "El Amrani", "Marchetti", "Janssens", "de Vries", "Lindqvist", "Haddad", "Bakker", "Novak", "Costa"];
+const WORDS = ["Bright", "Nord", "Cargo", "Veld", "Meridian", "Pixel", "Green", "Tidal", "Atlas", "Silver", "Cedar", "Quartz"];
+const CITY = ["Ghent", "Antwerp", "Rotterdam", "Leuven", "Brussels", "Lille", "Utrecht", "Hamburg"];
 
-const PEOPLE = [
-  ["Maya Verstraete", "maya@brightline.example", "CTO", "Brightline Analytics"],
-  ["Jonas Peeters", "jonas@nordwind.example", "Ops Director", "Nordwind Retail"],
-  ["Lena Dubois", "lena@cargolane.example", "Head of Fleet", "Cargolane"],
-  ["Karim El Amrani", "karim@veldkliniek.example", "CIO", "Veldkliniek Group"],
-  ["Sofia Marchetti", "sofia@meridian.example", "Partner", "Meridian Capital"],
-  ["Tom Janssens", "tom@pixelforge.example", "Founder", "Pixelforge Studio"],
-  ["Anouk de Vries", "anouk@greencrate.example", "Buying Lead", "GreenCrate Foods"],
-  ["Erik Lindqvist", "erik@tidalfreight.example", "COO", "Tidal Freight"],
-];
+function typedValue(field, i, rowsByObject) {
+  switch (field.type) {
+    case "select":
+      return field.options?.[i % (field.options.length || 1)] ?? "";
+    case "number":
+      return (i + 1) * 7 + 20;
+    case "currency":
+      return ((i % 8) + 1) * 6500;
+    case "date": {
+      const d = new Date(Date.UTC(2026, 6 + (i % 3), 2 + ((i * 5) % 26)));
+      return d.toISOString().slice(0, 10);
+    }
+    case "email":
+      return `${FIRST[i % FIRST.length].toLowerCase()}${i}@example.test`;
+    case "url":
+      return `${WORDS[i % WORDS.length].toLowerCase()}${i}.example`;
+    case "relation": {
+      const target = rowsByObject[field.relation ?? ""] ?? [];
+      if (!target.length) return "";
+      const t = target[i % target.length];
+      return t.__primary ?? t.id;
+    }
+    default:
+      return field.key.toLowerCase().includes("city")
+        ? CITY[i % CITY.length]
+        : `${FIRST[i % FIRST.length]} ${LAST[(i * 3) % LAST.length]}`;
+  }
+}
 
-const DEALS = [
-  ["Brightline platform rollout", "Qualified", 48000, "Brightline Analytics", "you", "2026-08-14"],
-  ["Nordwind store copilot", "New", 32000, "Nordwind Retail", "you", "2026-09-01"],
-  ["Cargolane dispatch automation", "Proposal", 76000, "Cargolane", "you", "2026-08-05"],
-  ["Veldkliniek intake agent", "New", 21000, "Veldkliniek Group", "you", "2026-09-18"],
-  ["Meridian research assistant", "Won", 54000, "Meridian Capital", "you", "2026-06-30"],
-  ["Pixelforge support bot", "Qualified", 12000, "Pixelforge Studio", "you", "2026-08-22"],
-  ["GreenCrate supplier portal", "Proposal", 39000, "GreenCrate Foods", "you", "2026-08-29"],
-  ["Tidal customs copilot", "Lost", 18000, "Tidal Freight", "you", "2026-07-02"],
-];
-
-export function seed() {
+export function seed(config) {
   const t0 = Date.parse("2026-07-01T09:00:00Z");
-  const rows = { companies: [], people: [], deals: [] };
-  const events = { companies: {}, people: {}, deals: {} };
+  const rows = {};
+  const events = {};
   const ev = (obj, id, i, kind, summary) => {
-    (events[obj][id] ??= []).push({ id: `sev_${obj}_${id}_${i}`, ts: new Date(t0 + i * 36e5).toISOString(), kind, summary, actor: "seed" });
+    ((events[obj] ??= {})[id] ??= []).push({
+      id: `sev_${obj}_${id}_${i}`,
+      ts: new Date(t0 + i * 36e5).toISOString(),
+      kind,
+      summary,
+      actor: "seed",
+    });
   };
 
-  COMPANIES.forEach(([name, domain, industry, employees, city], i) => {
-    const id = `co_${i + 1}`;
-    rows.companies.push({ id, name, domain, industry, employees, city });
-    ev("companies", id, i, "created", "Company created");
-  });
-  PEOPLE.forEach(([name, email, role, company], i) => {
-    const id = `pe_${i + 1}`;
-    rows.people.push({ id, name, email, role, company });
-    ev("people", id, i, "created", "Person created");
-  });
-  DEALS.forEach(([name, stage, amount, company, owner, closeDate], i) => {
-    const id = `de_${i + 1}`;
-    rows.deals.push({ id, name, stage, amount, company, owner, closeDate });
-    ev("deals", id, i, "created", "Deal created");
-    ev("deals", id, i + 20, "stage", `Stage set to ${stage}`);
-  });
-
+  // Two passes so relations can point at already-seeded targets (config order
+  // should list relation TARGETS first; a forward relation falls back to blank).
+  for (const obj of config.objects) {
+    const primary = obj.fields.find((f) => f.primary) ?? obj.fields[0];
+    const out = (rows[obj.key] = []);
+    if (Array.isArray(obj.sampleRows) && obj.sampleRows.length) {
+      obj.sampleRows.forEach((r, i) => {
+        const id = r.id ?? `${obj.key.slice(0, 2)}_${i + 1}`;
+        const row = { id, ...r };
+        row.__primary = String(row[primary.key] ?? id);
+        out.push(row);
+      });
+    } else {
+      const n = obj.seedCount ?? 6;
+      for (let i = 0; i < n; i++) {
+        const id = `${obj.key.slice(0, 2)}_${i + 1}`;
+        const row = { id };
+        for (const f of obj.fields) row[f.key] = typedValue(f, i, rows);
+        row.__primary = String(row[primary.key] ?? id);
+        out.push(row);
+      }
+    }
+  }
+  for (const obj of config.objects) {
+    for (const [i, row] of (rows[obj.key] ?? []).entries()) {
+      delete row.__primary;
+      ev(obj.key, row.id, i, "created", `${obj.labelOne} created`);
+      if (obj.stageField && row[obj.stageField]) {
+        ev(obj.key, row.id, i + 20, "stage", `Stage set to ${row[obj.stageField]}`);
+      }
+    }
+  }
   return { rows, events };
 }

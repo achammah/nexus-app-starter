@@ -1,14 +1,29 @@
 import * as React from "react";
-import { api } from "./api";
+import { api, type AppConfig } from "./api";
 import { useToast } from "./App";
-import { RecordPage } from "../ui/record-core/RecordPage";
+import { RecordPage, type RelatedList } from "../ui/record-core/RecordPage";
 import type { ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
 
-export function RecordView({ config, id, onBack }: { config: ObjectConfig; id: string; onBack: () => void }) {
+export function RecordView({
+  appConfig,
+  config,
+  id,
+  onBack,
+  go,
+}: {
+  appConfig: AppConfig;
+  config: ObjectConfig;
+  id: string;
+  onBack: () => void;
+  go: (hash: string) => void;
+}) {
   const toast = useToast();
   const [row, setRow] = React.useState<RecordRow | null>(null);
   const [timeline, setTimeline] = React.useState<TimelineEvent[]>([]);
   const [missing, setMissing] = React.useState(false);
+  const [relationOptions, setRelationOptions] = React.useState<Record<string, string[]>>({});
+  const [related, setRelated] = React.useState<RelatedList[]>([]);
+  const primary = config.fields.find((f) => f.primary) ?? config.fields[0];
 
   const load = React.useCallback(() => {
     api.get(config.key, id).then(setRow).catch(() => setMissing(true));
@@ -16,6 +31,49 @@ export function RecordView({ config, id, onBack }: { config: ObjectConfig; id: s
   }, [config.key, id]);
 
   React.useEffect(load, [load]);
+
+  // Relation OPTIONS: target object → its primary values (feeds the pickers).
+  React.useEffect(() => {
+    const rels = config.fields.filter((f) => f.type === "relation" && f.relation);
+    rels.forEach((f) => {
+      const target = appConfig.objects.find((o) => o.key === f.relation);
+      if (!target) return;
+      const tPrimary = target.fields.find((x) => x.primary) ?? target.fields[0];
+      api
+        .list(target.key)
+        .then((rows) =>
+          setRelationOptions((m) => ({ ...m, [f.key]: rows.map((r) => String(r[tPrimary.key] ?? r.id)) })),
+        )
+        .catch(() => {});
+    });
+  }, [appConfig, config]);
+
+  // RELATED lists: every object with a relation field pointing AT this object,
+  // filtered to rows whose value equals this record's primary value.
+  React.useEffect(() => {
+    if (!row) return;
+    const mine = String(row[primary.key] ?? "");
+    const reverse = appConfig.objects.flatMap((o) =>
+      o.fields.filter((f) => f.type === "relation" && f.relation === config.key).map((f) => ({ o, f })),
+    );
+    Promise.all(
+      reverse.map(async ({ o, f }) => {
+        const oPrimary = o.fields.find((x) => x.primary) ?? o.fields[0];
+        const meta = o.fields.find((x) => !x.primary && x.key !== f.key);
+        const rows = (await api.list(o.key).catch(() => [] as RecordRow[])).filter(
+          (r) => String(r[f.key] ?? "") === mine,
+        );
+        return {
+          key: o.key,
+          label: o.label,
+          rows,
+          primaryKey: oPrimary.key,
+          metaKey: meta?.key,
+          onOpen: (rid: string) => go(`#/o/${o.key}/r/${rid}`),
+        } satisfies RelatedList;
+      }),
+    ).then(setRelated);
+  }, [appConfig, config.key, row, primary.key, go]);
 
   if (missing)
     return (
@@ -34,6 +92,12 @@ export function RecordView({ config, id, onBack }: { config: ObjectConfig; id: s
       row={row}
       timeline={timeline}
       onBack={onBack}
+      relationOptions={relationOptions}
+      related={related}
+      onOpenRelation={(target, value) => {
+        sessionStorage.setItem("nx-pending-q", value);
+        go(`#/o/${target}`);
+      }}
       onPatch={(rid, patch) => {
         setRow((r) => (r ? { ...r, ...patch } : r)); // optimistic
         api

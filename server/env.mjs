@@ -6,6 +6,8 @@ import { z } from "zod";
 
 const schema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
+  // Alternate app definition (e.g. examples/ats.config.json) — relative to the repo root
+  CONFIG_PATH: z.string().optional(),
   // Auth seam (both or neither): "email:password,email2:pass2" + a cookie-signing secret
   AUTH_USERS: z.string().optional(),
   APP_SECRET: z.string().min(16, "APP_SECRET must be ≥16 chars").optional(),

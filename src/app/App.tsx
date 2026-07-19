@@ -187,7 +187,13 @@ export function App() {
                 return P ? <P /> : <div className="nxCard" style={{ padding: 32 }}>Unknown page.</div>;
               })()
             ) : route.recordId ? (
-              <RecordView config={active} id={route.recordId} onBack={() => route.go(`#/o/${active.key}`)} />
+              <RecordView
+                appConfig={config}
+                config={active}
+                id={route.recordId}
+                onBack={() => route.go(`#/o/${active.key}`)}
+                go={route.go}
+              />
             ) : (
               <ObjectView
                 key={active.key}
