@@ -9,14 +9,32 @@ const LAST = ["Verstraete", "Peeters", "Dubois", "El Amrani", "Marchetti", "Jans
 const WORDS = ["Bright", "Nord", "Cargo", "Veld", "Meridian", "Pixel", "Green", "Tidal", "Atlas", "Silver", "Cedar", "Quartz"];
 const CITY = ["Ghent", "Antwerp", "Rotterdam", "Leuven", "Brussels", "Lille", "Utrecht", "Hamburg"];
 
+const optVal = (o) => (typeof o === "string" ? o : o.value);
+
 function typedValue(field, i, rowsByObject, config) {
   switch (field.type) {
     case "select":
-      return field.options?.[i % (field.options.length || 1)] ?? "";
+      return field.options?.length ? optVal(field.options[i % field.options.length]) : "";
     case "multiselect": {
-      const opts = field.options ?? [];
+      const opts = (field.options ?? []).map(optVal);
       return opts.length ? [...new Set([opts[i % opts.length], opts[(i + 1) % opts.length]])] : [];
     }
+    case "boolean":
+      return i % 3 !== 0;
+    case "rating":
+      return (i % (field.scale ?? 5)) + 1;
+    case "dateTime": {
+      const d = new Date(Date.UTC(2026, 6, 2 + (i % 20), 9 + (i % 8), 15 * (i % 4)));
+      return d.toISOString();
+    }
+    case "array": {
+      const pool = ["priority", "eu-region", "renewal", "expansion", "at-risk", "reference"];
+      return [pool[i % pool.length], pool[(i + 2) % pool.length]];
+    }
+    case "longText":
+      return `Working notes ${i + 1}: context gathered from the last touchpoint; follow-ups agreed and owners assigned.`;
+    case "json":
+      return { source: "seed", index: i };
     case "user": {
       const users = config?.users ?? [];
       return users.length ? users[i % users.length] : "you";

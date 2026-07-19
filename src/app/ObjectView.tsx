@@ -29,6 +29,8 @@ import { ChartView } from "../ui/record-core/ChartView";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
 import { usePollRev } from "./usePollRev";
 import { can, type Role } from "./permissions";
+import { optionValues, normalizeOption } from "../ui/record-core/types";
+import { activeFields } from "../ui/record-core/options";
 
 /* ObjectView — the list surface: view bar (search · filter chip · count · view switch ·
    New) + table or kanban. GLANCE → ZOOM → ACT: status visible per row, one click to
@@ -84,13 +86,13 @@ export function ObjectView({
   );
   const [relOpts, setRelOpts] = React.useState<Record<string, string[]>>({});
   // board can group by ANY select/user field (stageField is just the default)
-  const groupables = config.fields.filter((f) => f.type === "select" || f.type === "user");
+  const groupables = activeFields(config.fields).filter((f) => f.type === "select" || f.type === "user");
   const [groupBy, setGroupBy] = React.useState<string>(
     (saved as { groupBy?: string }).groupBy ?? config.stageField ?? groupables[0]?.key ?? "",
   );
   const groupFieldDef = config.fields.find((f) => f.key === groupBy);
   // chart measure: "count" or a numeric field key to SUM per group
-  const numericFields = config.fields.filter((f) => f.type === "number" || f.type === "currency");
+  const numericFields = activeFields(config.fields).filter((f) => f.type === "number" || f.type === "currency");
   const [measure, setMeasure] = React.useState<string>(
     (saved as { measure?: string }).measure ?? "count",
   );
@@ -170,7 +172,7 @@ export function ObjectView({
 
   const exportCsv = () => {
     const chosen = rows?.filter((r) => selection[r.id]) ?? [];
-    const cols = config.fields.map((f) => f.key);
+    const cols = activeFields(config.fields).map((f) => f.key);
     const esc = (v: unknown) => `"${String(v ?? "").replaceAll('"', '""')}"`;
     const csv = [cols.join(","), ...chosen.map((r) => cols.map((c) => esc(r[c])).join(","))].join("\n");
     const a = document.createElement("a");
@@ -238,7 +240,7 @@ export function ObjectView({
             “{q}” <button style={{ border: 0, background: "none", cursor: "pointer", color: "inherit", font: "inherit" }} onClick={() => setQ("")} aria-label="Clear filter">×</button>
           </Badge>
         )}
-        {config.fields
+        {activeFields(config.fields)
           .filter((f) => (f.type === "select" || f.type === "multiselect") && f.key !== config.stageField)
           .map((f) => {
             const active = selFilters[f.key] ?? [];
@@ -251,22 +253,25 @@ export function ObjectView({
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start">
-                  {(f.options ?? []).map((o) => (
+                  {(f.options ?? []).map((raw) => {
+                    const o = normalizeOption(raw);
+                    return (
                     <DropdownMenuCheckboxItem
-                      key={o}
-                      checked={active.includes(o)}
-                      data-testid={`filter-${f.key}-${o.replaceAll(/\W+/g, "-").toLowerCase()}`}
+                      key={o.value}
+                      checked={active.includes(o.value)}
+                      data-testid={`filter-${f.key}-${o.value.replaceAll(/\W+/g, "-").toLowerCase()}`}
                       onCheckedChange={(on) =>
                         setSelFilters((m) => ({
                           ...m,
-                          [f.key]: on ? [...(m[f.key] ?? []), o] : (m[f.key] ?? []).filter((x) => x !== o),
+                          [f.key]: on ? [...(m[f.key] ?? []), o.value] : (m[f.key] ?? []).filter((x) => x !== o.value),
                         }))
                       }
                       onSelect={(e) => e.preventDefault()}
                     >
-                      {o}
+                      {o.label}
                     </DropdownMenuCheckboxItem>
-                  ))}
+                    );
+                  })}
                 </DropdownMenuContent>
               </DropdownMenu>
             );
@@ -471,7 +476,8 @@ export function ObjectView({
         }
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {config.fields
+          {activeFields(config.fields)
+            .filter((f) => !["json", "array", "rating", "boolean"].includes(f.type))
             .slice(0, 6)
             .map((f) => (
               <label key={f.key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -491,13 +497,13 @@ export function ObjectView({
                 ) : f.type === "select" ? (
                   <select
                     className="nxInput"
-                    value={draft[f.key] ?? f.options?.[0] ?? ""}
+                    value={draft[f.key] ?? optionValues(f.options)[0] ?? ""}
                     data-testid={`new-${f.key}`}
                     onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
                   >
-                    {(f.options ?? []).map((o) => (
-                      <option key={o}>{o}</option>
-                    ))}
+                    {(f.options ?? []).map((raw) => { const o = normalizeOption(raw); return (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ); })}
                   </select>
                 ) : (
                   <Input

@@ -235,7 +235,7 @@ async function api(req, res, url) {
       if (req.method === "PATCH") {
         if (deny("edit", { own })) return;
         const patch = await readBody(req);
-        const invalid = store.validate(objKey, patch);
+        const invalid = store.validate(objKey, patch, id);
         if (invalid) return send(res, 400, { error: invalid });
         const row = store.patch(objKey, id, patch);
         if (row) {

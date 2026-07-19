@@ -534,6 +534,74 @@ const journeys = [
     },
   },
   {
+    name: "field-depth", feature: "Field-type depth (boolean/rating/dateTime/array/longText/json, colored options, unique, deactivation)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4790", CONFIG_PATH: "journeys/fixtures/depth.config.json" },
+      });
+      const B = "http://localhost:4790";
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch(B + "/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* boot */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto(B + "/#/o/vendors");
+        await p2.waitForSelector('[data-testid="table-vendors"] tbody tr');
+        // colored option chip carries its configured color
+        const chipColor = await p2.getAttribute('[data-testid="table-vendors"] .nxOptChip[data-color="purple"]', "data-color");
+        assert(chipColor === "purple", "select options render as COLORED chips (Strategic=purple)");
+        // deactivated field is gone from the table
+        const headers = await p2.locator('[data-testid="table-vendors"] th').allTextContents();
+        assert(!headers.some((h) => h.includes("Legacy ref")), "deactivated fields disappear from surfaces (data preserved)");
+        const rowStill = await (await p2.request.get(B + "/api/objects/vendors/ve_1")).json();
+        assert(rowStill.legacyRef === "OLD-77", "…while the stored value survives underneath");
+        // boolean toggles inline and persists
+        await p2.click('[data-testid="cell-ve_2-active"]');
+        await p2.waitForFunction(() =>
+          [...document.querySelectorAll('[data-testid="toast"]')].some((t) => t.textContent?.includes("Saved")),
+        );
+        const v2 = await (await p2.request.get(B + "/api/objects/vendors/ve_2")).json();
+        assert(v2.active === true, "boolean cell toggles + persists");
+        // rating stars set from the table
+        await p2.click('[data-testid="rate-ve_2-score-4"]');
+        await p2.waitForFunction(async () => true);
+        for (let i = 0; i < 20; i++) {
+          const r = await (await p2.request.get(B + "/api/objects/vendors/ve_2")).json();
+          if (r.score === 4) break;
+          await new Promise((r2) => setTimeout(r2, 200));
+        }
+        const v2b = await (await p2.request.get(B + "/api/objects/vendors/ve_2")).json();
+        assert(v2b.score === 4, "rating stars set + persist (2 → 4)");
+        // unique constraint: duplicate vendor code 409s with a human message
+        const dup = await p2.request.post(B + "/api/objects/vendors", { data: { name: "Clone Co", code: "V-001" } });
+        assert(dup.status() === 400, "unique field rejects duplicates");
+        assert((await dup.json()).error.includes("unique"), "…with a message naming the constraint");
+        // record page: array chips add/remove + dateTime + json render
+        await p2.goto(B + "/#/o/vendors/r/ve_3");
+        await p2.waitForSelector('[data-testid="field-labels-input"]');
+        await p2.fill('[data-testid="field-labels-input"]', "expansion");
+        await p2.keyboard.press("Enter");
+        for (let i = 0; i < 20; i++) {
+          const r = await (await p2.request.get(B + "/api/objects/vendors/ve_3")).json();
+          if ((r.labels ?? []).includes("expansion")) break;
+          await new Promise((r2) => setTimeout(r2, 200));
+        }
+        const v3 = await (await p2.request.get(B + "/api/objects/vendors/ve_3")).json();
+        assert(v3.labels.includes("expansion") && v3.labels.includes("renewal"), "array field adds free-form tags");
+        // writes to a deactivated field are rejected
+        const inactivePatch = await p2.request.patch(B + "/api/objects/vendors/ve_1", { data: { legacyRef: "NEW" } });
+        assert(inactivePatch.status() === 400, "writes to deactivated fields are rejected");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
     name: "warehouse-persistence", feature: "Native warehouse spine (restart-survivable)",
     async run() {
       const http = await import("node:http");

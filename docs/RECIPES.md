@@ -15,7 +15,7 @@ Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:
 - All subcommands are flag-driven (no prompts) so an agent can run them headlessly; `--dry` on `object` prints the JSON without writing.
 
 ## Add a field to an existing entity
-1. `starter.config.json` → append to that object's `fields[]`. Types: `text · number · select · date · currency · email · url · relation · user · multiselect`.
+1. `starter.config.json` → append to that object's `fields[]`. Types: `text · longText · number · boolean · rating · select · multiselect · array · date · dateTime · currency · email · url · json · relation · user`. Select/multiselect options may be strings or `{value, label, color}` (colored chips everywhere). Field flags: `unique: true` (duplicates 409), `isActive: false` (hidden + write-protected, data preserved), `scale` for ratings.
 2. `email/url/number/date/select` values are validated server-side FROM the type — no separate validation block (`server/store.mjs` `validate()`).
 3. `user` fields read the top-level `users[]` directory; `multiselect` needs `options`.
 

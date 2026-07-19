@@ -255,12 +255,18 @@ export class Store {
   /* Field-type-implied validation: the config declaring `type: "email"` IS the
      validation rule — no parallel validation block to keep in sync. Returns an
      error string or null. */
-  validate(objKey, patch) {
+  validate(objKey, patch, excludeId = null) {
     const cfg = this.config.objects.find((o) => o.key === objKey);
     if (!cfg) return null;
+    const optionValues = (opts) => (opts ?? []).map((o) => (typeof o === "string" ? o : o.value));
     for (const [k, v] of Object.entries(patch)) {
       const f = cfg.fields.find((x) => x.key === k);
+      if (f && f.isActive === false) return `${f.label} is deactivated`;
       if (!f || v === null || v === undefined || v === "") continue;
+      if (f.unique) {
+        const dup = (this.rows[objKey] ?? []).find((r) => r.id !== excludeId && String(r[k] ?? "") === String(v));
+        if (dup) return `${f.label} must be unique — "${v}" already exists`;
+      }
       if (f.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v)))
         return `${f.label} must be a valid email address`;
       if (f.type === "url") {
@@ -271,10 +277,19 @@ export class Store {
       }
       if ((f.type === "number" || f.type === "currency") && (typeof v !== "number" || Number.isNaN(v)))
         return `${f.label} must be a number`;
-      if (f.type === "date" && Number.isNaN(new Date(String(v)).getTime()))
+      if ((f.type === "date" || f.type === "dateTime") && Number.isNaN(new Date(String(v)).getTime()))
         return `${f.label} must be a valid date`;
-      if (f.type === "select" && f.options && !f.options.includes(String(v)))
-        return `${f.label} must be one of: ${f.options.join(", ")}`;
+      if (f.type === "boolean" && typeof v !== "boolean")
+        return `${f.label} must be true or false`;
+      if (f.type === "rating") {
+        const scale = f.scale ?? 5;
+        if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > scale)
+          return `${f.label} must be a whole number between 0 and ${scale}`;
+      }
+      if (f.type === "array" && !Array.isArray(v))
+        return `${f.label} must be a list`;
+      if (f.type === "select" && f.options && !optionValues(f.options).includes(String(v)))
+        return `${f.label} must be one of: ${optionValues(f.options).join(", ")}`;
       if (f.type === "multiselect" && !Array.isArray(v))
         return `${f.label} must be a list`;
     }

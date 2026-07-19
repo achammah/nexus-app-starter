@@ -1,0 +1,41 @@
+{
+  "app": { "name": "Depth Fixture", "slug": "depth-fixture" },
+  "theme": {},
+  "users": ["you", "Iris Lang"],
+  "objects": [
+    {
+      "key": "vendors",
+      "label": "Vendors",
+      "labelOne": "Vendor",
+      "icon": "building-2",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "code", "label": "Vendor code", "type": "text", "unique": true },
+        {
+          "key": "tier",
+          "label": "Tier",
+          "type": "select",
+          "options": [
+            { "value": "Strategic", "color": "purple" },
+            { "value": "Preferred", "color": "green" },
+            { "value": "Standard", "color": "gray" },
+            { "value": "Watchlist", "color": "red" }
+          ]
+        },
+        { "key": "active", "label": "Active", "type": "boolean" },
+        { "key": "score", "label": "Score", "type": "rating", "scale": 5 },
+        { "key": "lastAudit", "label": "Last audit", "type": "dateTime" },
+        { "key": "labels", "label": "Labels", "type": "array" },
+        { "key": "notes", "label": "Notes", "type": "longText" },
+        { "key": "meta", "label": "Meta", "type": "json" },
+        { "key": "legacyRef", "label": "Legacy ref", "type": "text", "isActive": false }
+      ],
+      "sampleRows": [
+        { "id": "ve_1", "name": "Brightline Analytics", "code": "V-001", "tier": "Strategic", "active": true, "score": 4, "lastAudit": "2026-06-11T14:30:00.000Z", "labels": ["priority", "eu-region"], "notes": "Escalation path agreed with their CTO office.", "meta": { "sla": "gold" }, "legacyRef": "OLD-77" },
+        { "id": "ve_2", "name": "Cargolane", "code": "V-002", "tier": "Watchlist", "active": false, "score": 2, "lastAudit": "2026-05-03T09:00:00.000Z", "labels": ["at-risk"], "notes": "Two missed deliveries in Q2.", "meta": { "sla": "silver" } },
+        { "id": "ve_3", "name": "GreenCrate Foods", "code": "V-003", "tier": "Preferred", "active": true, "score": 5, "lastAudit": "2026-07-01T11:15:00.000Z", "labels": ["renewal"], "notes": "Renewal drafted.", "meta": { "sla": "gold" } }
+      ]
+    }
+  ]
+}
