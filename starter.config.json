@@ -1,0 +1,53 @@
+{
+  "app": {
+    "name": "Nexus App",
+    "slug": "nexus-app"
+  },
+  "theme": {
+    "accent": "#4f46e5"
+  },
+  "objects": [
+    {
+      "key": "companies",
+      "label": "Companies",
+      "labelOne": "Company",
+      "icon": "building-2",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        { "key": "domain", "label": "Domain", "type": "url", "width": 180 },
+        { "key": "industry", "label": "Industry", "type": "select", "options": ["Software", "Retail", "Logistics", "Health", "Finance"], "width": 140 },
+        { "key": "employees", "label": "Employees", "type": "number", "width": 110 },
+        { "key": "city", "label": "City", "type": "text", "width": 140 }
+      ]
+    },
+    {
+      "key": "people",
+      "label": "People",
+      "labelOne": "Person",
+      "icon": "users",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
+        { "key": "email", "label": "Email", "type": "email", "width": 220 },
+        { "key": "role", "label": "Role", "type": "text", "width": 160 },
+        { "key": "company", "label": "Company", "type": "relation", "relation": "companies", "width": 180 }
+      ]
+    },
+    {
+      "key": "deals",
+      "label": "Deals",
+      "labelOne": "Deal",
+      "icon": "handshake",
+      "defaultView": "kanban",
+      "stageField": "stage",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        { "key": "stage", "label": "Stage", "type": "select", "options": ["New", "Qualified", "Proposal", "Won", "Lost"], "width": 130 },
+        { "key": "amount", "label": "Amount", "type": "currency", "width": 120 },
+        { "key": "company", "label": "Company", "type": "relation", "relation": "companies", "width": 180 },
+        { "key": "owner", "label": "Owner", "type": "text", "width": 140 }
+      ]
+    }
+  ]
+}

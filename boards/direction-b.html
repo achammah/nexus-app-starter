@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Direction B — Graphite</title>
+<style>
+  :root{--bg:#141614;--fg:#e8ece8;--accent:#34d399;--soft:#12281e;--muted:#96a09a;--border:#262b27;--sunken:#0f110f}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font:13px/1.5 -apple-system,"SF Pro Text","Segoe UI",sans-serif}
+  .tag{position:fixed;top:14px;right:16px;background:var(--accent);color:#0c130f;font:700 11px/1 sans-serif;letter-spacing:.08em;padding:6px 10px;border-radius:999px}
+  .wrap{display:grid;grid-template-columns:220px 1fr;height:100vh}
+  aside{border-right:1px solid var(--border);padding:16px;background:var(--sunken)}
+  .brand{display:flex;gap:8px;align-items:center;font-weight:700;font-size:14px;margin-bottom:22px}
+  .mark{width:24px;height:24px;border-radius:7px;background:var(--accent)}
+  .nav div{padding:7px 9px;border-radius:7px;color:var(--muted);margin-bottom:2px}
+  .nav .on{background:var(--bg);color:var(--fg);border:1px solid var(--border)}
+  main{padding:22px 28px;overflow:auto}
+  h1{font-size:19px;margin:0 0 4px;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin-bottom:18px;font-size:12px}
+  .chips{display:flex;gap:8px;margin-bottom:16px}
+  .chip{border:1px solid var(--border);border-radius:999px;padding:4px 11px;font-size:12px;color:var(--muted)}
+  .chip.on{background:var(--soft);border-color:transparent;color:var(--accent);font-weight:600}
+  table{border-collapse:collapse;width:100%;background:#181b18;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left;padding:9px 12px;border-bottom:1px solid var(--border);background:var(--sunken)}
+  td{padding:9px 12px;border-bottom:1px solid var(--border)}tr:last-child td{border-bottom:0}
+  .pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:11px;font-weight:600;background:var(--soft);color:var(--accent)}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .tokens{margin-top:22px;display:flex;gap:10px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+  .sw{display:flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:8px;padding:6px 10px;background:#181b18}
+  .dot{width:14px;height:14px;border-radius:4px;border:1px solid var(--border)}
+</style></head><body>
+<span class="tag">DIRECTION B · GRAPHITE</span>
+<div class="wrap">
+  <aside>
+    <div class="brand"><span class="mark"></span> Atlas CRM</div>
+    <div class="nav"><div class="on">Companies</div><div>People</div><div>Deals</div><div>Reports</div></div>
+  </aside>
+  <main>
+    <h1>Deals</h1><div class="sub">Dark-first operator console — graphite grounds, emerald signal, high scan density.</div>
+    <div class="chips"><span class="chip on">All stages</span><span class="chip">Owner: you</span><span class="chip">This quarter</span></div>
+    <table>
+      <tr><th>Name</th><th>Stage</th><th class="num">Amount</th><th>Company</th></tr>
+      <tr><td><b>Brightline platform rollout</b></td><td><span class="pill">Qualified</span></td><td class="num">48,000</td><td>Brightline Analytics</td></tr>
+      <tr><td><b>Cargolane dispatch automation</b></td><td><span class="pill">Proposal</span></td><td class="num">76,000</td><td>Cargolane</td></tr>
+      <tr><td><b>Meridian research assistant</b></td><td><span class="pill">Won</span></td><td class="num">54,000</td><td>Meridian Capital</td></tr>
+    </table>
+    <div class="tokens">
+      <span class="sw"><span class="dot" style="background:#141614"></span> ground #141614</span>
+      <span class="sw"><span class="dot" style="background:#e8ece8"></span> ink #e8ece8</span>
+      <span class="sw"><span class="dot" style="background:#34d399"></span> accent #34d399</span>
+      <span class="sw">type: system sans · 13px body</span>
+      <span class="sw">motion: restrained, zero ambient</span>
+    </div>
+  </main>
+</div></body></html>
