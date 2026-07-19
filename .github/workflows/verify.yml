@@ -1,0 +1,31 @@
+name: verify
+# The journey net, server-side: every push re-proves the visible outcomes.
+# journeys/.last-pass + docs/COVERAGE.md stay LOCAL artifacts (written by runs,
+# committed by the developer) — CI proves the suite, the repo carries the stamps.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  journeys:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npx tsc -b
+      - run: npx vite build
+      - run: npm run journeys
+      - name: upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journey-screenshots
+          path: .playwright-mcp/
+          retention-days: 7

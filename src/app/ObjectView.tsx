@@ -1,5 +1,12 @@
 import * as React from "react";
-import { Download, Plus, Search, Trash2 } from "lucide-react";
+import { Columns3, Download, Plus, Search, Trash2 } from "lucide-react";
+import type { SortingState } from "@tanstack/react-table";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "../ui/components/ui/dropdown-menu";
 import { api } from "./api";
 import { useToast } from "./App";
 import { t } from "./i18n";
@@ -43,6 +50,8 @@ export function ObjectView({
       return JSON.parse(localStorage.getItem("nx-view-" + config.key) ?? "{}") as {
         q?: string;
         view?: "table" | "kanban";
+        hidden?: string[];
+        sort?: SortingState;
       };
     } catch {
       return {};
@@ -56,6 +65,8 @@ export function ObjectView({
   const [rows, setRows] = React.useState<RecordRow[] | null>(null);
   const [q, setQ] = React.useState(pendingQ ?? saved.q ?? "");
   const [view, setView] = React.useState<"table" | "kanban">(saved.view ?? config.defaultView);
+  const [hidden, setHidden] = React.useState<string[]>(saved.hidden ?? []);
+  const [sort, setSort] = React.useState<SortingState>(saved.sort ?? []);
   const [creating, setCreating] = React.useState(false);
   const [draft, setDraft] = React.useState<Record<string, string>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
@@ -64,8 +75,8 @@ export function ObjectView({
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
 
   React.useEffect(() => {
-    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view }));
-  }, [config.key, q, view]);
+    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort }));
+  }, [config.key, q, view, hidden, sort]);
 
   const load = React.useCallback(() => {
     api
@@ -166,6 +177,32 @@ export function ObjectView({
           </Badge>
         )}
         <span className="nxSpacer" />
+        {view === "table" && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="md" variant="ghost" icon={<Columns3 size={14} />} data-testid="columns-menu">
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {config.fields
+                .filter((f) => !f.primary)
+                .map((f) => (
+                  <DropdownMenuCheckboxItem
+                    key={f.key}
+                    checked={!hidden.includes(f.key)}
+                    data-testid={`col-toggle-${f.key}`}
+                    onCheckedChange={(on) =>
+                      setHidden((h) => (on ? h.filter((k) => k !== f.key) : [...h, f.key]))
+                    }
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    {f.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {config.stageField && (
           <div className="viewSwitch" data-testid="view-switch">
             <button data-active={view === "table"} onClick={() => setView("table")}>{viewIcons.table} Table</button>
@@ -208,6 +245,9 @@ export function ObjectView({
           rows={rows}
           onOpen={onOpen}
           onPatch={patch}
+          hiddenFields={hidden}
+          sort={sort}
+          onSortChange={setSort}
           selection={selection}
           onSelectionChange={setSelection}
         />

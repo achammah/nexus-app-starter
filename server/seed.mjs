@@ -24,14 +24,14 @@ const PEOPLE = [
 ];
 
 const DEALS = [
-  ["Brightline platform rollout", "Qualified", 48000, "Brightline Analytics", "you"],
-  ["Nordwind store copilot", "New", 32000, "Nordwind Retail", "you"],
-  ["Cargolane dispatch automation", "Proposal", 76000, "Cargolane", "you"],
-  ["Veldkliniek intake agent", "New", 21000, "Veldkliniek Group", "you"],
-  ["Meridian research assistant", "Won", 54000, "Meridian Capital", "you"],
-  ["Pixelforge support bot", "Qualified", 12000, "Pixelforge Studio", "you"],
-  ["GreenCrate supplier portal", "Proposal", 39000, "GreenCrate Foods", "you"],
-  ["Tidal customs copilot", "Lost", 18000, "Tidal Freight", "you"],
+  ["Brightline platform rollout", "Qualified", 48000, "Brightline Analytics", "you", "2026-08-14"],
+  ["Nordwind store copilot", "New", 32000, "Nordwind Retail", "you", "2026-09-01"],
+  ["Cargolane dispatch automation", "Proposal", 76000, "Cargolane", "you", "2026-08-05"],
+  ["Veldkliniek intake agent", "New", 21000, "Veldkliniek Group", "you", "2026-09-18"],
+  ["Meridian research assistant", "Won", 54000, "Meridian Capital", "you", "2026-06-30"],
+  ["Pixelforge support bot", "Qualified", 12000, "Pixelforge Studio", "you", "2026-08-22"],
+  ["GreenCrate supplier portal", "Proposal", 39000, "GreenCrate Foods", "you", "2026-08-29"],
+  ["Tidal customs copilot", "Lost", 18000, "Tidal Freight", "you", "2026-07-02"],
 ];
 
 export function seed() {
@@ -52,9 +52,9 @@ export function seed() {
     rows.people.push({ id, name, email, role, company });
     ev("people", id, i, "created", "Person created");
   });
-  DEALS.forEach(([name, stage, amount, company, owner], i) => {
+  DEALS.forEach(([name, stage, amount, company, owner, closeDate], i) => {
     const id = `de_${i + 1}`;
-    rows.deals.push({ id, name, stage, amount, company, owner });
+    rows.deals.push({ id, name, stage, amount, company, owner, closeDate });
     ev("deals", id, i, "created", "Deal created");
     ev("deals", id, i + 20, "stage", `Stage set to ${stage}`);
   });

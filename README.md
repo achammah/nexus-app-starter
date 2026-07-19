@@ -1,5 +1,12 @@
 # nexus-app-starter
 
+![table, light](docs/media/light-table.png)
+<details><summary>dark theme · deals board</summary>
+
+![table, dark](docs/media/dark-table.png)
+![board](docs/media/board.png)
+</details>
+
 The org's runnable app skeleton for ANY product on Nexus — clone, configure, and you have a working, journey-verified app with the platform wiring in place. The config-driven **record-core** (tables/kanban/record pages from `starter.config.json`) covers record-system classes; everything else is a **custom page** (`src/app/pages.tsx` registry — ordinary React over the full vendored shadcn kit); both hang off the same shell, tokens, data spine, and journeys harness.
 
 ## Quick start

@@ -245,6 +245,67 @@ const journeys = [
     },
   },
   {
+    name: "table-prefs-persist", feature: "Column visibility + sort persist",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('th:has-text("Domain")');
+      // keyboard path — Radix portals can position off-viewport in headless; roving
+      // focus + Enter is geometry-free (Domain = first non-primary item)
+      await page.click('[data-testid="columns-menu"]');
+      await page.waitForSelector('[data-testid="col-toggle-domain"]');
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Escape");
+      await page.waitForFunction(() => ![...document.querySelectorAll("th")].some((t) => t.textContent?.includes("Domain")));
+      assert(true, "unchecking Domain removes the column");
+      await page.click('th:has-text("Name")'); // asc
+      await page.click('th:has-text("Name")'); // desc
+      await page.waitForTimeout(150);
+      const top = await page.textContent("tbody tr:first-child .nxRowLink");
+      await page.click('[data-testid="nav-deals"]');
+      await page.waitForFunction(() => document.querySelector(".pageTitle")?.textContent?.includes("Deals"));
+      await page.click('[data-testid="nav-companies"]');
+      await page.waitForFunction(() => document.querySelector(".pageTitle")?.textContent?.includes("Companies"));
+      await page.waitForFunction(() => ![...document.querySelectorAll("th")].some((t) => t.textContent?.includes("Domain")));
+      assert(true, "hidden column SURVIVES navigation");
+      await page.waitForFunction((t) => document.querySelector("tbody tr:first-child .nxRowLink")?.textContent === t, top);
+      assert(true, `sort survives navigation (top stays "${top}")`);
+      await page.click('[data-testid="columns-menu"]');
+      await page.waitForSelector('[data-testid="col-toggle-domain"]');
+      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('th:has-text("Domain")');
+      assert(true, "re-enabling restores the column");
+    },
+  },
+  {
+    name: "date-picker", feature: "Date fields (calendar)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/deals");
+      await page.waitForSelector('[data-testid="view-switch"]');
+      await page.click('[data-testid="view-switch"] button:has-text("Table")');
+      await page.waitForSelector('[data-testid="cell-de_1-closeDate"]');
+      const cell = await page.textContent('[data-testid="cell-de_1-closeDate"]');
+      assert(cell?.includes("Aug"), `table renders the formatted date (${cell})`);
+      await page.click('.nxRowLink:has-text("Brightline platform rollout")');
+      await page.waitForSelector('[data-testid="field-closeDate"]');
+      await page.click('[data-testid="field-closeDate"]');
+      const day = page.locator('[data-radix-popper-content-wrapper] button:not([disabled])', { hasText: /^20$/ }).first();
+      await day.click();
+      await page.waitForSelector('[data-testid="toast"]');
+      await page.waitForFunction(() =>
+        document.querySelector('[data-testid="field-closeDate-value"]')?.textContent?.includes("20"));
+      assert(true, "picked day lands in the field");
+      await page.reload();
+      await page.waitForSelector('[data-testid="field-closeDate-value"]');
+      const v = await page.textContent('[data-testid="field-closeDate-value"]');
+      assert(v?.includes("20") && v?.includes("Aug"), `date persisted across reload (${v})`);
+      const tl = await page.textContent('[data-testid="timeline"]');
+      assert(tl?.includes("closeDate:"), "timeline records the date change");
+    },
+  },
+  {
     name: "kit-demo-page", feature: "Custom pages + kit demo",
     async run(page) {
       await page.goto(URLBASE + "/#/o/companies");

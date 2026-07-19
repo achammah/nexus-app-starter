@@ -48,6 +48,7 @@
         { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
         { "key": "stage", "label": "Stage", "type": "select", "options": ["New", "Qualified", "Proposal", "Won", "Lost"], "width": 130 },
         { "key": "amount", "label": "Amount", "type": "currency", "width": 120 },
+        { "key": "closeDate", "label": "Close date", "type": "date", "width": 130 },
         { "key": "company", "label": "Company", "type": "relation", "relation": "companies", "width": 180 },
         { "key": "owner", "label": "Owner", "type": "text", "width": 140 }
       ]
