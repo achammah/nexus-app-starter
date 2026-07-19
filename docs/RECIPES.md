@@ -36,8 +36,12 @@ Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:
 ## Boot as a different product
 `CONFIG_PATH=path/to/other.config.json npm run serve` — the config IS the app. Fullest reference shape: `journeys/fixtures/coverage.config.json` (a test fixture, not a template).
 
-## Change the theme
-`src/ui/tokens/tokens.css` holds the `--nx-*` canvas (light + dark). Fix tokens in nexus-ui, re-sync. Per-app accent: `theme.accent` in `starter.config.json`.
+## Re-brand for an organisation (skins)
+1. `starter.config.json` → `theme.skin` = the org's brand as JSON (or `theme.skinPreset` for a built-in; `theme.accent` for the one-knob shortcut). Full knob set → `src/ui/docs/THEMING.md`: brand ramp, dark/brand chrome shell, radius personality (0 = squared, reaches the vendored shadcn kit), fonts, labels, semantic palette, logo mark/wordmark, raw token overrides.
+2. Reload — the whole app re-brands, dark mode derives from the same brand. Reference example: the `ember` preset (dark chrome + sharp corners + own palette).
+
+## Change the base theme
+`src/ui/tokens/tokens.css` holds the `--nx-*` canvas (light + dark) — the static layer skins write over. Fix tokens in nexus-ui, re-sync.
 
 ## Add a journey
 1. Append to the array in `journeys/run.mjs`: `{ name, feature, async run(page) }` — `feature` must EXACTLY match a manifest row's Feature column (the runner stamps `Last verified` by that string).

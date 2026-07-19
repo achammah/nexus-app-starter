@@ -1,6 +1,8 @@
 import * as React from "react";
 import { Building2, Handshake, LayoutGrid, Moon, Sun, Users, Table2, Kanban } from "lucide-react";
 import { api, type AppConfig } from "./api";
+import { applySkin, type Skin } from "../ui/skins/skin";
+import { skinPresets } from "../ui/skins/presets";
 import { ObjectView } from "./ObjectView";
 import { RecordView } from "./RecordView";
 import { customPages } from "./pages";
@@ -36,6 +38,16 @@ const ICONS: Record<string, React.ReactNode> = {
 type Toast = { id: number; text: string };
 const ToastCtx = React.createContext<(text: string) => void>(() => {});
 export const useToast = () => React.useContext(ToastCtx);
+
+/* Skin resolution ladder: inline object > preset name > accent shortcut. */
+function resolveSkin(c: AppConfig | null): Skin | undefined {
+  if (!c) return undefined;
+  return (
+    c.theme?.skin ??
+    (c.theme?.skinPreset ? skinPresets[c.theme.skinPreset] : undefined) ??
+    (c.theme?.accent ? { name: "accent", brand: { primary: c.theme.accent } } : undefined)
+  );
+}
 
 export function App() {
   const [config, setConfig] = React.useState<AppConfig | null>(null);
@@ -74,6 +86,8 @@ export function App() {
       .then((c) => {
         setConfig(c);
         document.title = c.app.name;
+        const skin = resolveSkin(c);
+        if (skin) applySkin(skin);
         if (!route.object && !route.page) {
           route.go(c.objects[0] ? `#/o/${c.objects[0].key}` : customPages[0] ? `#/p/${customPages[0].key}` : "#/");
         }
@@ -103,14 +117,24 @@ export function App() {
   if (!config) return <div className="content" data-testid="loading">Loading…</div>;
 
   const active = config.objects.find((o) => o.key === route.object) ?? config.objects[0];
+  const logo = resolveSkin(config)?.logo;
 
   return (
     <ToastCtx.Provider value={toast}>
       <div className="shell">
         <aside className="side">
           <div className="sideBrand">
-            <span className="sideBrandMark">{config.app.name.slice(0, 1)}</span>
-            <span className="sideBrandName" data-testid="app-name">{config.app.name}</span>
+            <span
+              className="sideBrandMark"
+              data-testid="brand-mark"
+              style={logo?.markBg ? { background: logo.markBg, color: logo.markFg ?? "#ffffff", boxShadow: "none" } : undefined}
+            >
+              {logo?.url ? <img src={logo.url} alt="" style={{ width: 18, height: 18 }} /> : logo?.mark ?? config.app.name.slice(0, 1)}
+            </span>
+            <span className="sideBrandName" data-testid="app-name">
+              {logo?.wordmark ?? config.app.name}
+              {logo?.wordmarkAccent ? <> <b>{logo.wordmarkAccent}</b></> : null}
+            </span>
           </div>
           <div className="sideSection">
             <span className="nxMicro">Records</span>

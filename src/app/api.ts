@@ -3,9 +3,13 @@
 
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
 
+import type { Skin } from "../ui/skins/skin";
+
 export interface AppConfig {
   app: { name: string; slug: string };
-  theme: { accent: string };
+  /* skinPreset names a built-in (nexus, ember); skin is a full inline Skin object
+     (an org's brand as data); accent alone is the one-knob shortcut */
+  theme: { accent?: string; skinPreset?: string; skin?: Skin };
   chat?: { embedUrl?: string };
   /* the app's people directory — `user`-type fields pick from this list */
   users?: string[];

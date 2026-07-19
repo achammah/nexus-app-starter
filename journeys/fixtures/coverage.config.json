@@ -4,7 +4,7 @@
     "slug": "coverage-fixture"
   },
   "theme": {
-    "accent": "#0e7490"
+    "skinPreset": "ember"
   },
   "chat": {
     "embedUrl": ""

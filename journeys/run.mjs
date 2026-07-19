@@ -423,6 +423,62 @@ const journeys = [
     },
   },
   {
+    name: "org-reskin", feature: "Skin system (org brand as data)",
+    async run(page) {
+      // default app carries the nexus skin
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="nav"]');
+      const nxAccent = await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim());
+      assert(nxAccent === "#4f46e5", `default skin holds the nexus accent (${nxAccent})`);
+      // boot the SAME build with an org skin preset (dark chrome, sharp corners, own brand)
+      const { spawn } = await import("node:child_process");
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "4750", CONFIG_PATH: "journeys/fixtures/coverage.config.json" },
+      });
+      try {
+        for (let i = 0; i < 20; i++) {
+          try { if ((await fetch("http://localhost:4750/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* booting */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto("http://localhost:4750/");
+        await p2.waitForSelector('[data-testid="nav"]');
+        const got = await p2.evaluate(() => ({
+          accent: getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim(),
+          radius: getComputedStyle(document.documentElement).getPropertyValue("--nx-radius-m").trim(),
+          chromeBg: getComputedStyle(document.querySelector(".side")).backgroundColor,
+          font: getComputedStyle(document.body).fontFamily,
+          markBg: getComputedStyle(document.querySelector('[data-testid="brand-mark"]')).backgroundColor,
+        }));
+        assert(got.accent === "#FF7900", `org brand applies (--nx-accent ${got.accent})`);
+        assert(got.radius === "0px", `radius personality applies (${got.radius})`);
+        assert(got.chromeBg === "rgb(0, 0, 0)", `dark chrome applies to the shell (${got.chromeBg})`);
+        assert(got.font.includes("Helvetica Neue"), `org type applies (${got.font.slice(0, 40)})`);
+        assert(got.markBg === "rgb(255, 121, 0)", `brand mark takes the logo colors (${got.markBg})`);
+        // the vendored shadcn kit follows too: dialog corners go sharp
+        await p2.click('[data-testid="nav-companies"]');
+        await p2.waitForSelector('[data-testid="new-record"]');
+        await p2.click('[data-testid="new-record"]');
+        await p2.waitForSelector('[role="dialog"]');
+        const dlgRadius = await p2.evaluate(() => getComputedStyle(document.querySelector('[role="dialog"]')).borderRadius);
+        assert(dlgRadius === "0px", `vendored shadcn components follow the skin (dialog radius ${dlgRadius})`);
+        await p2.keyboard.press("Escape");
+        await p2.screenshot({ path: path.join(SHOTS, "journey-org-reskin-light.png") });
+        // dark mode derives from the same brand
+        await p2.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+        await p2.waitForTimeout(150);
+        const darkAccent = await p2.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--nx-accent").trim());
+        assert(darkAccent !== "" && darkAccent !== "#FF7900", `dark variant derives from the brand (${darkAccent.slice(0, 46)})`);
+        await p2.screenshot({ path: path.join(SHOTS, "journey-org-reskin-dark.png") });
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
     name: "chart-view", feature: "Chart view (group + measure)",
     async run(page) {
       const pickMenu = async (trigger, item) => {

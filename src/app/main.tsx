@@ -18,6 +18,18 @@ document.documentElement.dataset.theme =
       ? "dark"
       : "light";
 
+// Skin boot: inject the cached skin CSS BEFORE first paint (App re-applies the
+// authoritative skin from /api/config once it loads — no flash after first visit).
+try {
+  const cached = localStorage.getItem("nx-skin-css");
+  if (cached) {
+    const el = document.createElement("style");
+    el.id = "nx-skin";
+    el.textContent = cached;
+    document.head.appendChild(el);
+  }
+} catch { /* private mode */ }
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ErrorBoundary>

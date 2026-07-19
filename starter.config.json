@@ -4,7 +4,7 @@
     "slug": "nexus-app"
   },
   "theme": {
-    "accent": "#4f46e5"
+    "skinPreset": "nexus"
   },
   "chat": {
     "embedUrl": ""
