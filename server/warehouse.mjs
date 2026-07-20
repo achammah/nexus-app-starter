@@ -82,9 +82,16 @@ export function bigqueryWarehouse() {
 
     /* full ordered scan — the command log replays from seq 1 at boot */
     async load() {
-      const rows = await runQuery(
-        `SELECT seq, op, args FROM ${qualified}.${table} ORDER BY seq`,
-      );
+      return this._read(`SELECT seq, op, args FROM ${qualified}.${table} ORDER BY seq`);
+    },
+    /* incremental scan — events an external writer (e.g. an async generation
+       webhook) appended after our in-memory _seq. Powers RemoteStore.sync(). */
+    async loadSince(seq) {
+      const n = Number(seq) || 0;
+      return this._read(`SELECT seq, op, args FROM ${qualified}.${table} WHERE seq > ${n} ORDER BY seq`);
+    },
+    async _read(sql) {
+      const rows = await runQuery(sql);
       const parseArgs = (raw) => {
         if (!raw) return [];
         try {

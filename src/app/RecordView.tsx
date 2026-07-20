@@ -7,7 +7,7 @@ import { RecordTasksBlock } from "./pages/Tasks";
 import { formatCell } from "../ui/record-core/DataTable";
 import type { FileMeta, ObjectConfig, RecordRow, RelationItem, TimelineEvent } from "../ui/record-core/types";
 import { rowRefs } from "../ui/record-core/types";
-import { usePollRev } from "./usePollRev";
+import { usePollRev } from "../ui/hooks/usePollRev";
 import { can, type Role } from "./permissions";
 import { favHas, favToggle } from "./favorites";
 
@@ -39,6 +39,7 @@ export function RecordView({
   const [files, setFiles] = React.useState<FileMeta[]>([]);
   const [watchState, setWatchState] = React.useState<{ on: boolean; count: number }>({ on: false, count: 0 });
   const [mentionOptions, setMentionOptions] = React.useState<string[]>([]);
+  const [enrichingKey, setEnrichingKey] = React.useState<string | null>(null);
   const [tasks, setTasks] = React.useState<TaskItem[]>([]);
   const tasksOn = appConfig.features?.tasks !== false;
   const [fav, setFav] = React.useState(() => favHas(config.key, id));
@@ -55,7 +56,7 @@ export function RecordView({
 
   React.useEffect(load, [load]);
   // live sync: another viewer's edits/comments/files appear without a manual reload
-  usePollRev(config.key, load);
+  usePollRev(() => api.rev(config.key).then((r) => r.rev), load, config.key);
   React.useEffect(() => {
     api.usersDirectory().then(setMentionOptions).catch(() => {});
     if (sessionUser) api.watchers(config.key, id).then((w) => setWatchState({ on: w.me, count: w.count })).catch(() => {});
@@ -264,8 +265,10 @@ export function RecordView({
             .catch((e) => toast(`Upload failed: ${e.message}`));
         },
       }}
+      enrichingKey={enrichingKey}
       onEnrich={(fieldKey) => {
         const label = config.fields.find((f) => f.key === fieldKey)?.primitive?.label ?? "primitive";
+        setEnrichingKey(fieldKey);
         toast(`Running ${label}…`);
         api
           .enrich(config.key, id, fieldKey)
@@ -273,7 +276,8 @@ export function RecordView({
             toast("Enriched");
             load();
           })
-          .catch((e) => toast(`Enrich failed: ${e.message}`));
+          .catch((e) => toast(`Enrich failed: ${e.message}`))
+          .finally(() => setEnrichingKey(null));
       }}
     />
     {tasksOn && (

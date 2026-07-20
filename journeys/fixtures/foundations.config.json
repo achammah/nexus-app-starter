@@ -1,0 +1,22 @@
+{
+  "app": { "name": "Foundations Fixture", "slug": "foundations-fixture" },
+  "theme": {},
+  "users": [],
+  "objects": [
+    {
+      "key": "records",
+      "label": "Records",
+      "labelOne": "Record",
+      "icon": "file-text",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "summary", "label": "AI summary", "type": "text", "primitive": { "kind": "task", "label": "AI summary", "taskId": "mock-task" } }
+      ],
+      "sampleRows": [
+        { "id": "rec_1", "name": "First record", "summary": "" },
+        { "id": "rec_2", "name": "Second record", "summary": "" }
+      ]
+    }
+  ]
+}

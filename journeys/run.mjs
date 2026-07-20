@@ -3890,6 +3890,125 @@ const journeys = [
       }
     },
   },
+  {
+    // foundations: runAiTask wired into the real /enrich seam + ThinkingDots. Mock
+    // Nexus returns a canned task output; a real user click drives it. VISIBLE.
+    name: "foundations-enrich", feature: "AI field enrichment (runAiTask + ThinkingDots)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const { startMockNexus } = await import(pathToFileURL(path.join(ROOT, "journeys", "fixtures", "mock-nexus.mjs")).href);
+      const mock = await startMockNexus({ taskDelayMs: 500 });
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5521", CONFIG_PATH: "journeys/fixtures/foundations.config.json", NEXUS_API_KEY: "nxs_test", NEXUS_BASE_URL: `http://127.0.0.1:${mock.port}` },
+      });
+      try {
+        for (let i = 0; i < 24; i++) {
+          try { if ((await fetch("http://localhost:5521/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* booting */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto("http://localhost:5521/#/o/records/r/rec_1");
+        await p2.waitForSelector('[data-testid="enrich-summary"]');
+        await p2.click('[data-testid="enrich-summary"]');
+        await p2.waitForSelector('[data-testid="enriching-summary"]', { timeout: 3000 });
+        assert(true, "clicking enrich shows the ThinkingDots running indicator");
+        await p2.waitForFunction(() => document.querySelector('[data-testid="field-summary"]')?.value?.includes("MOCK_ENRICH_VALUE"), null, { timeout: 8000 });
+        assert(true, "the AI task result (via runAiTask) lands in the field");
+        await p2.screenshot({ path: path.join(SHOTS, "journey-foundations-enrich.png"), fullPage: true });
+        await ctx.close();
+      } finally { proc.kill(); mock.close(); }
+    },
+  },
+  {
+    // foundations: RemoteStore.sync() pulls an EXTERNAL writer's warehouse event into
+    // the running app (warehouse loadSince/_read against the mock BigQuery seam). VISIBLE.
+    name: "foundations-sync", feature: "External-writer sync (RemoteStore.sync + warehouse loadSince)",
+    async run(page) {
+      const { spawn } = await import("node:child_process");
+      const { startMockNexus } = await import(pathToFileURL(path.join(ROOT, "journeys", "fixtures", "mock-nexus.mjs")).href);
+      const mock = await startMockNexus({});
+      const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
+        stdio: "ignore",
+        env: { ...process.env, PORT: "5522", CONFIG_PATH: "journeys/fixtures/foundations.config.json", WAREHOUSE: "bigquery", NEXUS_API_KEY: "nxs_test", WAREHOUSE_CREDENTIAL_ID: "cred_test", NEXUS_BASE_URL: `http://127.0.0.1:${mock.port}`, BQ_LOCATION: "EU" },
+      });
+      try {
+        for (let i = 0; i < 24; i++) {
+          try { if ((await fetch("http://localhost:5522/api/healthz", { signal: AbortSignal.timeout(1500) })).ok) break; } catch { /* booting */ }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+        const ctx = await page.context().browser().newContext();
+        const p2 = await ctx.newPage();
+        await p2.goto("http://localhost:5522/#/o/records");
+        await p2.waitForSelector('[data-testid="table-records"] tbody tr');
+        // an external writer appends a patch straight to the warehouse
+        await p2.request.post(`http://127.0.0.1:${mock.port}/__inject`, { data: { op: "patch", args: ["records", "rec_2", { name: "SYNCED_EXTERNALLY" }] } });
+        const applied = (await (await p2.request.post("http://localhost:5522/api/sync", { data: {} })).json()).applied;
+        assert(applied === 1, `sync applied the external event (${applied})`);
+        await p2.goto("http://localhost:5522/#/o/records");
+        await p2.waitForFunction(() => document.querySelector('[data-testid="table-records"]')?.textContent?.includes("SYNCED_EXTERNALLY"), null, { timeout: 6000 });
+        assert(true, "the externally-written value appears in the list after sync");
+        await p2.screenshot({ path: path.join(SHOTS, "journey-foundations-sync.png"), fullPage: true });
+        await ctx.close();
+      } finally { proc.kill(); mock.close(); }
+    },
+  },
+  {
+    // foundations UNIT: the pure cores behind useAsyncOp/useDebouncedSave (node-level,
+    // injectable clock). No foundations UI consumer — the VISIBLE consumers ship wave 2
+    // (editor autosave state + copilot poll). Disclosed in the manifest proof cell.
+    name: "foundations-async-units", feature: "Async hook cores (computeAsyncOp stall, createDebouncer coalesce)",
+    async run() {
+      const { computeAsyncOp } = await import(pathToFileURL(path.join(ROOT, "src", "ui", "hooks", "useAsyncOp.ts")).href);
+      const { createDebouncer } = await import(pathToFileURL(path.join(ROOT, "src", "ui", "hooks", "useDebouncedSave.ts")).href);
+      assert(computeAsyncOp(1000, 1000 + 5000, 180000).stalled === false, "useAsyncOp core: not stalled before the threshold (injectable clock)");
+      assert(computeAsyncOp(1000, 1000 + 200000, 180000).stalled === true, "useAsyncOp core: stalled after the threshold");
+      let calls = 0; const states = [];
+      const d = createDebouncer(() => { calls++; }, 40, (s) => states.push(s));
+      d.trigger("a"); d.trigger("b"); d.trigger("c");
+      await new Promise((r) => setTimeout(r, 90));
+      assert(calls === 1, `useDebouncedSave core: 3 rapid triggers coalesce to 1 persist (${calls})`);
+      assert(states[states.length - 1] === "saved", "useDebouncedSave core: save-state ends 'saved'");
+    },
+  },
+  {
+    // foundations SEAM: the async server helpers against the mock Nexus boundary. No
+    // foundations UI consumer — VISIBLE consumers ship wave 2 (copilot panel + generation
+    // wizard). Disclosed in the manifest proof cell.
+    name: "foundations-async-helpers", feature: "Async server helpers (emulatorChat, fireAsyncGeneration)",
+    async run() {
+      const http = await import("node:http");
+      const { startMockNexus } = await import(pathToFileURL(path.join(ROOT, "journeys", "fixtures", "mock-nexus.mjs")).href);
+      const { Store } = await import(pathToFileURL(path.join(ROOT, "server", "store.mjs")).href);
+      const { fireAsyncGeneration } = await import(pathToFileURL(path.join(ROOT, "server", "asyncGeneration.mjs")).href);
+      const prevBase = process.env.NEXUS_BASE_URL, prevKey = process.env.NEXUS_API_KEY;
+      const mock = await startMockNexus({ taskDelayMs: 0 });
+      process.env.NEXUS_BASE_URL = `http://127.0.0.1:${mock.port}`;
+      process.env.NEXUS_API_KEY = "nxs_test";
+      try {
+        const { emulatorChat } = await import(pathToFileURL(path.join(ROOT, "src", "lib", "nexusClient.mjs")).href);
+        const chat = await emulatorChat("dep_1", { message: "hello", context: "on rec_1", contextLabel: "App context" });
+        assert(typeof chat.reply === "string" && chat.reply.includes("hello"), "emulatorChat returns the agent reply through the session proxy");
+        assert(Array.isArray(chat.tools) && chat.tools.includes("mock_tool"), "emulatorChat surfaces the invoked tools");
+
+        let captured = null;
+        const cap = http.createServer(async (req, res) => { const c = []; for await (const x of req) c.push(x); captured = JSON.parse(Buffer.concat(c).toString() || "{}"); res.end("ok"); });
+        await new Promise((r) => cap.listen(0, "127.0.0.1", r));
+        const cfg = JSON.parse(readFileSync(path.join(ROOT, "journeys", "fixtures", "foundations.config.json"), "utf8"));
+        const store = new Store(cfg);
+        const created = await fireAsyncGeneration(store, { objectKey: "records", placeholder: { name: "Generating…", summary: "" }, webhookUrl: `http://127.0.0.1:${cap.address().port}/hook`, payload: { brief: "b" } });
+        await new Promise((r) => setTimeout(r, 300));
+        assert(!!created?.id && created.name === "Generating…", "fireAsyncGeneration creates the placeholder row");
+        assert(captured && captured.id === created.id, "fireAsyncGeneration fires the webhook with the created id folded in");
+        cap.close();
+      } finally {
+        mock.close();
+        if (prevBase === undefined) delete process.env.NEXUS_BASE_URL; else process.env.NEXUS_BASE_URL = prevBase;
+        if (prevKey === undefined) delete process.env.NEXUS_API_KEY; else process.env.NEXUS_API_KEY = prevKey;
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----

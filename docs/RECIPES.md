@@ -29,9 +29,15 @@ Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:
 Relation fields persist target row IDS — single: `"co_1"` · many (`multiple: true`): `["ce_1", …]` · polymorphic (`relationTargets: ["a","b"]` instead of `relation`): `{ "object": "a", "id": "a_1" }`. Every read projects the target's PRIMARY label into the field itself (the API returns label strings, exactly as before) and adds `_refs` — the raw ids per relation field — for identity-aware UI. Writes accept an id, an `{object?, id}` ref, or a primary-label string: a label resolving to ONE live target normalizes to its id; two candidates → 400 naming them; no match → the string stays verbatim (a dangling label). Because links are ids: renaming a target updates every inbound cell with no sweep; merging re-points losers' ids to the winner; a TRASHED target keeps projecting (restore heals); DESTROYING a target severs its inbound links. `inverseLabel` on a relation field names the reverse related-list section on the target object. Seed rows may use labels — they normalize to ids once at boot. The create dialog authors single relations by id (poly selects grouped per type); `multiple` relations attach on the record page via the checkbox picker, which commits ONE write when it closes.
 
 ## Make a field AI-enrichable
-1. On the field: `"primitive": { "kind": "task" | "workflow", "id": "<platform id>", "label": "Company research" }`.
-2. The record page shows a sparkle Run button → `POST /api/objects/:o/:id/enrich`.
-3. Ship real: replace the `mockValue` line in `server/server.mjs` with a platform call via `src/lib/nexusClient.mjs` using `primitive.id`. The UI and config don't change.
+1. On the field: `"primitive": { "kind": "task", "taskId": "<AI task id>", "label": "Company research" }`.
+2. The record page shows a sparkle Run button → `POST /api/objects/:o/:id/enrich`; while it runs the button becomes a ThinkingDots indicator.
+3. Ship real: set `NEXUS_API_KEY` (+ `NEXUS_BASE_URL`). With a `taskId` on the field the route runs the AI task via `runAiTask` (`server/aiTaskRunner.mjs`) and writes the result — the UI and config don't change. Without a `taskId` (or without the key) it returns the labeled mock value, byte-unchanged.
+
+## Async Nexus building blocks (server)
+- **`runAiTask(store, emitEvent, {taskId, objectKey, recordId, buildInput, applyOutput, onFail?})`** (`server/aiTaskRunner.mjs`) — run one AI task against a record in the background, write the result, revert on failure. Powers `/enrich`.
+- **`fireAsyncGeneration(store, {objectKey, placeholder, webhookUrl, payload, emitEvent?})`** (`server/asyncGeneration.mjs`) — create a placeholder record now, make it durable, fire an off-machine generation webhook; the finished record lands back via the warehouse.
+- **`emulatorChat(deploymentId, {message, sessionId?, context?, contextLabel?})`** (`src/lib/nexusClient.mjs`) — one turn of native agent chat through the emulator session API.
+- **`RemoteStore.sync()` → `POST /api/sync`** pulls an external writer's warehouse events into the running app (no restart); `api.syncStore()` on the client. Pointer env vars follow the `<FEATURE>_TASK_ID`/`_DEPLOYMENT_ID`/`_WEBHOOK_URL` convention — optional, no live defaults (see `.env.example`).
 
 ## Add a custom page (non-record surface)
 1. Component under `src/app/pages/YourPage.tsx`.

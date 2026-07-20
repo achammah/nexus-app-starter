@@ -51,8 +51,10 @@ export class RemoteStore extends Store {
       for (const e of events) {
         this._seq = Math.max(this._seq, e.seq);
         const [whenIso, args] = [e.args?.[0], e.args?.slice(1)];
-        // every logged call is stored as [isoClock, ...originalArgs]
-        this._nowOverride = whenIso;
+        // every logged call is stored as [isoClock, ...originalArgs]; an external
+        // writer may stamp a non-date clock — fall back to real-now so the op still
+        // applies (never let a bad timestamp abort an otherwise-valid event)
+        this._nowOverride = whenIso && !Number.isNaN(new Date(whenIso).getTime()) ? whenIso : null;
         try {
           this[e.op](...args);
         } catch (err) {
@@ -99,6 +101,37 @@ export class RemoteStore extends Store {
       if (this._flushTimer) { clearTimeout(this._flushTimer); this._flushTimer = null; }
       await this._flush();
     }
+  }
+
+  /* Pull events an EXTERNAL writer appended after our in-memory _seq and replay
+     them live — no reboot. An async generation webhook (or any out-of-process
+     writer) writes a finished record as a `patch` event straight to the
+     warehouse; sync() surfaces it to the running app. Replay-safe: reuses the
+     same guard/clock discipline as _boot, and advancing _seq past external
+     writes keeps our next _log from minting a colliding seq. */
+  async sync() {
+    if (typeof this._wh.loadSince !== "function") return 0;
+    await this.ready;
+    if (this._replaying || this._inOp) return 0;      // never re-enter mid-op
+    const events = await this._wh.loadSince(this._seq);
+    if (!events.length) return 0;
+    let applied = 0;
+    this._replaying = true;
+    try {
+      for (const e of events) {
+        if (e.seq <= this._seq) continue;
+        const [whenIso, args] = [e.args?.[0], e.args?.slice(1)];
+        this._nowOverride = whenIso && !Number.isNaN(new Date(whenIso).getTime()) ? whenIso : null;
+        try {
+          if (typeof this[e.op] === "function") { this[e.op](...args); applied++; }
+        } catch (err) {
+          console.error(`[warehouse] sync skipped seq ${e.seq} (${e.op}): ${err.message}`);
+        }
+        this._seq = Math.max(this._seq, e.seq);
+      }
+    } finally { this._nowOverride = null; this._replaying = false; }
+    if (applied) console.log(`[warehouse] sync applied ${applied} external event(s) (seq ${this._seq})`);
+    return applied;
   }
 }
 
