@@ -4009,6 +4009,122 @@ const journeys = [
       }
     },
   },
+  // --- lane: wizard
+  {
+    name: "wizard-steps-review", feature: "Wizard — config-driven multi-step block",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/gallery");
+      await page.waitForSelector('[data-testid="gallery-wizard"]');
+      await page.click('[data-testid="gallery-wizard-open"]');
+      await page.waitForSelector('[data-testid="gallery-wizard-modal"]');
+      await page.waitForSelector('[data-testid="wizard-choose-guided"]');
+      await page.click('[data-testid="wizard-choose-guided"]');
+
+      // step 1: select (auto-advances)
+      await page.waitForSelector('[data-testid="wizard-opt-Announcement"]');
+      await page.click('[data-testid="wizard-opt-Announcement"]');
+      await page.waitForFunction(() => document.querySelector('[data-testid="wizard-count"]')?.textContent?.trim() === "2 / 5");
+      assert(true, "picking a select option auto-advances to step 2");
+
+      // step 2: text (required) — Next is disabled until filled
+      const nextDisabled = await page.getAttribute('[data-testid="wizard-next"]', "disabled");
+      assert(nextDisabled !== null, "Next is disabled on an unanswered required text step");
+      await page.fill('[data-testid="wizard-input"]', "Launch it");
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => document.querySelector('[data-testid="wizard-count"]')?.textContent?.trim() === "3 / 5");
+
+      // step 3: long (optional) — Next works with nothing typed
+      await page.click('[data-testid="wizard-next"]');
+      await page.waitForFunction(() => document.querySelector('[data-testid="wizard-count"]')?.textContent?.trim() === "4 / 5");
+
+      // step 4: list
+      await page.fill('[data-testid="wizard-list-input"]', "api");
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => document.querySelector('.nxwiz-listchip')?.textContent?.includes("api"));
+      const listVal = await page.inputValue('[data-testid="wizard-list-input"]');
+      assert(listVal === "", "Enter commits the chip (visible) and clears the input");
+      await page.click('[data-testid="wizard-next"]');
+      await page.waitForFunction(() => document.querySelector('[data-testid="wizard-count"]')?.textContent?.trim() === "5 / 5");
+
+      // step 5: sources
+      await page.fill('[data-testid="wizard-src-url"]', "https://example.com/spec");
+      await page.click('[data-testid="wizard-src-url-add"]');
+      await page.click('[data-testid="wizard-next"]');
+
+      // review
+      await page.waitForSelector('[data-testid="wizard-review"]');
+      const review = await page.textContent('[data-testid="wizard-review"]');
+      assert(review?.includes("Announcement") && review?.includes("Launch it") && review?.includes("api") && review?.includes("example.com/spec"),
+        "review screen shows every answered step's value");
+
+      await page.click('[data-testid="wizard-complete"]');
+      await page.waitForSelector('[data-testid="toast"]');
+      const toastTxt = await page.textContent('[data-testid="toast"]');
+      assert(toastTxt?.includes("Launch it"), `onComplete fires with the collected answers (toast: "${toastTxt}")`);
+      await page.waitForSelector('[data-testid="gallery-wizard-modal"]', { state: "detached" });
+      assert(true, "completing closes the modal");
+    },
+  },
+  {
+    name: "wizard-chips", feature: "Wizard — config-driven multi-step block",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/gallery");
+      await page.waitForSelector('[data-testid="gallery-wizard"]');
+      const chips0 = await page.textContent('[data-testid="gallery-wizard"]');
+      assert(chips0?.includes("priority"), "seeded chip renders");
+      await page.fill('[data-testid="gallery-chip-input"]', "urgent");
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(() => document.querySelector('[data-testid="gallery-wizard"]')?.textContent?.includes("urgent"));
+      assert(true, "type + Enter adds a chip");
+      await page.click('[data-testid="gallery-chip-suggest-emea"]');
+      await page.waitForFunction(() => document.querySelector('[data-testid="gallery-wizard"]')?.textContent?.includes("emea"));
+      assert(true, "clicking a suggestion chip adds it");
+      const chipX = page.locator('[data-testid="gallery-wizard"] .nxwiz-listchip', { hasText: "urgent" }).locator("button");
+      await chipX.click();
+      await page.waitForFunction(() => !document.querySelector('[data-testid="gallery-wizard"]')?.textContent?.includes("urgent"));
+      assert(true, "× removes the chip");
+    },
+  },
+  {
+    name: "wizard-modal", feature: "Wizard — config-driven multi-step block",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/gallery");
+      await page.waitForSelector('[data-testid="gallery-wizard"]');
+      await page.click('[data-testid="gallery-wizard-open"]');
+      await page.waitForSelector('[data-testid="gallery-wizard-modal"]');
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[data-testid="gallery-wizard-modal"]', { state: "detached" });
+      assert(true, "Escape closes the overlay");
+
+      await page.click('[data-testid="gallery-wizard-open"]');
+      await page.waitForSelector('[data-testid="gallery-wizard-modal"]');
+      await page.click('[data-testid="gallery-wizard-modal"]', { position: { x: 5, y: 5 } }); // backdrop, outside the modal card
+      await page.waitForSelector('[data-testid="gallery-wizard-modal"]', { state: "detached" });
+      assert(true, "backdrop click closes the overlay");
+
+      await page.click('[data-testid="gallery-wizard-open"]');
+      await page.waitForSelector('[data-testid="gallery-wizard-modal"]');
+      await page.click('[data-testid="gallery-wizard-modal-close"]');
+      await page.waitForSelector('[data-testid="gallery-wizard-modal"]', { state: "detached" });
+      assert(true, "× button closes the overlay");
+    },
+  },
+  {
+    name: "wizard-sources", feature: "Wizard — config-driven multi-step block",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/gallery");
+      await page.waitForSelector('[data-testid="gallery-wizard"]');
+      await page.fill('[data-testid="gallery-src-url"]', "https://example.com/doc");
+      await page.click('[data-testid="gallery-src-url-add"]');
+      await page.waitForFunction(() => document.querySelector('[data-testid="gallery-wizard"]')?.textContent?.includes("example.com/doc"));
+      assert(true, "adding a URL renders it in the list");
+
+      const buf = Buffer.from("hello from a journey fixture\n");
+      await page.setInputFiles('[data-testid="gallery-src-file"]', { name: "notes.txt", mimeType: "text/plain", buffer: buf });
+      await page.waitForFunction(() => document.querySelector('[data-testid="gallery-wizard"]')?.textContent?.includes("notes.txt"));
+      assert(true, "click-upload adds a file entry with its name + size");
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----

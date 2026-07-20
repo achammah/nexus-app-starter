@@ -1,6 +1,6 @@
 {
-  "uiVersion": "nexus-ui @ 4bc4285 (2026-07-20T21:12:40.966Z)",
-  "count": 71,
+  "uiVersion": "nexus-ui @ 97f9bf7 (2026-07-20T21:19:47.614Z)",
+  "count": 75,
   "vendoredAt": "2026-07-19T15:24:27.759Z",
   "items": [
     {
@@ -436,6 +436,34 @@
       "import": "src/record-core/types.ts",
       "when": "the config-driven object model \u2014 the schema every record surface renders from",
       "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+    },
+    {
+      "name": "Wizard",
+      "kind": "wrapper",
+      "import": "src/blocks/wizard/Wizard.tsx",
+      "when": "config-driven guided flow: question set (kinds select/text/long/list/sources) \u2192 step engine with progress + slide anim \u2192 onComplete; a guided-vs-blank landing; host supplies questions + callbacks",
+      "source": "ours"
+    },
+    {
+      "name": "ModalOverlay",
+      "kind": "wrapper",
+      "import": "src/blocks/wizard/ModalOverlay.tsx",
+      "when": "lightweight centered overlay shell (backdrop + escape/close) for a full-page-or-popup wizard",
+      "source": "ours"
+    },
+    {
+      "name": "ChipListInput",
+      "kind": "wrapper",
+      "import": "src/blocks/wizard/ChipListInput.tsx",
+      "when": "chip composer: type + enter to add removable tag chips \u2014 the list-kind wizard input, reusable standalone",
+      "source": "ours"
+    },
+    {
+      "name": "SourcesInput",
+      "kind": "wrapper",
+      "import": "src/blocks/wizard/SourcesInput.tsx",
+      "when": "URL list + file-pick source composer (readFile overridable) \u2014 the sources-kind wizard input",
+      "source": "ours"
     },
     {
       "name": "Skin \u00b7 skinToCss() \u00b7 applySkin()",
