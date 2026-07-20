@@ -154,5 +154,24 @@ curl -H "x-api-key: nak_…" https://your-app/api/objects/companies
 
 The star on any record header pins it to a Favorites section in the sidebar. Pins are personal and device-local (localStorage), so they work with or without accounts.
 
+## Add an AI copilot side-panel
+
+A docked right-column panel that chats with a native agent about whatever the user is looking at. Add a `copilot` block to `starter.config.json`; omit it and nothing renders (the iframe `chat.embedUrl` dock is the fallback).
+
+```jsonc
+"copilot": {
+  "title": "Copilot",            // header + toggle label
+  "mark": "C",                    // 1–2 char brand glyph (falls back to a sparkle)
+  "emptyStateCopy": "Your in-app assistant. It sees the record or list you're on.",
+  "suggestions": ["Summarize what I'm looking at", "Draft a follow-up for this record"]
+}
+```
+
+Point it at the agent with the `COPILOT_DEPLOYMENT_ID` env var (the deployment id is a secret — it never lands in the browser-visible config). Set `NEXUS_API_KEY` too; without both, `/api/copilot` returns 400 and the panel shows the error inline.
+
+**Per-object context (no hardcoding).** Each object's `contextFields: ["name", "status", …]` names the fields sent to the agent when a record of that object is open (omitted → the primary field only). Lists and pages send their label; the home sends the app name. So the copilot always knows what the user is looking at without any per-object code.
+
+Open it with the toggle in the chrome, `⌘/Ctrl+I`, or `c`; `Escape` closes it. The reply renders as Markdown and shows the agent's invoked tools as chips.
+
 ## Ship
 `npm run precheck` (tsc + build + journey-stamp freshness) → `docs/PRODUCTION_CHECKLIST.md` → push. CI runs the full journey suite; the deploy gate reads `journeys/.last-pass` + the manifest stamps.

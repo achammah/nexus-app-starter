@@ -1,0 +1,32 @@
+{
+  "app": { "name": "Copilot Fixture", "slug": "copilot-fixture" },
+  "theme": {},
+  "users": [],
+  "copilot": {
+    "title": "Copilot",
+    "mark": "C",
+    "emptyStateCopy": "Your in-app assistant. It sees the record or list you're on.",
+    "suggestions": [
+      "Summarize what I'm looking at",
+      "Draft a follow-up for this record"
+    ]
+  },
+  "objects": [
+    {
+      "key": "records",
+      "label": "Records",
+      "labelOne": "Record",
+      "icon": "file-text",
+      "defaultView": "table",
+      "contextFields": ["name", "status"],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "status", "label": "Status", "type": "text" }
+      ],
+      "sampleRows": [
+        { "id": "rec_1", "name": "First record", "status": "Draft" },
+        { "id": "rec_2", "name": "Second record", "status": "Live" }
+      ]
+    }
+  ]
+}
