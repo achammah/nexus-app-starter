@@ -29,7 +29,7 @@ import type { RelationItem } from "../ui/record-core/types";
 import { KanbanBoard } from "../ui/record-core/KanbanBoard";
 import { ChartView } from "../ui/record-core/ChartView";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
-import { usePollRev } from "./usePollRev";
+import { usePollRev } from "../ui/hooks/usePollRev";
 import { can, type Role } from "./permissions";
 import { optionValues, normalizeOption, isMeasurable } from "../ui/record-core/types";
 import { activeFields } from "../ui/record-core/options";
@@ -240,7 +240,7 @@ export function ObjectView({
 
   React.useEffect(load, [load]);
   // live sync: refetch when ANOTHER viewer/writer mutates this object (rev poll)
-  usePollRev(config.key, load);
+  usePollRev(() => api.rev(config.key).then((r) => r.rev), load, config.key);
   React.useEffect(() => {
     const on = (e: Event) => setQ(String((e as CustomEvent).detail ?? ""));
     window.addEventListener("nx-search", on);

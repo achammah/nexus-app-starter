@@ -39,6 +39,14 @@ const schema = z.object({
   // Nexus platform (server-side only — never reaches the browser)
   NEXUS_API_KEY: z.string().startsWith("nxs_").optional(),
   NEXUS_BASE_URL: z.string().url().optional(),
+  // Async-Nexus feature convention: an app wiring an AI-task/agent/generation feature
+  // adds its OWN pointer env var here, ALWAYS `.optional()` with NO live default —
+  // the pristine starter ships zero real ids (a real id in source leaks the org):
+  //   <FEATURE>_TASK_ID       → an AI task id      (runAiTask / server/aiTaskRunner.mjs)
+  //   <FEATURE>_DEPLOYMENT_ID → an agent deployment (emulatorChat / src/lib/nexusClient.mjs)
+  //   <FEATURE>_WEBHOOK_URL   → a generation hook   (fireAsyncGeneration / server/asyncGeneration.mjs)
+  // Per-field enrichment reads its task id from the app's `field.primitive.taskId`
+  // config, so it needs NO env var at all — only NEXUS_API_KEY to switch off the mock.
 });
 
 const parsed = schema.safeParse(process.env);

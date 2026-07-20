@@ -18,6 +18,7 @@ import { fileURLToPath } from "node:url";
 import { Store } from "./store.mjs";
 import { RemoteStore } from "./store-remote.mjs";
 import { bigqueryWarehouse } from "./warehouse.mjs";
+import { runAiTask } from "./aiTaskRunner.mjs";
 import { env, AUTH_ENABLED, FEATURES } from "./env.mjs";
 import { handleAuth, gate, readSession } from "./auth.mjs";
 import { handleTeams } from "./teams.mjs";
@@ -139,6 +140,15 @@ async function api(req, res, url, apiKey = null) {
   const parts = url.pathname.split("/").filter(Boolean); // ["api", ...]
   try {
     if (parts[1] === "config") return send(res, 200, { ...CONFIG, demo: store.demo, features: FEATURES });
+
+    // Pull external warehouse writes (an async generation's finished record, or any
+    // out-of-process writer) into the live store. Generic + safe on the mock store
+    // (no sync() → {applied:0}). A surface consumers poll after firing async work.
+    if (parts[1] === "sync" && req.method === "POST") {
+      let applied = 0;
+      try { applied = (await store.sync?.()) ?? 0; } catch (e) { console.error("[sync]", e.message); }
+      return send(res, 200, { applied });
+    }
 
     const session = AUTH_ENABLED ? readSession(req, store) : null;
     // one flag → nav + page + API together: a disabled feature's routes 404
@@ -534,6 +544,21 @@ async function api(req, res, url, apiKey = null) {
         if (!f.primitive) return send(res, 400, { error: `field ${field} has no primitive configured` });
         const row = store.get(objKey, id);
         if (!row) return send(res, 404, { error: "not found" });
+        // REAL enrichment — when the field's primitive carries a taskId AND a platform
+        // key is set, run the Nexus AI task and write its value. Strictly additive:
+        // with no taskId (or no key) the mock path below is byte-unchanged.
+        if (f.primitive.taskId && env.NEXUS_API_KEY) {
+          await runAiTask(store, emitEvent, {
+            taskId: f.primitive.taskId, objectKey: objKey, recordId: id,
+            buildInput: (rec) => ({ field: f.key, label: f.label, record: rec }),
+            applyOutput: (s, { parsed }) => {
+              const value = parsed?.value ?? parsed?.result ?? parsed?.output ?? (typeof parsed === "string" ? parsed : JSON.stringify(parsed));
+              s.enrich(objKey, id, field, value, f.primitive.label ?? f.primitive.kind);
+            },
+          });
+          const updated = store.get(objKey, id);
+          return updated ? send(res, 200, store.project(objKey, updated)) : send(res, 404, { error: "not found" });
+        }
         const namePrimary = cfg.fields.find((x) => x.primary) ?? cfg.fields[0];
         const via = `${f.primitive.label ?? f.primitive.kind} (mock)`;
         const mockValue = `(mock) ${f.label} for ${row[namePrimary.key] ?? id} — replace the /enrich mock in server/server.mjs with a real ${f.primitive.kind} call.`;

@@ -21,9 +21,9 @@ export interface AppConfig {
   objects: ObjectConfig[];
 }
 
-async function j<T>(path: string, init?: RequestInit): Promise<T> {
+async function j<T>(path: string, init?: RequestInit, timeoutMs = 15000): Promise<T> {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 15000);
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
   // the ACTIVE TEAM context rides every call — team-scoped objects resolve
   // visibility + the caller's per-team role from it
   const team = localStorage.getItem("nx-team");
@@ -115,6 +115,11 @@ export const api = {
   fileHref: (obj: string, id: string, fileId: string) => `/api/objects/${obj}/${id}/files/${fileId}`,
   enrich: (obj: string, id: string, field: string) =>
     j<RecordRow>(`/api/objects/${obj}/${id}/enrich`, { method: "POST", body: JSON.stringify({ field }) }),
+  /* pull external warehouse writes (an async generation's finished record) into the live store */
+  syncStore: () => j<{ applied: number }>("/api/sync", { method: "POST", body: "{}" }),
+  /* one turn of native agent chat via the server copilot proxy (emulatorChat) — long poll */
+  copilot: (message: string, sessionId?: string, context?: string) =>
+    j<{ reply: string; sessionId: string; tools?: string[] }>("/api/copilot", { method: "POST", body: JSON.stringify({ message, sessionId, context }) }, 200000),
   state: () => j<Record<string, unknown>>("/api/state"),
   setState: (key: string, value: unknown) =>
     j<{ key: string }>("/api/state", { method: "POST", body: JSON.stringify({ key, value }) }),
