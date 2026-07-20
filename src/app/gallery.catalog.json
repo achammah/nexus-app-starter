@@ -1,6 +1,6 @@
 {
-  "uiVersion": "nexus-ui @ 97f9bf7 (2026-07-20T21:19:47.614Z)",
-  "count": 75,
+  "uiVersion": "nexus-ui @ 89e2d1d (2026-07-20T21:49:39.062Z)",
+  "count": 76,
   "vendoredAt": "2026-07-19T15:24:27.759Z",
   "items": [
     {
@@ -421,6 +421,13 @@
       "kind": "record-core",
       "import": "src/record-core/NotionEditor.tsx",
       "when": "Notion-grade block editor for the richText field type: hand-rolled contenteditable blocks (p/h/quote/list/divider/image/table), slash menu, drag-reorder, inline markdown, image-drop; controlled (blocks/onChange) + inline-change props for a suggestions layer",
+      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+    },
+    {
+      "name": "FilterBar \u00b7 FilterChips \u00b7 matchFilters \u00b7 opsFor \u00b7 filterableFields",
+      "kind": "record-core",
+      "import": "src/record-core/Filters.tsx",
+      "when": "advanced filtering: command-style filter builder (any column, type-aware operators) + removable active-filter chips + a pure matchFilters(row,conds) predicate; filterableFields(fields) maps an object's fields to the filterable set",
       "source": "ours (rebuilt \u2014 PROVENANCE.md)"
     },
     {

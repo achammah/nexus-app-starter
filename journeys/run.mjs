@@ -229,6 +229,7 @@ const journeys = [
       await page.goto(URLBASE + "/#/o/companies");
       await page.waitForSelector('[data-testid="list-search"]');
       await page.fill('[data-testid="list-search"]', "Journey Test");
+      await page.keyboard.press("Escape"); // dismiss the unified search's filter dropdown before clicking rows
       await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 1);
       await page.click('tbody tr:first-child [role="checkbox"]');
       await page.waitForSelector('[data-testid="bulk-bar"]');
@@ -1967,6 +1968,7 @@ const journeys = [
       await page.goto(URLBASE + "/#/o/companies");
       await page.waitForSelector('[data-testid="list-search"]');
       await page.fill('[data-testid="list-search"]', "Trashable");
+      await page.keyboard.press("Escape"); // dismiss the unified search's filter dropdown before clicking rows
       await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 1);
       await page.click('tbody tr:first-child [role="checkbox"]');
       await page.click('[data-testid="bulk-delete"]');
@@ -2040,6 +2042,7 @@ const journeys = [
         await page.goto(URLBASE + "/#/o/companies");
         await page.waitForSelector('[data-testid="list-search"]');
         await page.fill('[data-testid="list-search"]', "Mergeling");
+        await page.keyboard.press("Escape"); // dismiss the unified search's filter dropdown before clicking rows
         await page.waitForFunction(() => document.querySelectorAll('[data-testid="table-companies"] tbody tr').length === 2);
         await page.click('tbody tr:nth-child(1) [role="checkbox"]');
         await page.click('tbody tr:nth-child(2) [role="checkbox"]');

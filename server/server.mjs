@@ -533,9 +533,9 @@ async function api(req, res, url, apiKey = null) {
         const emails = store.watchers(objKey, id);
         return send(res, 200, { count: emails.length, me: session?.email ? emails.includes(session.email) : false });
       }
-      /* AI-enrichment seam — MOCK: computes a labeled placeholder value for a field
-         whose config carries `primitive`. Prod: replace the mockValue line with a
-         platform call (task execute / workflow trigger) using primitive.id. */
+      /* AI-enrichment seam. A field whose `primitive` carries a `taskId` (+ NEXUS_API_KEY)
+         runs the real AI task via runAiTask (the branch below); otherwise this returns a
+         labeled MOCK value — the fallback for a config with no taskId or no platform key. */
       if (parts[4] === "enrich" && req.method === "POST") {
         if (deny("edit", { own })) return;
         const { field } = await readBody(req);

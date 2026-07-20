@@ -102,7 +102,7 @@ export interface FieldDef {
   scale?: number;
   /* AI-enrichment seam: the platform primitive that computes this field on demand
      (the UI shows a per-row Run affordance; the consumer wires the call). */
-  primitive?: { kind: "task" | "workflow"; id?: string; label?: string };
+  primitive?: { kind: "task" | "workflow"; taskId?: string; id?: string; label?: string };
 }
 
 export interface ObjectConfig {
@@ -113,6 +113,10 @@ export interface ObjectConfig {
   labelOne: string;          // "Company"
   icon?: string;             // lucide icon name
   fields: FieldDef[];
+  /* default column visibility for the table view: the field keys shown by default
+     (the primary field is always shown). Omitted → every non-primary field shows.
+     A per-user Columns menu overrides this at runtime (persisted per object). */
+  columns?: string[];
   stageField?: string;       // select field key driving the kanban
   defaultView: "table" | "kanban";
   /* rows belong to a team: visibility + roles resolve per the caller's active team */

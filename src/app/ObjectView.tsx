@@ -30,6 +30,8 @@ import { KanbanBoard } from "../ui/record-core/KanbanBoard";
 import { ChartView } from "../ui/record-core/ChartView";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
 import { usePollRev } from "../ui/hooks/usePollRev";
+import { FilterBar, FilterChips, matchFilters, filterableFields } from "../ui/record-core/Filters";
+import type { FilterCond } from "../ui/record-core/Filters";
 import { can, type Role } from "./permissions";
 import { optionValues, normalizeOption, isMeasurable } from "../ui/record-core/types";
 import { activeFields } from "../ui/record-core/options";
@@ -99,6 +101,7 @@ export function ObjectView({
         view?: "table" | "kanban" | "chart";
         hidden?: string[];
         sort?: SortingState;
+        filters?: FilterCond[];
       };
     } catch {
       return {};
@@ -117,6 +120,9 @@ export function ObjectView({
   const [selFilters, setSelFilters] = React.useState<Record<string, string[]>>(
     (saved as { selFilters?: Record<string, string[]> }).selFilters ?? {},
   );
+  // advanced filters: any column, type-aware operator, removable chips
+  const [filters, setFilters] = React.useState<FilterCond[]>((saved as { filters?: FilterCond[] }).filters ?? []);
+  const filterFields = React.useMemo(() => filterableFields(activeFields(config.fields)), [config.fields]);
   const [relOpts, setRelOpts] = React.useState<Record<string, RelationItem[]>>({});
   // board can group by ANY select/user field (stageField is just the default)
   const groupables = activeFields(config.fields).filter((f) => f.type === "select" || f.type === "user");
@@ -179,8 +185,8 @@ export function ObjectView({
   }, [canCreate]);
 
   React.useEffect(() => {
-    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, groupBy, measure, aggregate }));
-  }, [config.key, q, view, hidden, sort, selFilters, groupBy, measure, aggregate]);
+    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, filters, groupBy, measure, aggregate }));
+  }, [config.key, q, view, hidden, sort, selFilters, filters, groupBy, measure, aggregate]);
 
   // relation items for the create dialog (fetched once the dialog opens) —
   // {id, label, type}: options save by ID, labels come from the target's
@@ -217,10 +223,10 @@ export function ObjectView({
           const v = r[k];
           // multiselect fields match on ANY overlap; scalar fields on equality
           return Array.isArray(v) ? v.some((x) => vals.includes(String(x))) : vals.includes(String(v ?? ""));
-        }),
+        }) && matchFilters(r, filters),
       ) ?? null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rows, selFilters],
+    [rows, selFilters, filters],
   );
 
   // only the LATEST load's response may commit — concurrent loads (user action +
@@ -264,6 +270,7 @@ export function ObjectView({
     setHidden((state.hidden as string[]) ?? []);
     setSort((state.sort as SortingState) ?? []);
     setSelFilters((state.selFilters as Record<string, string[]>) ?? {});
+    setFilters((state.filters as FilterCond[]) ?? []);
     setGroupBy(String(state.groupBy ?? config.stageField ?? groupables[0]?.key ?? ""));
     setMeasure(String(state.measure ?? "count"));
     setAggregate((state.aggregate as { fn: "sum" | "avg" | "min" | "max"; field: string } | null) ?? null);
@@ -276,7 +283,7 @@ export function ObjectView({
         objectKey: config.key,
         name: viewName.trim(),
         layout: view,
-        state: { q, view, hidden, sort, selFilters, groupBy, measure, aggregate },
+        state: { q, view, hidden, sort, selFilters, filters, groupBy, measure, aggregate },
       })
       .then(() => {
         toast(`View “${viewName.trim()}” saved`);
@@ -439,21 +446,11 @@ export function ObjectView({
       </div>
 
       <div className="nxViewBar">
-        <div style={{ position: "relative", width: 260 }}>
-          <Search size={13} style={{ position: "absolute", left: 9, top: 9, color: "var(--nx-fg-faint)" }} />
-          <Input
-            placeholder={`Filter ${config.label.toLowerCase()}…`}
-            value={q}
-            data-testid="list-search"
-            onChange={(e) => setQ(e.target.value)}
-            style={{ paddingLeft: 28 }}
-          />
+        {/* ONE search box: free-text narrows the list AND, in the same dropdown, offers
+            "Field is Value" filters — the FilterBar owns both. Carries the list-search testid. */}
+        <div style={{ flex: "0 1 360px", minWidth: 240 }}>
+          <FilterBar fields={filterFields} value={filters} onChange={setFilters} search={q} onSearch={setQ} searchTestId="list-search" />
         </div>
-        {q && (
-          <Badge tone="accent">
-            “{q}” <button style={{ border: 0, background: "none", cursor: "pointer", color: "inherit", font: "inherit" }} onClick={() => setQ("")} aria-label="Clear filter">×</button>
-          </Badge>
-        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button size="sm" variant="ghost" icon={<Bookmark size={13} />} data-testid="views-menu">
@@ -662,6 +659,8 @@ export function ObjectView({
         </Button>
         )}
       </div>
+
+      <FilterChips fields={filterFields} value={filters} onChange={setFilters} />
 
       {selectedIds.length > 0 && (
         <div
