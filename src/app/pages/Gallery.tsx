@@ -19,6 +19,7 @@ import { DataTable, formatCell } from "../../ui/record-core/DataTable";
 import { KanbanBoard } from "../../ui/record-core/KanbanBoard";
 import { RecordPage } from "../../ui/record-core/RecordPage";
 import type { FieldType, ObjectConfig, RecordRow, TimelineEvent } from "../../ui/record-core/types";
+import { Wizard, ModalOverlay, ChipListInput, SourcesInput, type Ans, type Q, type Sources } from "../../ui/blocks/wizard";
 
 /* Gallery — the component catalog as a LIVE page: primitives, a curated
    vendored subset, the full inventory (committed snapshot of the library's
@@ -120,6 +121,15 @@ const FIELDS_ROW: RecordRow = Object.fromEntries([
   ...FIELD_SAMPLES.map((s, i) => [`f${i}_${s.type}`, s.value]),
 ]) as RecordRow;
 
+/* wizard demo — a small fictional brief (never the blog's QUESTIONS/compile) */
+const WIZARD_QUESTIONS: Q[] = [
+  { key: "kind", label: "What are we drafting?", hint: "Picks the shape of the output.", kind: "select", options: ["Announcement", "How-to guide", "Release note"], required: true },
+  { key: "ask", label: "What's the ask?", hint: "The topic, in your words.", kind: "text", placeholder: "e.g. Launch the v2 API", required: true },
+  { key: "audience", label: "Extra context", hint: "Optional — anything the drafter should know.", kind: "long", placeholder: "e.g. Keep it under 200 words" },
+  { key: "tags", label: "Tags", hint: "Add each as its own chip.", kind: "list", placeholder: "e.g. api", suggest: ["api", "beta", "internal"] },
+  { key: "sources", label: "Source material", hint: "Links or docs the drafter should read.", kind: "sources" },
+];
+
 const chartData = [
   { month: "Feb", won: 32 }, { month: "Mar", won: 41 }, { month: "Apr", won: 38 },
   { month: "May", won: 56 }, { month: "Jun", won: 49 }, { month: "Jul", won: 64 },
@@ -132,6 +142,7 @@ const SECTIONS = [
   { id: "gallery-inventory", label: "Inventory" },
   { id: "gallery-recordcore", label: "Record core" },
   { id: "gallery-fields", label: "Field types" },
+  { id: "gallery-wizard", label: "Wizard" },
 ];
 
 function Section({ id, title, importPath, children }: { id: string; title: string; importPath: string; children: React.ReactNode }) {
@@ -165,6 +176,28 @@ export function GalleryPage() {
   const [fieldsTimeline, setFieldsTimeline] = React.useState<TimelineEvent[]>([
     { id: "gtl_1", ts: "2026-07-18T10:00:00.000Z", kind: "created", summary: "Created", actor: "you" } as TimelineEvent,
   ]);
+  const [wizardModalOpen, setWizardModalOpen] = React.useState(false);
+  const [wizardCompleting, setWizardCompleting] = React.useState(false);
+  const [wizardBlankBusy, setWizardBlankBusy] = React.useState(false);
+  const [chipDemo, setChipDemo] = React.useState<string[]>(["priority"]);
+  const [sourcesDemo, setSourcesDemo] = React.useState<Sources>({ urls: [], docs: [] });
+
+  const completeWizard = (answers: Ans) => {
+    setWizardCompleting(true);
+    setTimeout(() => {
+      setWizardCompleting(false);
+      setWizardModalOpen(false);
+      toast(`Drafting "${String(answers.ask ?? "untitled")}" (local sandbox)`);
+    }, 400);
+  };
+  const startBlank = () => {
+    setWizardBlankBusy(true);
+    setTimeout(() => {
+      setWizardBlankBusy(false);
+      setWizardModalOpen(false);
+      toast("Blank draft started (local sandbox)");
+    }, 400);
+  };
 
   // leaving the page can never leak a preview: unmount removes the tag
   React.useEffect(() => () => setPreviewSkin(null), []);
@@ -417,6 +450,47 @@ export function GalleryPage() {
                 }}
               />
             </div>
+          </div>
+        </div>
+      </Section>
+
+      <Section id="gallery-wizard" title="Wizard — config-driven multi-step block" importPath="src/ui/blocks/wizard">
+        <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", alignItems: "start" }}>
+          <div style={{ display: "grid", gap: 8 }}>
+            <Micro>Wizard + ModalOverlay — guided-vs-blank landing, 5 kinds, review, complete</Micro>
+            <Button size="sm" variant="secondary" data-testid="gallery-wizard-open" onClick={() => setWizardModalOpen(true)}>
+              Open wizard
+            </Button>
+            {wizardModalOpen && (
+              <ModalOverlay testId="gallery-wizard-modal" label="Wizard demo" onClose={() => setWizardModalOpen(false)}>
+                <Wizard
+                  title="Draft builder"
+                  completeLabel="Generate draft"
+                  completing={wizardCompleting}
+                  landing={{
+                    eyebrow: "New draft",
+                    title: "How do you want to start?",
+                    hint: "Answer a few questions, or start from a blank draft.",
+                    guidedLabel: "Guided draft",
+                    guidedDesc: "A short brief (kind, ask, tags, sources), then generate.",
+                    blankLabel: wizardBlankBusy ? "Creating…" : "Blank draft",
+                    blankDesc: "Skip the brief and start empty.",
+                    blankBusy: wizardBlankBusy,
+                    onBlank: startBlank,
+                  }}
+                  questions={WIZARD_QUESTIONS}
+                  onComplete={completeWizard}
+                />
+              </ModalOverlay>
+            )}
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            <Micro>ChipListInput — standalone</Micro>
+            <ChipListInput value={chipDemo} onChange={setChipDemo} placeholder="Add a tag…" suggestions={["priority", "emea", "champion"]} testIdPrefix="gallery-chip" />
+          </div>
+          <div style={{ display: "grid", gap: 8 }}>
+            <Micro>SourcesInput — standalone</Micro>
+            <SourcesInput urls={sourcesDemo.urls} docs={sourcesDemo.docs} onChange={setSourcesDemo} testIdPrefix="gallery-src" />
           </div>
         </div>
       </Section>

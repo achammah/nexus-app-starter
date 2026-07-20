@@ -1,9 +1,9 @@
 {
   "_source": "SNAPSHOT of nexus-ui docs/catalog.json \u2014 refresh by re-copying whenever sync-ui bumps src/ui/.ui-version (the Gallery inventory footer turns into a warning when the stamps diverge)",
   "vendoredAt": "2026-07-19T15:24:27.759Z",
-  "uiVersion": "nexus-ui @ cb7878d (2026-07-19T22:29:57.005Z)",
+  "uiVersion": "nexus-ui @ cb7878d (2026-07-20T20:34:48.538Z)",
   "style": "new-york-v4",
-  "count": 63,
+  "count": 67,
   "items": [
     {
       "name": "accordion",
@@ -410,6 +410,34 @@
       "import": "src/record-core/types.ts",
       "when": "the config-driven object model \u2014 the schema every record surface renders from",
       "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+    },
+    {
+      "name": "Wizard \u00b7 kindRenderers \u00b7 LandingConfig",
+      "kind": "block",
+      "import": "src/blocks/wizard/Wizard.tsx",
+      "when": "config-driven multi-step engine: a Q[] (select/text/long/list/sources) steps one at a time with progress bar + slide anim + required-gated Next, generic review screen, onComplete(answers); optional guided-vs-blank landing",
+      "source": "ours"
+    },
+    {
+      "name": "ModalOverlay",
+      "kind": "block",
+      "import": "src/blocks/wizard/ModalOverlay.tsx",
+      "when": "standalone full-screen overlay shell \u2014 Escape/backdrop/\u00d7 close, wraps any children",
+      "source": "ours"
+    },
+    {
+      "name": "ChipListInput",
+      "kind": "block",
+      "import": "src/blocks/wizard/ChipListInput.tsx",
+      "when": "standalone composable string[] field \u2014 type+Enter adds a chip, \u00d7 removes, optional suggestion chips",
+      "source": "ours"
+    },
+    {
+      "name": "SourcesInput",
+      "kind": "block",
+      "import": "src/blocks/wizard/SourcesInput.tsx",
+      "when": "standalone URL-list + click-upload field (Sources = {urls, docs}); accept/maxCharsPerDoc/readFile as props",
+      "source": "ours"
     },
     {
       "name": "Skin \u00b7 skinToCss() \u00b7 applySkin()",
