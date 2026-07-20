@@ -1,6 +1,7 @@
 /* App shell — sidebar · topbar · content. Token-driven; the record-system chrome. */
 
-.shell { display: grid; grid-template-columns: 232px 1fr; height: 100vh; overflow: hidden; }
+.shell { display: grid; grid-template-columns: 232px 1fr; height: 100vh; overflow: hidden;
+  transition: padding-right var(--nx-t-med) var(--nx-ease-settle); }
 
 /* ---------- sidebar ---------- */
 .side {
@@ -185,6 +186,22 @@
   /* deliberate: N-of-M paging is a desktop affordance — hidden, not left to wrap broken */
   .peekPager { display: none; }
   .peekCrumb { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+
+/* ---- copilot dock: a docked right column that PUSHES content while open (the
+   shell reserves the width; the fixed dock fills that gap and slides in) ---- */
+.shell--copilot { padding-right: min(380px, 34vw); }
+.nxCopilotDock {
+  position: fixed; top: 0; right: 0; bottom: 0; z-index: 45; width: min(380px, 34vw);
+  transform: translateX(100%); box-shadow: var(--nx-shadow-2);
+  transition: transform var(--nx-t-med) var(--nx-ease-settle);
+}
+.nxCopilotDock.is-open { transform: none; }
+@media (prefers-reduced-motion: reduce) { .nxCopilotDock { transition: none; } }
+/* mobile: full-width overlay, no push (the content stays put behind it) */
+@media (max-width: 768px) {
+  .shell--copilot { padding-right: 0; }
+  .nxCopilotDock { width: 100vw; }
 }
 
 /* dialogs open/close INSTANTLY — enter/exit animations on stacked layers (palette →

@@ -13,6 +13,8 @@ import { CommandPalette } from "./CommandPalette";
 import { PanelSearch, PanelActions } from "./PanelPages";
 import { t } from "./i18n";
 import { ChatDock } from "./ChatDock";
+import { Copilot } from "./Copilot";
+import { CopilotToggle } from "../ui/blocks/copilot";
 import { Login } from "./Login";
 import { Button } from "../ui/primitives/Button";
 import { Tip } from "../ui/primitives/fields";
@@ -82,6 +84,8 @@ export function App() {
   }, []);
   // mobile nav drawer: burger (≤768px, both nav modes) opens a left Sheet
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  // copilot side-panel (renders only when config.copilot is present)
+  const [copilotOpen, setCopilotOpen] = React.useState(false);
   /* ---- side peek: one right-edge panel hosting a typed page STACK — records
      (the peek proper), search, and actions all push onto the same navigation
      history (crumbs/back/Escape ladder). The list stays behind. Only a RECORD
@@ -204,6 +208,27 @@ export function App() {
     };
     window.addEventListener("keydown", onSlash);
     return () => window.removeEventListener("keydown", onSlash);
+  }, []);
+
+  /* copilot shortcuts (only while the feature is configured): ⌘/Ctrl+I toggles it
+     (safe — modified); bare `c` opens it, but yields to typing/editors/dialogs/cells
+     exactly like `/`; Escape closes it (handled here, above the peek ladder). */
+  const copilotOnRef = React.useRef(false);
+  copilotOnRef.current = !!config?.copilot;
+  React.useEffect(() => {
+    const typingOrLayer = (el: HTMLElement | null) =>
+      (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) ||
+      !!document.querySelector('[data-slot="dialog-content"], [data-slot="sheet-content"], [role="dialog"]') ||
+      !!document.querySelector("td[data-cell-focus]");
+    const onKey = (e: KeyboardEvent) => {
+      if (!copilotOnRef.current) return;
+      if ((e.metaKey || e.ctrlKey) && (e.key === "i" || e.key === "I")) { e.preventDefault(); setCopilotOpen((o) => !o); return; }
+      if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+      if (e.key === "Escape") { setCopilotOpen((o) => (o ? false : o)); return; }
+      if (e.key === "c" && !typingOrLayer(e.target as HTMLElement | null)) { e.preventDefault(); setCopilotOpen(true); }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   const toast = React.useCallback((text: string) => {
@@ -366,6 +391,14 @@ export function App() {
       ))}
     </>
   );
+  const copilotToggle = config.copilot ? (
+    <CopilotToggle
+      open={copilotOpen}
+      onToggle={() => setCopilotOpen((o) => !o)}
+      label={config.copilot.title ?? "Copilot"}
+      kbd="⌘I"
+    />
+  ) : null;
   const themeButton = (
     <Tip label="Toggle theme">
       <Button variant="ghost" size="sm" aria-label="Toggle theme" data-testid="theme-toggle" onClick={toggleTheme}
@@ -410,7 +443,7 @@ export function App() {
 
   return (
     <ToastCtx.Provider value={toast}>
-      <div className={`shell${navMode === "top" ? " shell--top" : ""}`}>
+      <div className={`shell${navMode === "top" ? " shell--top" : ""}${copilotOpen ? " shell--copilot" : ""}`}>
         {navMode === "top" && (
           <header className="topNav" data-testid="nav-top">
             {burger}
@@ -464,6 +497,7 @@ export function App() {
               )}
               {searchBox()}
             </div>
+            {copilotToggle}
             {themeButton}
             {auth?.user && (
               <button
@@ -556,6 +590,7 @@ export function App() {
                 {route.recordId && <span>/ record</span>}
               </span>
               {searchBox()}
+              {copilotToggle}
               {themeButton}
             </header>
           )}
@@ -743,7 +778,11 @@ export function App() {
         </Sheet>
 
         <CommandPalette config={config} go={route.go} actions={contextActions} intercept={paletteIntercept} />
-        <ChatDock embedUrl={config.chat?.embedUrl} />
+        {/* copilot supersedes the iframe ChatDock; ChatDock is the fallback when the
+            copilot block is absent but a chat.embedUrl is configured */}
+        {config.copilot
+          ? <Copilot open={copilotOpen} onClose={() => setCopilotOpen(false)} config={config} />
+          : <ChatDock embedUrl={config.chat?.embedUrl} />}
       </div>
     </ToastCtx.Provider>
   );
