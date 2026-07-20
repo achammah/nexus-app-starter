@@ -47,6 +47,9 @@ const schema = z.object({
   //   <FEATURE>_WEBHOOK_URL   → a generation hook   (fireAsyncGeneration / server/asyncGeneration.mjs)
   // Per-field enrichment reads its task id from the app's `field.primitive.taskId`
   // config, so it needs NO env var at all — only NEXUS_API_KEY to switch off the mock.
+  // Copilot agent deployment (the config's `copilot` block names the rest; the id is a
+  // secret, so it rides this env var and never lands in source):
+  COPILOT_DEPLOYMENT_ID: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);

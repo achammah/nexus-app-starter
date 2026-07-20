@@ -12,6 +12,11 @@ export interface AppConfig {
      (an org's brand as data); accent alone is the one-knob shortcut */
   theme: { accent?: string; skinPreset?: string; skin?: Skin };
   chat?: { embedUrl?: string };
+  /* copilot side-panel: present → the panel renders; absent → nothing. The
+     deploymentId is a server secret (COPILOT_DEPLOYMENT_ID) and stays out of this
+     browser-visible config; the rest is presentation. Per-object context comes from
+     each object's `contextFields`. */
+  copilot?: { title?: string; mark?: string; emptyStateCopy?: string; suggestions?: string[] };
   /* the app's people directory — `user`-type fields pick from this list */
   users?: string[];
   /* server-set: seeded fictional rows are present (drives the Demo badge) */

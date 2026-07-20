@@ -29,6 +29,11 @@ erDiagram
     relation company
     user owner
   }
+  settings_rules {
+    text rule "PK"
+    select severity
+    boolean active
+  }
   companies ||--o{ people : "company"
   companies ||--o{ deals : "company"
 ```
@@ -67,5 +72,14 @@ Default view: kanban · stage field: `stage`
 | `closeDate` | date |  |
 | `company` | relation | → companies |
 | `owner` | user |  |
+
+### Settings rules (`settings_rules`)
+Default view: table
+
+| Field | Type | Notes |
+|---|---|---|
+| `rule` | text | primary |
+| `severity` | select | options: Critical / Important / Minor |
+| `active` | boolean |  |
 
 Users directory: `you`, `Maya Verstraete`, `Jonas Peeters`, `Sofia Marchetti` (drives `user`-type fields).

@@ -9,6 +9,16 @@
   "chat": {
     "embedUrl": ""
   },
+  "copilot": {
+    "title": "Copilot",
+    "mark": "N",
+    "emptyStateCopy": "Your in-app assistant. It sees the record or list you're on — ask it to summarize, draft, or explain what you're looking at.",
+    "suggestions": [
+      "Summarize what I'm looking at",
+      "Draft a follow-up for this record",
+      "What should I do next here?"
+    ]
+  },
   "users": [
     "you",
     "Maya Verstraete",
@@ -136,6 +146,12 @@
           "employees": 150,
           "city": "Hamburg"
         }
+      ],
+      "contextFields": [
+        "name",
+        "industry",
+        "city",
+        "about"
       ]
     },
     {
@@ -246,6 +262,11 @@
           "role": "COO",
           "company": "Tidal Freight"
         }
+      ],
+      "contextFields": [
+        "name",
+        "role",
+        "company"
       ]
     },
     {
@@ -375,6 +396,12 @@
           "company": "Tidal Freight",
           "owner": "Sofia Marchetti"
         }
+      ],
+      "contextFields": [
+        "name",
+        "stage",
+        "amount",
+        "closeDate"
       ]
     },
     {

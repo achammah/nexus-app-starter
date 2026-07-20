@@ -19,6 +19,7 @@ import { Store } from "./store.mjs";
 import { RemoteStore } from "./store-remote.mjs";
 import { bigqueryWarehouse } from "./warehouse.mjs";
 import { runAiTask } from "./aiTaskRunner.mjs";
+import { emulatorChat } from "../src/lib/nexusClient.mjs";
 import { env, AUTH_ENABLED, FEATURES } from "./env.mjs";
 import { handleAuth, gate, readSession } from "./auth.mjs";
 import { handleTeams } from "./teams.mjs";
@@ -148,6 +149,25 @@ async function api(req, res, url, apiKey = null) {
       let applied = 0;
       try { applied = (await store.sync?.()) ?? 0; } catch (e) { console.error("[sync]", e.message); }
       return send(res, 200, { applied });
+    }
+
+    /* Copilot proxy — one turn of native agent chat through the emulator API
+       (emulatorChat). The deployment id is a secret, so it rides COPILOT_DEPLOYMENT_ID;
+       the config's copilot.deploymentId is a self-contained-demo fallback. Unconfigured
+       → 400 (the panel surfaces it inline). contextLabel names the "what the user is
+       looking at" block the client sends per turn. */
+    if (parts[1] === "copilot" && req.method === "POST") {
+      const deploymentId = env.COPILOT_DEPLOYMENT_ID || CONFIG.copilot?.deploymentId;
+      if (!deploymentId) return send(res, 400, { error: "copilot not configured (set COPILOT_DEPLOYMENT_ID or copilot.deploymentId)" });
+      const { message, sessionId, context } = await readBody(req);
+      if (!String(message ?? "").trim()) return send(res, 400, { error: "message required" });
+      try {
+        const r = await emulatorChat(deploymentId, { message, sessionId, context, contextLabel: CONFIG.copilot?.title ?? "Context" });
+        return send(res, 200, r);
+      } catch (e) {
+        console.error("[copilot]", e.message);
+        return send(res, 502, { error: e.message });
+      }
     }
 
     const session = AUTH_ENABLED ? readSession(req, store) : null;
