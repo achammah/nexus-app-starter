@@ -1,9 +1,9 @@
 {
   "_source": "SNAPSHOT of nexus-ui docs/catalog.json \u2014 refresh by re-copying whenever sync-ui bumps src/ui/.ui-version (the Gallery inventory footer turns into a warning when the stamps diverge)",
   "vendoredAt": "2026-07-19T15:24:27.759Z",
-  "uiVersion": "nexus-ui @ cb7878d (2026-07-19T22:29:57.005Z)",
+  "uiVersion": "nexus-ui @ cb7878d (2026-07-20T20:27:27.294Z)",
   "style": "new-york-v4",
-  "count": 63,
+  "count": 65,
   "items": [
     {
       "name": "accordion",
@@ -374,6 +374,20 @@
       "kind": "wrapper",
       "import": "src/primitives/overlays.tsx",
       "when": "house APIs over vendored dialog/dropdown-menu (title+footer / trigger+items)",
+      "source": "ours"
+    },
+    {
+      "name": "SettingsTabs",
+      "kind": "wrapper",
+      "import": "src/primitives/SettingsTabs.tsx",
+      "when": "generic settings shell: sticky tab bar (tabs-as-config: key/label/icon/render) + body, own active-tab state \u2014 page head stays app content",
+      "source": "ours"
+    },
+    {
+      "name": "EditableRuleList",
+      "kind": "wrapper",
+      "import": "src/primitives/EditableRuleList.tsx",
+      "when": "config-driven editable rule/policy list: inline add/edit card, optional severity chip (enum+colors as props) and active toggle, over any object \u2014 no fetch inside, onCreate/onPatch/onRemove callback contract like DataTable",
       "source": "ours"
     },
     {

@@ -22,11 +22,12 @@ export interface PageDef {
   component: React.ComponentType;
 }
 
-import { Boxes, Database, KeyRound, ListTodo, Palette, Shapes, Users2, Webhook } from "lucide-react";
+import { Boxes, Database, KeyRound, ListTodo, Palette, Settings2, Shapes, Users2, Webhook } from "lucide-react";
 import { ApiKeysPage } from "./pages/ApiKeys";
 import { GalleryPage } from "./pages/Gallery";
 import { KitDemo } from "./pages/KitDemo";
 import { SchemaPage } from "./pages/Schema";
+import { SettingsPage } from "./pages/Settings";
 import { TasksPage } from "./pages/Tasks";
 import { TeamPage } from "./pages/Team";
 import { ThemePage } from "./pages/Theme";
@@ -40,6 +41,7 @@ export const customPages: PageDef[] = [
   { key: "schema", label: "Schema", icon: <Database size={15} />, component: SchemaPage },
   { key: "theme", label: "Theme", icon: <Palette size={15} />, component: ThemePage },
   { key: "gallery", label: "Gallery", icon: <Shapes size={15} />, component: GalleryPage },
+  { key: "settings", label: "Settings", icon: <Settings2 size={15} />, component: SettingsPage },
   // The kit demo proves this registry AND shows the deep component families live.
   // Real apps replace it with their own pages (or delete it).
   { key: "kit", label: "Kit demo", icon: <Boxes size={15} />, component: KitDemo },

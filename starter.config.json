@@ -376,6 +376,59 @@
           "owner": "Sofia Marchetti"
         }
       ]
+    },
+    {
+      "key": "settings_rules",
+      "label": "Settings rules",
+      "labelOne": "Rule",
+      "icon": "list-checks",
+      "defaultView": "table",
+      "fields": [
+        {
+          "key": "rule",
+          "label": "Rule",
+          "type": "text",
+          "primary": true,
+          "width": 320
+        },
+        {
+          "key": "severity",
+          "label": "Severity",
+          "type": "select",
+          "options": [
+            "Critical",
+            "Important",
+            "Minor"
+          ],
+          "width": 110
+        },
+        {
+          "key": "active",
+          "label": "Active",
+          "type": "boolean",
+          "width": 80
+        }
+      ],
+      "sampleRows": [
+        {
+          "id": "sr_1",
+          "rule": "Never open with a rhetorical question.",
+          "severity": "Important",
+          "active": true
+        },
+        {
+          "id": "sr_2",
+          "rule": "Always name the customer's role before their company.",
+          "severity": "Minor",
+          "active": true
+        },
+        {
+          "id": "sr_3",
+          "rule": "Never promise a delivery date we haven't confirmed.",
+          "severity": "Critical",
+          "active": true
+        }
+      ]
     }
   ]
 }
