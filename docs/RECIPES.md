@@ -123,6 +123,25 @@ Tables carry a three-level focus model: ↑↓ (or j/k) move a row focus; `x` se
 
 Rows open in a right-edge panel over the list (set `"openIn": "page"` on an object to navigate instead). Related records stack onto the same panel — Escape steps back, then closes; the panel root rides the URL (`?peek=<id>`), so reload and share restore it; cmd/ctrl-click a row link for a real new tab. The header pages through the set you opened from (N of M, wrapping). In a relation picker, a search with no match offers "Create …" — the record is born with just a title, attached, and opened for progressive completion.
 
+## Pick a record-page layout
+
+`recordLayout` on an object chooses how its record page is shaped (default `"standard"`):
+
+- **`"standard"`** — the fields panel (inline-edit rows) beside the timeline/notes/files tabs. A `richText` field spans the FULL details column (label above, editor below) and stays readable at any width, including inside the narrow side-peek, so a rich document is never crammed into the value half-column.
+- **`"document"`** — a Notion-style full page: the object's first `richText` field becomes a WIDE hero editor as the main column, and everything else (the other fields, related lists, timeline/notes/files) moves into a compact sidebar. A `"document"` object opens in FULL PAGE by default (set `"openIn": "peek"` to override). With no `richText` field it falls back to standard.
+
+Both layouts render the same editor + the AI-suggestions review surface (`suggestTaskId`), and both degrade gracefully in a narrow container: the editor+rail grid stacks the rail under the editor rather than crushing the document column.
+
+```jsonc
+{ "key": "docs", "label": "Docs", "labelOne": "Doc",
+  "recordLayout": "document", "pipelineField": "status",
+  "fields": [
+    { "key": "title", "type": "text", "primary": true },
+    { "key": "status", "type": "select", "options": ["Draft", "In review", "Approved", "Published"] },
+    { "key": "body", "type": "richText", "suggestTaskId": "doc-suggest" }
+  ] }
+```
+
 ## The panel: peek, search, actions
 
 The side panel is a page STACK, not just a record preview — record pages, a search page, and an actions page all push onto one navigation history with shared crumbs, back, and the layered Escape (clear text → step back → close; Backspace on an empty search also steps back). `/` (outside inputs, dialogs, and focused table cells) opens the search page: always-focused input, live results across every object (type labels when they span objects), ↑↓ + Enter pushes the hit onto the same panel so the list behind never navigates. The ⚡ button on a record peek — or Cmd/Ctrl+K while the panel is open — stacks the actions page: the same context actions the ⌘K palette shows (favorite, promote, new, trash…), plus "Search records". Search/actions pages are ephemeral: only a record root rides the URL, so reload lands on the record or closed.

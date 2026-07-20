@@ -32,6 +32,7 @@
       "labelOne": "Company",
       "icon": "building-2",
       "defaultView": "table",
+      "recordLayout": "standard",
       "fields": [
         {
           "key": "name",
@@ -79,6 +80,12 @@
             "kind": "task",
             "label": "Company research"
           }
+        },
+        {
+          "key": "brief",
+          "label": "Brief",
+          "type": "richText",
+          "suggestTaskId": "company-brief"
         }
       ],
       "sampleRows": [
@@ -88,7 +95,12 @@
           "domain": "brightline.example",
           "industry": "Software",
           "employees": 140,
-          "city": "Ghent"
+          "city": "Ghent",
+          "brief": [
+            { "id": "cb1a", "type": "h3", "text": "Account brief" },
+            { "id": "cb1b", "type": "p", "text": "Brightline builds a real-time analytics platform for mid-market software teams. They came in through the platform-rollout deal and expanded fast after the first pilot landed." },
+            { "id": "cb1c", "type": "p", "text": "Maya Verstraete (CTO) is the champion. The main open question is how deeply the rollout touches their existing data warehouse before the Q3 review." }
+          ]
         },
         {
           "id": "co_2",
@@ -96,7 +108,12 @@
           "domain": "nordwind.example",
           "industry": "Retail",
           "employees": 900,
-          "city": "Antwerp"
+          "city": "Antwerp",
+          "brief": [
+            { "id": "cb2a", "type": "h3", "text": "Account brief" },
+            { "id": "cb2b", "type": "p", "text": "Nordwind runs a 900-person retail operation across the Benelux. The store-copilot deal is early but the ops team is engaged and moving." },
+            { "id": "cb2c", "type": "p", "text": "Jonas Peeters (Ops Director) owns the evaluation. Next step is a scoped pilot in two flagship stores before a wider rollout." }
+          ]
         },
         {
           "id": "co_3",
@@ -402,6 +419,76 @@
         "stage",
         "amount",
         "closeDate"
+      ]
+    },
+    {
+      "key": "docs",
+      "label": "Docs",
+      "labelOne": "Doc",
+      "icon": "file-text",
+      "defaultView": "table",
+      "recordLayout": "document",
+      "pipelineField": "status",
+      "fields": [
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "text",
+          "primary": true,
+          "width": 260
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "Draft",
+            "In review",
+            "Approved",
+            "Published"
+          ],
+          "width": 130
+        },
+        {
+          "key": "body",
+          "label": "Body",
+          "type": "richText",
+          "suggestTaskId": "doc-suggest"
+        }
+      ],
+      "sampleRows": [
+        {
+          "id": "doc_1",
+          "title": "Q3 launch plan",
+          "status": "In review",
+          "body": [
+            { "id": "db1a", "type": "h1", "text": "Q3 launch plan" },
+            { "id": "db1b", "type": "p", "text": "The quarterly rollout happens in three phases, each gated on the previous one landing cleanly. The goal is a controlled ramp rather than a single big-bang release." },
+            { "id": "db1c", "type": "h2", "text": "Phase one — private beta" },
+            { "id": "db1d", "type": "p", "text": "A small private cohort gets access first. We watch activation and time-to-value closely and fix the sharp edges before widening the door." },
+            { "id": "db1e", "type": "h2", "text": "Phase two — waitlist" },
+            { "id": "db1f", "type": "p", "text": "Once the beta stabilises, the waitlist converts in batches. Support load and infrastructure headroom decide the batch size." },
+            { "id": "db1g", "type": "quote", "text": "Ship the ramp, not the big bang." }
+          ]
+        },
+        {
+          "id": "doc_2",
+          "title": "Onboarding playbook",
+          "status": "Draft",
+          "body": [
+            { "id": "db2a", "type": "h1", "text": "Onboarding playbook" },
+            { "id": "db2b", "type": "p", "text": "A new customer should reach their first real outcome inside the first session. Everything in this playbook works backward from that moment." },
+            { "id": "db2c", "type": "h2", "text": "The first session" },
+            { "id": "db2d", "type": "ul", "text": "Connect the primary data source" },
+            { "id": "db2e", "type": "ul", "text": "Import a starter dataset so the app is never empty" },
+            { "id": "db2f", "type": "ul", "text": "Land one visible win before the call ends" },
+            { "id": "db2g", "type": "p", "text": "The empty state is the enemy. Seed it, and the product sells itself." }
+          ]
+        }
+      ],
+      "contextFields": [
+        "title",
+        "status"
       ]
     },
     {

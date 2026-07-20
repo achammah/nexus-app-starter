@@ -1,0 +1,69 @@
+{
+  "_note": "record-layout lane — the two config-selectable record layouts. `companies` uses recordLayout:\"standard\" (fields panel + timeline; a richText `brief` field spans the full column and stays readable at any width, incl. the side-peek). `docs` uses recordLayout:\"document\" (the `body` richText becomes a wide hero editor + a compact sidebar, opening in full page by default). Both `brief`/`body` carry suggestTaskId; with NO NEXUS_API_KEY the /suggest route serves the labeled MOCK, so the review surface exercises offline. Proves the peek collapse is fixed: the editor block keeps a floor width (never one-letter-per-line).",
+  "app": { "name": "Record Layout Fixture", "slug": "record-layout-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "companies",
+      "label": "Companies",
+      "labelOne": "Company",
+      "icon": "building-2",
+      "defaultView": "table",
+      "recordLayout": "standard",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        { "key": "city", "label": "City", "type": "text", "width": 140 },
+        { "key": "brief", "label": "Brief", "type": "richText", "suggestTaskId": "company-brief" }
+      ],
+      "sampleRows": [
+        {
+          "id": "co_1",
+          "name": "Brightline Analytics",
+          "city": "Ghent",
+          "brief": [
+            { "id": "cb1a", "type": "h3", "text": "Account brief" },
+            { "id": "cb1b", "type": "p", "text": "Brightline builds a real-time analytics platform for mid-market software teams. They came in through the platform-rollout deal and expanded fast after the first pilot landed." },
+            { "id": "cb1c", "type": "p", "text": "Maya Verstraete (CTO) is the champion. The main open question is how deeply the rollout touches their existing data warehouse before the Q3 review." }
+          ]
+        },
+        {
+          "id": "co_2",
+          "name": "Nordwind Retail",
+          "city": "Antwerp",
+          "brief": [
+            { "id": "cb2a", "type": "h3", "text": "Account brief" },
+            { "id": "cb2b", "type": "p", "text": "Nordwind runs a 900-person retail operation across the Benelux. The store-copilot deal is early but the ops team is engaged and moving." }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "docs",
+      "label": "Docs",
+      "labelOne": "Doc",
+      "icon": "file-text",
+      "defaultView": "table",
+      "recordLayout": "document",
+      "pipelineField": "status",
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 260 },
+        { "key": "status", "label": "Status", "type": "select", "options": ["Draft", "In review", "Approved", "Published"], "width": 130 },
+        { "key": "body", "label": "Body", "type": "richText", "suggestTaskId": "doc-suggest" }
+      ],
+      "sampleRows": [
+        {
+          "id": "doc_1",
+          "title": "Q3 launch plan",
+          "status": "In review",
+          "body": [
+            { "id": "db1a", "type": "h1", "text": "Q3 launch plan" },
+            { "id": "db1b", "type": "p", "text": "The quarterly rollout happens in three phases, each gated on the previous one landing cleanly. The goal is a controlled ramp rather than a single big-bang release." },
+            { "id": "db1c", "type": "h2", "text": "Phase one - private beta" },
+            { "id": "db1d", "type": "p", "text": "A small private cohort gets access first. We watch activation and time-to-value closely and fix the sharp edges before widening the door." }
+          ]
+        }
+      ]
+    }
+  ]
+}

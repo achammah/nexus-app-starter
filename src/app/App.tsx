@@ -622,7 +622,11 @@ export function App() {
                 role={roleFor(active)}
                 users={config.users ?? []}
                 onOpen={(id, set) =>
-                  active.openIn === "page" ? route.go(`#/o/${active.key}/r/${id}`) : openPeek(active.key, id, set ?? [])
+                  // a "document"-layout object opens in FULL PAGE by default (openIn overrides);
+                  // everything else defaults to the side-peek
+                  (active.openIn ?? (active.recordLayout === "document" ? "page" : "peek")) === "page"
+                    ? route.go(`#/o/${active.key}/r/${id}`)
+                    : openPeek(active.key, id, set ?? [])
                 }
                 onCountChange={onCount}
                 viewIcons={{ table: <Table2 size={13} />, kanban: <Kanban size={13} /> }}
