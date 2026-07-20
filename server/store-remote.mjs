@@ -16,7 +16,7 @@ import { Store } from "./store.mjs";
 
 const LOGGED_OPS = [
   "create", "patch", "remove",
-  "addNote", "addActivity", "fileAdd", "enrich",
+  "addNote", "addActivity", "fileAdd", "enrich", "suggest",
   "stateAppend",
   "userAdd", "userVerify", "userSetHash", "userSoftDelete",
   "tokenIssue", "tokenTake", "tokenBind",
