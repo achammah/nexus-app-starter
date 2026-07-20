@@ -1,7 +1,7 @@
 {
   "_source": "SNAPSHOT of nexus-ui docs/catalog.json — refresh by re-copying whenever sync-ui bumps src/ui/.ui-version (the Gallery inventory footer turns into a warning when the stamps diverge)",
   "vendoredAt": "2026-07-19T15:24:27.759Z",
-  "uiVersion": "nexus-ui @ cb7878d (2026-07-20T20:54:42.428Z)",
+  "uiVersion": "nexus-ui @ 64d04f4 (2026-07-20T21:02:12.450Z)",
   "style": "new-york-v4",
   "count": 68,
   "items": [
