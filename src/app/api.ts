@@ -2,6 +2,7 @@
    path across surfaces. Every fetch: timeout + non-2xx throw. */
 
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
+import type { Suggestion } from "../ui/record-core/useSuggestions";
 
 import type { Skin } from "../ui/skins/skin";
 
@@ -115,6 +116,12 @@ export const api = {
   fileHref: (obj: string, id: string, fileId: string) => `/api/objects/${obj}/${id}/files/${fileId}`,
   enrich: (obj: string, id: string, field: string) =>
     j<RecordRow>(`/api/objects/${obj}/${id}/enrich`, { method: "POST", body: JSON.stringify({ field }) }),
+  /* AI inline-suggestions: request generates tracked changes for a richText field;
+     persist stores the resolved accept/reject set. Both return the projected row. */
+  requestSuggestions: (obj: string, id: string, field: string) =>
+    j<RecordRow>(`/api/objects/${obj}/${id}/suggest/${field}`, { method: "POST", body: "{}" }),
+  persistSuggestions: (obj: string, id: string, field: string, changes: Suggestion[]) =>
+    j<RecordRow>(`/api/objects/${obj}/${id}/suggest/${field}`, { method: "PATCH", body: JSON.stringify({ changes }) }),
   /* pull external warehouse writes (an async generation's finished record) into the live store */
   syncStore: () => j<{ applied: number }>("/api/sync", { method: "POST", body: "{}" }),
   /* one turn of native agent chat via the server copilot proxy (emulatorChat) — long poll */

@@ -40,6 +40,7 @@ export function RecordView({
   const [watchState, setWatchState] = React.useState<{ on: boolean; count: number }>({ on: false, count: 0 });
   const [mentionOptions, setMentionOptions] = React.useState<string[]>([]);
   const [enrichingKey, setEnrichingKey] = React.useState<string | null>(null);
+  const [suggestingKey, setSuggestingKey] = React.useState<string | null>(null);
   const [tasks, setTasks] = React.useState<TaskItem[]>([]);
   const tasksOn = appConfig.features?.tasks !== false;
   const [fav, setFav] = React.useState(() => favHas(config.key, id));
@@ -278,6 +279,25 @@ export function RecordView({
           })
           .catch((e) => toast(`Enrich failed: ${e.message}`))
           .finally(() => setEnrichingKey(null));
+      }}
+      suggest={{
+        requestingField: suggestingKey,
+        onRequest: (fieldKey) => {
+          setSuggestingKey(fieldKey);
+          toast("Requesting suggestions…");
+          api
+            .requestSuggestions(config.key, id, fieldKey)
+            .then(() => {
+              toast("Suggestions ready");
+              load(); // the record reloads with the generated tracked changes
+            })
+            .catch((e) => toast(`Suggestions failed: ${e.message}`))
+            .finally(() => setSuggestingKey(null));
+        },
+        // resolved accept/reject flips persist in the background (optimistic locally)
+        onPersist: (fieldKey, changes) => {
+          api.persistSuggestions(config.key, id, fieldKey, changes).catch(() => {});
+        },
       }}
     />
     {tasksOn && (
