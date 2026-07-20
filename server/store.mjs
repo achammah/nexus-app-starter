@@ -1024,6 +1024,22 @@ export class Store {
     return row;
   }
 
+  /* inline-suggestions (tracked changes) for a richText field: the whole change-set
+     is stored on a derived sibling key `<field>__suggestions` (config-driven, from the
+     field key). Full replacement — the AI task seeds the set, resolving statuses
+     replaces it. Deterministic: change ids come from the task output, never minted here. */
+  suggest(objKey, id, field, changes) {
+    const row = this.get(objKey, id);
+    if (!row) return null;
+    const list = Array.isArray(changes) ? changes : [];
+    row[`${field}__suggestions`] = list;
+    const cfg = this.config.objects.find((o) => o.key === objKey);
+    const f = cfg?.fields.find((x) => x.key === field);
+    const n = list.length;
+    this._ev(objKey, id, "updated", `${n} suggestion${n === 1 ? "" : "s"} on ${f?.label ?? field}`);
+    return row;
+  }
+
   _ev(objKey, id, kind, summary, activity) {
     const ev = { id: `ev_${++this.n}`, ts: this._now().toISOString(), kind, summary, actor: "you", ...(activity ? { activity } : {}) };
     ((this.events[objKey] ??= {})[id] ??= []).push(ev);

@@ -1,0 +1,33 @@
+{
+  "_note": "suggestions lane — a richText field (`body`) carrying `suggestTaskId` mounts the AI inline-suggestions review surface (editor + tracked changes + rail panel). No NEXUS_API_KEY in the journey → the /suggest route serves a labeled MOCK derived from the document. `pipelineField` drives the generic state Pipeline.",
+  "app": { "name": "Suggestions Fixture", "slug": "suggestions-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "docs",
+      "label": "Docs",
+      "labelOne": "Doc",
+      "icon": "file-text",
+      "defaultView": "table",
+      "pipelineField": "status",
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true },
+        { "key": "status", "label": "Status", "type": "select", "options": ["Draft", "In review", "Approved", "Published"] },
+        { "key": "body", "label": "Body", "type": "richText", "suggestTaskId": "task_suggest_mock" }
+      ],
+      "sampleRows": [
+        {
+          "id": "d_1",
+          "title": "Launch plan",
+          "status": "In review",
+          "body": [
+            { "id": "ed1", "type": "p", "text": "Our quarterly rollout happens in three distinct phases." },
+            { "id": "ed2", "type": "p", "text": "Beta access opens to a small private cohort first." },
+            { "id": "ed3", "type": "p", "text": "The waitlist converts to paid after the beta stabilises." }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -68,6 +68,46 @@ async function readBody(req) {
   try { return raw ? JSON.parse(raw) : {}; } catch { return {}; }
 }
 
+/* Inline-suggestions (tracked changes) for a richText field. A change is
+   {id, original, replacement, status, kind?, reason?}; `original` must be verbatim
+   substring of the document so the editor can anchor the widget. */
+function normalizeSuggestions(parsed) {
+  const raw = Array.isArray(parsed) ? parsed : (parsed?.changes ?? parsed?.suggestions ?? parsed?.value ?? []);
+  const arr = Array.isArray(raw) ? raw : [];
+  return arr
+    .map((c, i) => ({
+      id: String(c?.id ?? `sg_${i + 1}`),
+      kind: c?.kind ? String(c.kind) : undefined,
+      original: String(c?.original ?? ""),
+      replacement: String(c?.replacement ?? ""),
+      reason: c?.reason ? String(c.reason) : undefined,
+      status: c?.status === "accepted" || c?.status === "rejected" ? c.status : "pending",
+    }))
+    .filter((c) => c.original);
+}
+/* MOCK suggestions — the fallback when a richText field has no suggestTaskId (or no
+   platform key): derive a couple of tracked changes from the document's own opening
+   sentences so the review flow works end-to-end offline (mirrors the /enrich mock). */
+function firstPhrase(text, max = 48) {
+  const t = String(text || "").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const sp = cut.lastIndexOf(" ");
+  return sp > 12 ? cut.slice(0, sp) : cut;
+}
+function mockSuggestions(value) {
+  const blocks = Array.isArray(value) ? value : [];
+  const textBlocks = blocks.filter((b) => b && typeof b.text === "string" && b.text.trim());
+  const reason = "(mock) tighten this passage. Replace the /suggest mock in server/server.mjs with a real AI task.";
+  return textBlocks
+    .slice(0, 2)
+    .map((b, i) => {
+      const original = firstPhrase(b.text);
+      return { id: `sg_mock_${i + 1}`, kind: i === 0 ? "clarity" : "concision", original, replacement: `${original} (suggested)`, status: "pending", reason };
+    })
+    .filter((c) => c.original);
+}
+
 /* CSV import rows arrive as strings — coerce each value to its field's
    declared type so the type validators judge real values, and DROP keys that
    match no field (an unmapped column must never become a phantom property).
@@ -583,6 +623,40 @@ async function api(req, res, url, apiKey = null) {
         const via = `${f.primitive.label ?? f.primitive.kind} (mock)`;
         const mockValue = `(mock) ${f.label} for ${row[namePrimary.key] ?? id} — replace the /enrich mock in server/server.mjs with a real ${f.primitive.kind} call.`;
         return send(res, 200, store.project(objKey, store.enrich(objKey, id, field, mockValue, via)));
+      }
+      /* AI inline-suggestions seam. POST generates tracked changes for a richText
+         field (real AI task via runAiTask when the field's `suggestTaskId` + a platform
+         key are set; a labeled MOCK derived from the document otherwise). PATCH persists
+         the resolved change set (accept/reject flips). Both write via the `suggest`
+         store op (sibling key `<field>__suggestions`); both gate on `edit`. */
+      if (parts[4] === "suggest" && parts[5]) {
+        const field = parts[5];
+        const f = cfg.fields.find((x) => x.key === field);
+        if (!f) return send(res, 400, { error: `unknown field ${field}` });
+        if (req.method === "POST") {
+          if (deny("edit", { own })) return;
+          if (f.type !== "richText") return send(res, 400, { error: `field ${field} is not a richText field` });
+          const row = store.get(objKey, id);
+          if (!row) return send(res, 404, { error: "not found" });
+          if (f.suggestTaskId && env.NEXUS_API_KEY) {
+            await runAiTask(store, emitEvent, {
+              taskId: f.suggestTaskId, objectKey: objKey, recordId: id,
+              buildInput: (rec) => ({ field, label: f.label, blocks: rec[field] ?? [] }),
+              applyOutput: (s, { parsed }) => { s.suggest(objKey, id, field, normalizeSuggestions(parsed)); },
+            });
+            const updated = store.get(objKey, id);
+            return updated ? send(res, 200, store.project(objKey, updated)) : send(res, 404, { error: "not found" });
+          }
+          return send(res, 200, store.project(objKey, store.suggest(objKey, id, field, mockSuggestions(row[field]))));
+        }
+        if (req.method === "PATCH") {
+          if (deny("edit", { own })) return;
+          const { changes } = await readBody(req);
+          if (!Array.isArray(changes)) return send(res, 400, { error: "changes[] required" });
+          const updated = store.suggest(objKey, id, field, normalizeSuggestions(changes));
+          if (!updated) return send(res, 404, { error: "not found" });
+          return send(res, 200, store.project(objKey, updated));
+        }
       }
       if (parts[4] === "restore" && req.method === "POST") {
         if (deny("restore", { own })) return;

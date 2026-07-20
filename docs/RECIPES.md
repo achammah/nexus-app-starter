@@ -33,6 +33,13 @@ Relation fields persist target row IDS — single: `"co_1"` · many (`multiple: 
 2. The record page shows a sparkle Run button → `POST /api/objects/:o/:id/enrich`; while it runs the button becomes a ThinkingDots indicator.
 3. Ship real: set `NEXUS_API_KEY` (+ `NEXUS_BASE_URL`). With a `taskId` on the field the route runs the AI task via `runAiTask` (`server/aiTaskRunner.mjs`) and writes the result — the UI and config don't change. Without a `taskId` (or without the key) it returns the labeled mock value, byte-unchanged.
 
+## Add AI inline suggestions (tracked changes) to a richText field
+1. On a `richText` field: `"suggestTaskId": "<AI task id>"`. Optional on the object: `"pipelineField": "<select field key>"` renders a generic state Pipeline over that field's options above the editor.
+2. The record page mounts the review surface for that field — the editor with a "Request suggestions" button. Clicking it calls `POST /api/objects/:o/:id/suggest/:field`, which stores tracked changes on the derived sibling key `<field>__suggestions`. Each change is an inline widget in the text (del original → ins replacement) plus a card in the right-rail panel.
+3. Accept folds a change's `original → replacement` into the document (through the editor's debounced save); reject/undo revert it. Resolved statuses persist via `PATCH /api/objects/:o/:id/suggest/:field` (`{changes}`) — the content and the review state persist on their own channels.
+4. Ship real: set `NEXUS_API_KEY`. With a `suggestTaskId` on the field the route runs the AI task via `runAiTask` and normalizes its output (`{changes:[{original,replacement,reason?,kind?}]}` or a bare array) into tracked changes. Without a `suggestTaskId` (or without the key) it serves a labeled mock derived from the document — the UI and config don't change.
+5. Library pieces (nexus-ui): `useSuggestions(blocks, onBlocksChange, changes, onChangesChange)` (the accept/reject/undo engine), `SuggestionPanel` (the rail), `Pipeline`/`Chip` (the state indicator) — all entity-agnostic.
+
 ## Async Nexus building blocks (server)
 - **`runAiTask(store, emitEvent, {taskId, objectKey, recordId, buildInput, applyOutput, onFail?})`** (`server/aiTaskRunner.mjs`) — run one AI task against a record in the background, write the result, revert on failure. Powers `/enrich`.
 - **`fireAsyncGeneration(store, {objectKey, placeholder, webhookUrl, payload, emitEvent?})`** (`server/asyncGeneration.mjs`) — create a placeholder record now, make it durable, fire an off-machine generation webhook; the finished record lands back via the warehouse.
