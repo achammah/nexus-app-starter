@@ -622,9 +622,9 @@ export function App() {
                 role={roleFor(active)}
                 users={config.users ?? []}
                 onOpen={(id, set) =>
-                  // a "document"-layout object opens in FULL PAGE by default (openIn overrides);
-                  // everything else defaults to the side-peek
-                  (active.openIn ?? (active.recordLayout === "document" ? "page" : "peek")) === "page"
+                  // every record opens in the right-side panel by default (a document gets a
+                  // WIDE panel — see peekPanel--doc); `openIn: "page"` forces a full page instead
+                  (active.openIn ?? "peek") === "page"
                     ? route.go(`#/o/${active.key}/r/${id}`)
                     : openPeek(active.key, id, set ?? [])
                 }
@@ -648,8 +648,9 @@ export function App() {
             const next = peek.set[(rootIdx + d + peek.set.length) % peek.set.length];
             openPeek(root.obj, next, peek.set);
           };
+          const isDocPeek = top.kind === "record" && cfg?.recordLayout === "document";
           return (
-            <div className="peekPanel" data-testid="peek-panel">
+            <div className={`peekPanel${isDocPeek ? " peekPanel--doc" : ""}`} data-testid="peek-panel" data-doc-peek={String(!!isDocPeek)}>
               <div className="peekHead">
                 {peek.stack.length > 1 && (
                   <Button variant="ghost" size="sm" icon={<ArrowLeft size={13} />} aria-label="Back one page" data-testid="peek-back" onClick={popPeek} />
