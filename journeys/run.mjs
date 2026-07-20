@@ -3827,6 +3827,69 @@ const journeys = [
       assert(board?.includes("Harbor expansion"), "the mini kanban renders the same local rows");
     },
   },
+  {
+    name: "settings-tabs-switch", feature: "Settings tab shell",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/settings");
+      await page.waitForSelector('[data-testid="settings-tab-writing"]');
+      assert(await page.locator('[data-testid="settings_rules-add"]').count() >= 1, "Writing rules tab renders its content by default");
+      await page.click('[data-testid="settings-tab-about"]');
+      await page.waitForSelector('[data-testid="settings-tab-about"].is-on');
+      assert((await page.locator('[data-testid="settings_rules-add"]').count()) === 0, "switching tabs swaps the body — the rule list unmounts");
+      await page.click('[data-testid="settings-tab-writing"]');
+      await page.waitForSelector('[data-testid="settings_rules-add"]');
+      assert(true, "switching back re-renders the Writing rules tab");
+    },
+  },
+  {
+    name: "settings-rules-crud", feature: "Settings rules (EditableRuleList CRUD)",
+    async run(page) {
+      await page.setViewportSize({ width: 390, height: 844 });
+      await page.goto(URLBASE + "/#/p/settings");
+      await page.waitForSelector('[data-testid="settings_rules-add"]');
+      const before = await page.locator('.nxRuleRow').count();
+
+      await page.click('[data-testid="settings_rules-add"]');
+      await page.waitForSelector('[data-testid="settings_rules-input"]');
+      const stamp = "Journey rule " + Date.now().toString().slice(-6);
+      await page.fill('[data-testid="settings_rules-input"]', stamp);
+      const fontSize = await page.locator('[data-testid="settings_rules-input"]').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+      assert(fontSize >= 16, `input font-size ≥16px at 390px, no iOS zoom (got ${fontSize}px)`);
+      const editRowBox = await page.locator('[data-testid="settings_rules-save"]').evaluate((el) => el.closest(".nxRuleEditRow")?.getBoundingClientRect());
+      assert(!!editRowBox && editRowBox.width <= 390, "the 2×2 edit-row grid fits the 390px viewport");
+      await page.click('[data-testid="settings_rules-save"]');
+      await page.waitForFunction((s) => document.body.textContent?.includes(s), stamp);
+      assert(true, "the new rule appears in the list");
+
+      const rowId = await page.locator(`.nxRuleRow:has-text("${stamp}")`).getAttribute("data-testid");
+      const id = rowId.replace("settings_rules-row-", "");
+      await page.click(`[data-testid="settings_rules-edit-${id}"]`);
+      await page.waitForSelector('[data-testid="settings_rules-input"]');
+      const edited = stamp + " (edited)";
+      await page.fill('[data-testid="settings_rules-input"]', edited);
+      await page.click('[data-testid="settings_rules-save"]');
+      await page.waitForFunction((s) => document.body.textContent?.includes(s), edited);
+      assert(true, "the edit persists");
+
+      await page.click(`[data-testid="settings_rules-edit-${id}"]`);
+      await page.waitForSelector('[data-testid="settings_rules-input"]');
+      await page.click(".nxRuleActive input[type=checkbox]");
+      await page.click('[data-testid="settings_rules-save"]');
+      await page.waitForFunction(
+        (rid) => document.querySelector(`[data-testid="settings_rules-row-${rid}"]`)?.classList.contains("is-off"),
+        id,
+      );
+      assert(true, "toggling Active off (via edit) dims the row");
+
+      await page.click(`[data-testid="settings_rules-del-${id}"]`);
+      await page.waitForFunction((s) => !document.body.textContent?.includes(s), edited);
+      const after = await page.locator(".nxRuleRow").count();
+      assert(after === before, "delete removes the row (count back to baseline)");
+      if (after === 0) {
+        assert(!!(await page.locator(".nxRuleEmpty").count()), "empty state shows with zero rules");
+      }
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----
