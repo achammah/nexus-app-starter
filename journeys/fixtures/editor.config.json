@@ -1,0 +1,35 @@
+{
+  "_note": "editor lane — a richText field type. `body` on docs is a Block[] value; the editor edits it on the record page, the table shows a truncated plain-text preview.",
+  "app": { "name": "Editor Fixture", "slug": "editor-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "docs",
+      "label": "Docs",
+      "labelOne": "Doc",
+      "icon": "file-text",
+      "defaultView": "table",
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true },
+        { "key": "body", "label": "Body", "type": "richText" }
+      ],
+      "sampleRows": [
+        {
+          "id": "d_1",
+          "title": "Launch plan",
+          "body": [
+            { "id": "ed1", "type": "p", "text": "The rollout happens in three phases." },
+            { "id": "ed2", "type": "p", "text": "Phase one is the private beta." },
+            { "id": "ed3", "type": "p", "text": "Phase two opens the waitlist." }
+          ]
+        },
+        {
+          "id": "d_2",
+          "title": "Blank draft",
+          "body": []
+        }
+      ]
+    }
+  ]
+}

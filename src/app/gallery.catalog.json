@@ -1,6 +1,6 @@
 {
-  "uiVersion": "nexus-ui @ e8db26d (2026-07-20T21:04:54.530Z)",
-  "count": 70,
+  "uiVersion": "nexus-ui @ 4bc4285 (2026-07-20T21:12:40.966Z)",
+  "count": 71,
   "vendoredAt": "2026-07-19T15:24:27.759Z",
   "items": [
     {
@@ -414,6 +414,13 @@
       "kind": "record-core",
       "import": "src/record-core/RecordPage.tsx",
       "when": "record anatomy: header + fields panel (inline edit, enrich affordance) + Timeline (activity composer, per-kind icons) / Notes / Files tabs",
+      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+    },
+    {
+      "name": "NotionEditor",
+      "kind": "record-core",
+      "import": "src/record-core/NotionEditor.tsx",
+      "when": "Notion-grade block editor for the richText field type: hand-rolled contenteditable blocks (p/h/quote/list/divider/image/table), slash menu, drag-reorder, inline markdown, image-drop; controlled (blocks/onChange) + inline-change props for a suggestions layer",
       "source": "ours (rebuilt \u2014 PROVENANCE.md)"
     },
     {
