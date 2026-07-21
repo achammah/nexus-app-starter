@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "serve": "node server/server.mjs",
     "journeys": "node journeys/run.mjs",
+    "test": "node --test journeys/unit/*.test.ts",
     "sync-ui": "node scripts/sync-ui.mjs",
     "precheck": "node scripts/precheck.mjs",
     "model": "node scripts/gen-model.mjs",

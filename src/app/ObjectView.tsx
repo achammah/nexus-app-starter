@@ -1,6 +1,5 @@
 import * as React from "react";
-import { ArchiveRestore, BarChart3, Bookmark, Columns3, CopyCheck, Download, GitMerge, Pencil, Plus, Search, Sigma, Sparkles, Trash2, Upload, X } from "lucide-react";
-import type { SortingState } from "@tanstack/react-table";
+import { ArchiveRestore, Bookmark, CopyCheck, Download, GitMerge, Pencil, Plus, Search, Sparkles, Trash2, Upload, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -23,11 +22,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/components/ui/alert-dialog";
-import { csvCell, DataTable, formatCell } from "../ui/record-core/DataTable";
+import { csvCell, formatCell } from "../ui/record-core/DataTable";
 import { AddressField, FullNameField, ListField, listValidators, MoneyField } from "../ui/record-core/RecordPage";
 import type { RelationItem } from "../ui/record-core/types";
-import { KanbanBoard } from "../ui/record-core/KanbanBoard";
-import { ChartView } from "../ui/record-core/ChartView";
+import { getViewDefinition } from "../ui/record-core/views/registry";
+import { groupableFields } from "../ui/record-core/views/group";
+import { configuredViewsFor } from "../ui/record-core/views/resolve";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
 import { usePollRev } from "../ui/hooks/usePollRev";
 import { useAsyncOp } from "../ui/hooks/useAsyncOp";
@@ -35,7 +35,7 @@ import { ThinkingDots } from "../ui/primitives/ThinkingDots";
 import { FilterBar, FilterChips, matchFilters, filterableFields } from "../ui/record-core/Filters";
 import type { FilterCond } from "../ui/record-core/Filters";
 import { can, type Role } from "./permissions";
-import { optionValues, normalizeOption, isMeasurable } from "../ui/record-core/types";
+import { optionValues, normalizeOption } from "../ui/record-core/types";
 import { activeFields } from "../ui/record-core/options";
 import { textToBlocks } from "../ui/record-core/NotionEditor";
 import { Wizard, ModalOverlay, type Ans } from "../ui/blocks/wizard";
@@ -77,7 +77,6 @@ export function ObjectView({
   role,
   onOpen,
   onCountChange,
-  viewIcons,
 }: {
   /* the whole app config — relation targets' primaries resolve create-dialog labels */
   appConfig?: { objects: ObjectConfig[] };
@@ -86,7 +85,6 @@ export function ObjectView({
   role?: Role;
   onOpen: (id: string, set?: string[]) => void;
   onCountChange: (key: string, n: number) => void;
-  viewIcons: { table: React.ReactNode; kanban: React.ReactNode };
 }) {
   const toast = useToast();
   // permission-driven affordances (the server is the real gate)
@@ -100,15 +98,9 @@ export function ObjectView({
   // mount; a palette/relation jump can hand off a pending query via sessionStorage.
   const saved = React.useMemo(() => {
     try {
-      return JSON.parse(localStorage.getItem("nx-view-" + config.key) ?? "{}") as {
-        q?: string;
-        view?: "table" | "kanban" | "chart";
-        hidden?: string[];
-        sort?: SortingState;
-        filters?: FilterCond[];
-      };
+      return JSON.parse(localStorage.getItem("nx-view-" + config.key) ?? "{}") as Record<string, unknown>;
     } catch {
-      return {};
+      return {} as Record<string, unknown>;
     }
   }, [config.key]);
   const pendingQ = React.useMemo(() => {
@@ -117,33 +109,47 @@ export function ObjectView({
     return v;
   }, []);
   const [rows, setRows] = React.useState<RecordRow[] | null>(null);
-  const [q, setQ] = React.useState(pendingQ ?? saved.q ?? "");
-  const [view, setView] = React.useState<"table" | "kanban" | "chart">(saved.view ?? config.defaultView);
-  const [hidden, setHidden] = React.useState<string[]>(saved.hidden ?? []);
-  const [sort, setSort] = React.useState<SortingState>(saved.sort ?? []);
+  const [q, setQ] = React.useState(pendingQ ?? (saved.q as string | undefined) ?? "");
   const [selFilters, setSelFilters] = React.useState<Record<string, string[]>>(
-    (saved as { selFilters?: Record<string, string[]> }).selFilters ?? {},
+    (saved.selFilters as Record<string, string[]> | undefined) ?? {},
   );
   // advanced filters: any column, type-aware operator, removable chips
-  const [filters, setFilters] = React.useState<FilterCond[]>((saved as { filters?: FilterCond[] }).filters ?? []);
+  const [filters, setFilters] = React.useState<FilterCond[]>((saved.filters as FilterCond[] | undefined) ?? []);
   const filterFields = React.useMemo(() => filterableFields(activeFields(config.fields)), [config.fields]);
   const [relOpts, setRelOpts] = React.useState<Record<string, RelationItem[]>>({});
-  // board can group by ANY select/user field (stageField is just the default)
-  const groupables = activeFields(config.fields).filter((f) => f.type === "select" || f.type === "user");
-  const [groupBy, setGroupBy] = React.useState<string>(
-    (saved as { groupBy?: string }).groupBy ?? config.stageField ?? groupables[0]?.key ?? "",
+  /* the object's view tabs: config `views` when declared, else the derived
+     pre-registry set (views/resolve.ts). Definitions come from the view registry. */
+  const groupables = groupableFields(config);
+  const configuredViews = React.useMemo(
+    () => configuredViewsFor(config, groupables),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [config],
   );
-  const groupFieldDef = config.fields.find((f) => f.key === groupBy);
-  // chart measure: "count" or a numeric field key to SUM per group (money measures by its amount)
-  const numericFields = activeFields(config.fields).filter((f) => isMeasurable(f));
-  const [measure, setMeasure] = React.useState<string>(
-    (saved as { measure?: string }).measure ?? "count",
+  const [view, setView] = React.useState<string>((saved.view as string | undefined) ?? config.defaultView);
+  // a persisted view the object no longer offers falls back to the first tab
+  const activeEntry = configuredViews.find((v) => v.type === view) ?? configuredViews[0];
+  const activeDef = getViewDefinition(activeEntry.type);
+  // this view instance's config: the `views` entry over the definition's defaults
+  const viewConfig = React.useMemo(() => {
+    const { type: _type, ...entry } = activeEntry;
+    return { ...(activeDef?.defaultConfig?.(config) ?? {}), ...entry };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEntry, activeDef, config]);
+  /* the per-view state bag — everything in the persisted blob beyond the filter
+     layer (table: hidden/sort · board: groupBy/aggregate · chart: groupBy/measure;
+     same-key views share, so the board and chart regroup together) */
+  const [viewState, setViewState] = React.useState<Record<string, unknown>>(() => {
+    const rest = { ...saved };
+    delete rest.q; delete rest.view; delete rest.selFilters; delete rest.filters;
+    return rest;
+  });
+  const onViewState = React.useCallback(
+    (patch: Record<string, unknown>) => setViewState((s) => ({ ...s, ...patch })),
+    [],
   );
-  const measureDef = numericFields.find((f) => f.key === measure);
-  // kanban per-column rollup: fn over a numeric field (persisted per object)
-  const [aggregate, setAggregate] = React.useState<{ fn: "sum" | "avg" | "min" | "max"; field: string } | null>(
-    (saved as { aggregate?: { fn: "sum" | "avg" | "min" | "max"; field: string } | null }).aggregate ?? null,
-  );
+  // a config error renders as the graceful chip; the toolbar hides with it
+  const viewError = activeDef?.validateConfig?.(config, viewConfig) ?? null;
+  const ViewToolbar = viewError ? undefined : activeDef?.Toolbar;
   // saved views (server-persisted, shareable)
   const [views, setViews] = React.useState<{ id: string; name: string; layout: string; state: Record<string, unknown> }[]>([]);
   const loadViews = React.useCallback(() => {
@@ -196,8 +202,8 @@ export function ObjectView({
   }, [canCreate]);
 
   React.useEffect(() => {
-    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, hidden, sort, selFilters, filters, groupBy, measure, aggregate }));
-  }, [config.key, q, view, hidden, sort, selFilters, filters, groupBy, measure, aggregate]);
+    localStorage.setItem("nx-view-" + config.key, JSON.stringify({ q, view, selFilters, filters, ...viewState }));
+  }, [config.key, q, view, selFilters, filters, viewState]);
 
   // relation items for the create dialog (fetched once the dialog opens) —
   // {id, label, type}: options save by ID, labels come from the target's
@@ -310,14 +316,12 @@ export function ObjectView({
 
   const applyView = (state: Record<string, unknown>) => {
     setQ(String(state.q ?? ""));
-    setView((state.view as "table" | "kanban" | "chart") ?? config.defaultView);
-    setHidden((state.hidden as string[]) ?? []);
-    setSort((state.sort as SortingState) ?? []);
-    setSelFilters((state.selFilters as Record<string, string[]>) ?? {});
-    setFilters((state.filters as FilterCond[]) ?? []);
-    setGroupBy(String(state.groupBy ?? config.stageField ?? groupables[0]?.key ?? ""));
-    setMeasure(String(state.measure ?? "count"));
-    setAggregate((state.aggregate as { fn: "sum" | "avg" | "min" | "max"; field: string } | null) ?? null);
+    setView((state.view as string | undefined) ?? config.defaultView);
+    setSelFilters((state.selFilters as Record<string, string[]> | undefined) ?? {});
+    setFilters((state.filters as FilterCond[] | undefined) ?? []);
+    const rest = { ...state };
+    delete rest.q; delete rest.view; delete rest.selFilters; delete rest.filters;
+    setViewState(rest);
   };
   const resetView = () => applyView({});
   const saveCurrentView = () => {
@@ -327,7 +331,7 @@ export function ObjectView({
         objectKey: config.key,
         name: viewName.trim(),
         layout: view,
-        state: { q, view, hidden, sort, selFilters, filters, groupBy, measure, aggregate },
+        state: { q, view, selFilters, filters, ...viewState },
       })
       .then(() => {
         toast(`View “${viewName.trim()}” saved`);
@@ -611,113 +615,26 @@ export function ObjectView({
           </Badge>
         )}
         <span className="nxSpacer" />
-        {view === "table" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="md" variant="ghost" icon={<Columns3 size={14} />} data-testid="columns-menu">
-                Columns
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {config.fields
-                .filter((f) => !f.primary)
-                .map((f) => (
-                  <DropdownMenuCheckboxItem
-                    key={f.key}
-                    checked={!hidden.includes(f.key)}
-                    data-testid={`col-toggle-${f.key}`}
-                    onCheckedChange={(on) =>
-                      setHidden((h) => (on ? h.filter((k) => k !== f.key) : [...h, f.key]))
-                    }
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    {f.label}
-                  </DropdownMenuCheckboxItem>
-                ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* the active view's own controls flank the switcher: side "lead" renders
+            left of it (the table's Columns menu), side "trail" right of it
+            (group-by / measure / rollup) — the definition owns the content */}
+        {ViewToolbar && (
+          <ViewToolbar object={config} users={users} viewConfig={viewConfig} viewState={viewState} onViewState={onViewState} side="lead" />
         )}
-        {groupables.length > 0 && (
+        {configuredViews.length > 1 && (
           <div className="viewSwitch" data-testid="view-switch">
-            <button data-active={view === "table"} onClick={() => setView("table")}>{viewIcons.table} Table</button>
-            <button data-active={view === "kanban"} onClick={() => setView("kanban")}>{viewIcons.kanban} Board</button>
-            <button data-active={view === "chart"} onClick={() => setView("chart")}><BarChart3 size={13} /> Chart</button>
+            {configuredViews.map((v) => {
+              const d = getViewDefinition(v.type);
+              return (
+                <button key={v.type} data-active={activeEntry.type === v.type} onClick={() => setView(v.type)}>
+                  {d?.icon} {d?.label ?? v.type}
+                </button>
+              );
+            })}
           </div>
         )}
-        {view === "chart" && numericFields.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" data-testid="measure-by">
-                {measureDef ? `Σ ${measureDef.label}` : "Count"}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuCheckboxItem
-                checked={!measureDef}
-                data-testid="measure-count"
-                onCheckedChange={() => setMeasure("count")}
-              >
-                Count
-              </DropdownMenuCheckboxItem>
-              {numericFields.map((f) => (
-                <DropdownMenuCheckboxItem
-                  key={f.key}
-                  checked={measure === f.key}
-                  data-testid={`measure-${f.key}`}
-                  onCheckedChange={() => setMeasure(f.key)}
-                >
-                  Σ {f.label}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        {(view === "kanban" || view === "chart") && groupables.length > 1 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" data-testid="group-by">
-                by {groupFieldDef?.label ?? groupBy}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {groupables.map((f) => (
-                <DropdownMenuCheckboxItem
-                  key={f.key}
-                  checked={groupBy === f.key}
-                  data-testid={`group-by-${f.key}`}
-                  onCheckedChange={() => setGroupBy(f.key)}
-                >
-                  {f.label}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-        {view === "kanban" && numericFields.length > 0 && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="ghost" icon={<Sigma size={13} />} data-testid="agg-by">
-                {aggregate ? `${aggregate.fn} · ${config.fields.find((f) => f.key === aggregate.field)?.label ?? aggregate.field}` : "Rollup"}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuCheckboxItem checked={!aggregate} data-testid="agg-none" onCheckedChange={() => setAggregate(null)}>
-                None
-              </DropdownMenuCheckboxItem>
-              {numericFields.flatMap((f) =>
-                (["sum", "avg", "min", "max"] as const).map((fn) => (
-                  <DropdownMenuCheckboxItem
-                    key={`${fn}-${f.key}`}
-                    checked={aggregate?.fn === fn && aggregate.field === f.key}
-                    data-testid={`agg-${fn}-${f.key}`}
-                    onCheckedChange={() => setAggregate({ fn, field: f.key })}
-                  >
-                    {fn === "sum" ? "Sum" : fn === "avg" ? "Average" : fn === "min" ? "Min" : "Max"} of {f.label}
-                  </DropdownMenuCheckboxItem>
-                )),
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {ViewToolbar && (
+          <ViewToolbar object={config} users={users} viewConfig={viewConfig} viewState={viewState} onViewState={onViewState} side="trail" />
         )}
         <Button size="md" variant="ghost" icon={<ArchiveRestore size={14} />} data-testid="trash-open" onClick={openTrash} aria-label="Open trash" />
         {canCreate && (
@@ -798,39 +715,43 @@ export function ObjectView({
         <div className="nxCard" style={{ padding: 40, textAlign: "center", color: "var(--nx-fg-faint)" }} data-testid="list-loading">
           Loading {config.label.toLowerCase()}…
         </div>
-      ) : view === "chart" && groupFieldDef ? (
-        <ChartView
-          config={config}
-          rows={visibleRows}
-          groupField={groupBy}
-          groupOptions={groupFieldDef.type === "user" ? users : undefined}
-          measure={measureDef ? measure : "count"}
-        />
-      ) : view === "kanban" && groupFieldDef ? (
-        <KanbanBoard
-          config={config}
-          rows={visibleRows}
-          onPatch={patch}
-          onOpen={(id) => onOpen(id, visibleRows?.map((r) => String(r.id)))}
-          groupField={groupBy}
-          groupOptions={groupFieldDef.type === "user" ? users : undefined}
-          readOnly={!canEdit}
-          aggregate={aggregate ?? undefined}
-        />
+      ) : !activeDef || viewError ? (
+        /* a `views` entry naming an uninstalled type, or one its definition
+           rejects, degrades to this chip — the rest of the list surface stands.
+           nx-pop-in: the established chip entrance (spring ease, reduced-motion
+           guarded by the motion.css blanket) */
+        <div
+          className="nxCard nx-pop-in"
+          data-testid="view-unknown"
+          style={{ padding: "10px 14px", display: "inline-flex", alignItems: "center", gap: 8, color: "var(--nx-fg-muted)", font: "var(--nx-text-meta)" }}
+        >
+          {viewError ?? t("views.notInstalled", { type: activeEntry.type })}
+        </div>
       ) : (
-        <DataTable
-          config={config}
-          rows={visibleRows}
-          onOpen={(id) => onOpen(id, visibleRows?.map((r) => String(r.id)))}
-          onPeek={(id) => onOpen(id, visibleRows?.map((r) => String(r.id)))}
-          onPatch={patch}
-          readOnly={!canEdit}
-          hiddenFields={hidden}
-          sort={sort}
-          onSortChange={setSort}
-          selection={selection}
-          onSelectionChange={setSelection}
-        />
+        /* new view types may ship React.lazy components; the built-in three are
+           static, so this fallback never paints for them */
+        <React.Suspense
+          fallback={
+            <div className="nxCard" style={{ padding: 40, textAlign: "center", color: "var(--nx-fg-faint)" }} data-testid="list-loading">
+              Loading {config.label.toLowerCase()}…
+            </div>
+          }
+        >
+          <activeDef.component
+            object={config}
+            rows={visibleRows}
+            users={users}
+            readOnly={!canEdit}
+            viewConfig={viewConfig}
+            viewState={viewState}
+            onViewState={onViewState}
+            onOpen={(id) => onOpen(id, visibleRows.map((r) => String(r.id)))}
+            onPeek={(id) => onOpen(id, visibleRows.map((r) => String(r.id)))}
+            onPatch={patch}
+            selection={selection}
+            onSelectionChange={setSelection}
+          />
+        </React.Suspense>
       )}
 
       {importOpen && (

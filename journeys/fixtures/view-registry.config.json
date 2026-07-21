@@ -1,0 +1,48 @@
+{
+  "_note": "view-registry lane — config-declared view tabs. `projects` offers TWO views (table + kanban; chart deliberately absent) proving the switcher renders exactly the configured set, labels/icons from the installed registry definitions. `notes_x` declares an uninstalled `timeline` type proving the graceful not-installed chip. Booted by journeys/extra/view-registry.mjs on the lane band (5841).",
+  "app": { "name": "View Registry Fixture", "slug": "view-registry-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "projects",
+      "label": "Projects",
+      "labelOne": "Project",
+      "icon": "building-2",
+      "defaultView": "table",
+      "stageField": "status",
+      "views": [
+        { "type": "table" },
+        { "type": "kanban", "groupField": "status" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        { "key": "status", "label": "Status", "type": "select", "options": ["Planned", "Active", "Done"], "width": 130 },
+        { "key": "budget", "label": "Budget", "type": "number", "width": 110 }
+      ],
+      "sampleRows": [
+        { "id": "pr_1", "name": "Atlas migration", "status": "Active", "budget": 12000 },
+        { "id": "pr_2", "name": "Beacon rollout", "status": "Planned", "budget": 8000 },
+        { "id": "pr_3", "name": "Corridor refresh", "status": "Done", "budget": 4500 }
+      ]
+    },
+    {
+      "key": "notes_x",
+      "label": "Field notes",
+      "labelOne": "Field note",
+      "icon": "file-text",
+      "defaultView": "table",
+      "views": [
+        { "type": "table" },
+        { "type": "timeline" }
+      ],
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 260 },
+        { "key": "kind", "label": "Kind", "type": "select", "options": ["Visit", "Call"], "width": 120 }
+      ],
+      "sampleRows": [
+        { "id": "nx_1", "title": "Site walkthrough", "kind": "Visit" }
+      ]
+    }
+  ]
+}

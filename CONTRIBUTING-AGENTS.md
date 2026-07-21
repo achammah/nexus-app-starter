@@ -17,6 +17,17 @@ Rules for building a feature lane in this repo. Deviations need a maintainer go 
 11. **Escape/keyboard surfaces** follow the laddered model already in place (edit → cell → row; peek pop → close). Don't add a flat global Escape handler.
 12. **Data hygiene in journeys.** Create what you assert on; restore or destroy it after. A journey must leave the seed state it found (the suite runs in one shared app).
 
+## Adding a view type
+
+Views are self-registering: the switcher tabs, the per-view toolbar and the view body all come from the view registry (`src/ui/record-core/views/registry.ts`), which discovers every `views/<type>/definition.{ts,tsx}` at build time via `import.meta.glob`. A new view type is a dropped folder in nexus-ui; nobody edits the ObjectView switcher.
+
+1. In nexus-ui, create `src/record-core/views/<type>/definition.tsx` default-exporting a `ViewDefinition` (see `views/types.ts`): `type` (the config string), `label` + `icon` (the switcher tab), `component` (a `React.ComponentType<ViewProps>`; use `React.lazy` for heavy views, the host wraps rendering in Suspense), optional `Toolbar` (view-bar controls, rendered twice with `side: "lead" | "trail"`, return null on the unused side), optional `configSchema` / `defaultConfig` / `validateConfig` (a returned message renders as the graceful chip in place of the view).
+2. `ViewProps` hands the component `object`, filtered `rows`, `users`, `readOnly`, `viewConfig` (the object's `views` entry merged over `defaultConfig`), the persisted `viewState` bag + `onViewState(patch)`, `onOpen` / `onPeek` / `onPatch`, and `selection` / `onSelectionChange`. Pick UNIQUE `viewState` keys unless sharing is intended: views naming the same key share it (the board and chart share `groupBy` deliberately). The bag persists per object and saved views capture it.
+3. Give an object the view via config: `"views": [{ "type": "table" }, { "type": "<type>", ... }]` (shape: docs/DATA-MODEL.md "App-object options"; recipe: docs/RECIPES.md "Give an object multiple views"). Objects without `views` derive the pre-registry set (the table, plus board + chart when a select/user field exists).
+4. Mobile is part of the definition, never a later rework: every control needs a tap path (no hover-only affordances) and the view must render usefully at 390px. Ship a 390x664 journey exercising the core interaction by touch.
+5. Vendor into the starter: `npm run sync-ui` (source override `NEXUS_UI_PATH`). sync-ui rewrites `src/ui/.ui-version`, which STALES the gallery inventory: if nexus-ui exports changed, first regenerate `docs/catalog.json` in nexus-ui (`node scripts/gen-docs.mjs`, with OURS rows for the new files), copy its fields into `src/app/gallery.catalog.json`, and in every case restamp that file's `uiVersion` to the new `.ui-version` line. A stale stamp fails the gallery journey.
+6. `npm run model` regenerates docs/DATA-MODEL.md and preserves everything below its `<!-- hand-maintained below -->` marker (the App-object options section lives there). Hand-written schema notes go below the marker; text above it is generator-owned.
+
 ## Workflow
 
 - Branch `feat/<lane>` from the tag named in your spec, in your own git worktree. Commit in logical units with plain one-line messages.

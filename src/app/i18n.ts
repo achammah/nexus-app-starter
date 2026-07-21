@@ -66,6 +66,7 @@ const dicts = {
     "panel.searchRecords": "Search records",
     "panel.searchPlaceholder": "Search records…",
     "panel.empty": "No matches.",
+    "views.notInstalled": "view type “{type}” is not installed",
   },
 } as const;
 

@@ -96,6 +96,19 @@ At ≤768px a bottom tab bar renders one tab per `config.objects` — plus a Cop
 ## Change the base theme
 `src/ui/tokens/tokens.css` holds the `--nx-*` canvas (light + dark) — the static layer skins write over. Fix tokens in nexus-ui, re-sync.
 
+## Give an object multiple views
+1. `starter.config.json` → on the object, declare the view tabs in order:
+```jsonc
+"views": [
+  { "type": "table" },
+  { "type": "kanban", "groupField": "stage" },
+  { "type": "chart", "groupField": "stage", "measure": "amount" }
+]
+```
+2. `type` names an installed view definition (`table` | `kanban` | `chart` built in; new types register themselves via a dropped folder, see CONTRIBUTING-AGENTS "Adding a view type"). The other keys are that type's config: `groupField` (kanban/chart) is a select/user field key, `measure` (chart) is `"count"` or a number/currency/money field key. `defaultView` still names the initially-active tab.
+3. Omit `views` and the object derives the pre-registry set: the table, plus Board + Chart when a select/user field exists. Runtime precedence: a user's pick in the Columns/group-by/measure/rollup menus (persisted per object, captured by saved views) wins over the `views` entry, which wins over the definition's defaults.
+4. A `type` with no installed definition, or a config its definition rejects (a `groupField` that is not a select/user field), renders an inline "not installed" chip in place of the view; the other tabs keep working.
+
 ## Save + share list views
 Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.
 
