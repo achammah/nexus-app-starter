@@ -54,6 +54,14 @@ Relation fields persist target row IDS — single: `"co_1"` · many (`multiple: 
 
 **Wiring to Nexus.** The scene is an ordinary JSON field on the records API (`PATCH /api/objects/:key/:id` with `{ "<field>": { "elements": [...] } }`), so a workflow or agent can read or write canvases like any other field — e.g. an AI task that generates a diagram writes its scene into the field and the thumbnail + canvas render it on the next poll. Elements follow excalidraw's serialized-element shape.
 
+## Extend a field type's editors (field-type registry)
+
+Every field type's editors live in ONE registry — `src/ui/record-core/fields/`, one folder per type. A folder's `definition.ts` registers the render-side slots (record-page `render`, list `cell`, `previewText`) AND the draft-side slots the create dialog, form view and guided wizard all share: `Draft` (the controlled editor), `coerce` (raw input → typed value), and `validate` (client-side shape check). The whiteboard field above is one such entry; every built-in type (text, number, currency, select, date, user, money, address, fullName, …) is another.
+
+1. Add a NEW field type: drop `src/ui/record-core/fields/<type>/definition.ts` exporting a `FieldTypeDefinition` with the slots your type needs. It self-registers (the registry globs the folder) — no switch statement to edit anywhere. Its `Draft`/`coerce`/`validate` then ride the SAME create dialog, guided wizard and form-view pipeline as every other type.
+2. The pure draft core `fields/draft.ts` (`coerceDraft` · `validateDraft` · `withStageDefault` · `requiredKeys`, node-tested) drives all three create surfaces; it consults each type's registered `coerce`/`validate` first, so a custom type gets typed create + client validation for free by filling its entry.
+3. One registry, every surface: the create dialog, the record page, the form view and the guided wizard read the same slots, so a field renders and validates identically wherever it appears — the drift that used to exist (three select renderings, number coercion missing from the dialog) can't come back.
+
 ## Async Nexus building blocks (server)
 - **`runAiTask(store, emitEvent, {taskId, objectKey, recordId, buildInput, applyOutput, onFail?})`** (`server/aiTaskRunner.mjs`) — run one AI task against a record in the background, write the result, revert on failure. Powers `/enrich`.
 - **`fireAsyncGeneration(store, {objectKey, placeholder, webhookUrl, payload, emitEvent?})`** (`server/asyncGeneration.mjs`) — create a placeholder record now, make it durable, fire an off-machine generation webhook; the finished record lands back via the warehouse.
@@ -173,6 +181,34 @@ Scope note: the flow view is records-as-graph. A workflow-builder canvas (node p
 4. Mobile (≤768px) replaces the grid with a virtualized agenda list: every day of the anchor month is a row, tapping a day creates on that day, tapping an event opens the peek. Drag-to-reschedule stays desktop-only; on mobile, reschedule via the record's date field in the peek.
 5. An object with no date field, or a `startDateField` naming a non-date field, degrades to the standard explanatory chip in place of the view; the other tabs keep working.
 6. Wiring to Nexus: the calendar has no write path of its own. Every change goes through the record PATCH route, so dates written by a workflow or an agent (through the warehouse and `/api/sync`, or the API directly) land on the calendar via the normal rev poll with no extra wiring.
+
+## Add a gallery view to an object
+1. `starter.config.json`, on the object, add a `gallery` entry to its `views` (the demo `demo_showcase` object carries one):
+```jsonc
+"views": [
+  { "type": "gallery", "coverField": "cover", "titleField": "title", "metaFields": ["kind"], "cardSize": "m" },
+  { "type": "table" }
+]
+```
+2. Keys (all optional): `coverField` names a `url` field rendered as the card cover at a fixed 4/3 aspect; a missing or broken image falls back to a tokenized initials placeholder, and if the key is omitted the first `url` field is inferred (an object with none renders cover-less cards). `titleField` is the card title (default: the primary field). `metaFields` (≤3 field keys) render under the title — select/multiselect values as their own colored chips, the same palette as table chips. `cardSize` is `"s" | "m" | "l"` and sets the column min-width (200/260/340px).
+3. Interactions: click or Enter on a card opens its record in the peek (cmd/ctrl-click opens a real browser tab, like the table's primary cell). Cards pack into masonry columns by shortest-column assignment over exact card heights (no measurement pass), and rendering is windowed — only cards near the viewport mount, so a 10k-row object scrolls smoothly.
+4. Mobile: the masonry reflows to a single full-width column; tapping a card opens the peek (no hover-only affordance).
+5. States: rows render as cards; empty renders a designed empty state with a "create the first one" CTA (when the caller has create rights); a still-generating placeholder row renders gracefully. A `coverField` naming a non-url field, or more than 3 `metaFields`, degrades to the standard explanatory chip in place of the view; the other tabs keep working.
+6. Wiring to Nexus: the gallery has no write path of its own — it reads records like any view, so rows created or updated by a workflow, an agent, or an external writer (through the warehouse and `/api/sync`) appear on the next rev poll with no extra wiring.
+
+## Add a form view to an object
+1. `starter.config.json`, on the object, add a `form` entry to its `views` (the demo `people` object carries one):
+```jsonc
+"views": [
+  { "type": "table" },
+  { "type": "form", "fields": ["name", "email", "company"], "requiredOverrides": { "email": true }, "submitLabel": "Add lead", "successMode": "another" }
+]
+```
+2. Keys (all optional): `fields` picks the field subset and their order (default: every form-editable field in config order — `json` and multi-relations are excluded, they edit on the record page). `requiredOverrides` (`{ key: true|false }`) adjusts the required set over the default (the primary field). `submitLabel` renames the submit button. `successMode` is `"another"` (default — a success card with "Create another") or `"view"` (open the created record).
+3. Rendering: a centered single column at document-layout width; each field is the same per-type editor the create dialog and record page use (one shared field-type registry), with an inline error slot. Submit shows a busy state; on success the designed success card offers "Create another" (resets the form) or opens the record.
+4. Validation is layered: the required check + the existing per-type validators run client-side (the same rules the server implies from field types), and a server rejection maps back onto the field its message names (unmatched → a form-level banner). Submit goes through the SAME create path as the dialog — typed numbers coerce (a `"50"` saves as `50`, not a rejected string) and an unset kanban stage defaults to its first option.
+5. Single relations author by the target's primary name; the server resolves a label matching exactly one live record to its id (an ambiguous name errors inline, naming the candidates).
+6. Wiring to Nexus: a form submit lands as an `<object>.created` event in the typed webhook catalog (`/p/webhooks`, HMAC-signed payload `{ event, data: { row } }`) — point a Nexus workflow's webhook trigger at it to run intake automation (enrich, notify, route) with no app changes. v1 is a config-driven form VIEW; a drag-and-drop form BUILDER (question palette, branching, public share links) is a future lane.
 
 ## Save + share list views
 Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.
