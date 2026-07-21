@@ -202,5 +202,16 @@ Point it at the agent with the `COPILOT_DEPLOYMENT_ID` env var (the deployment i
 
 Open it with the toggle in the chrome, `⌘/Ctrl+I`, or `c`; `Escape` closes it. The reply renders as Markdown and shows the agent's invoked tools as chips.
 
+## Add a guided create flow
+Give an object a `createWizard` in `starter.config.json` and its "New <object>" opens the library **Wizard** (a guided-vs-blank landing) instead of the plain create dialog:
+```json
+"createWizard": { "questions": [
+  { "key": "title",  "label": "Title",  "kind": "text",   "required": true },
+  { "key": "status", "label": "Status", "kind": "select", "options": ["Draft","In review"], "required": true },
+  { "key": "body",   "label": "First paragraph", "kind": "long" }
+] }
+```
+Each question's `key` names the field it fills. A `text`/`long` answer written to a `richText` field becomes a one-paragraph block value (via `textToBlocks`). Question `kind`s: `text` · `long` · `select` (auto-advances on pick) · `list` · `sources`; `required` (on text/select/long) gates **Next**. Omit `createWizard` and the plain dialog is used, unchanged.
+
 ## Ship
 `npm run precheck` (tsc + build + journey-stamp freshness) → `docs/PRODUCTION_CHECKLIST.md` → push. CI runs the full journey suite; the deploy gate reads `journeys/.last-pass` + the manifest stamps.

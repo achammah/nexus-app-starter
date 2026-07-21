@@ -83,3 +83,9 @@ Default view: table
 | `active` | boolean |  |
 
 Users directory: `you`, `Maya Verstraete`, `Jonas Peeters`, `Sofia Marchetti` (drives `user`-type fields).
+
+## App-object options (non-field)
+Per object in `starter.config.json`, alongside the field list:
+- `hideInNav?: boolean` — hide the object from the sidebar + mobile tab bar (still reachable by URL/relations).
+- `recordLayout?: "standard" | "document"` — `standard` = fields + timeline tabs; `document` = a centered Notion-style editor that opens as a wide side-panel.
+- `createWizard?: { questions: Q[] }` — a guided-create flow; `Q` is the library Wizard question shape (`{ key, label, kind: text|long|select|list|sources, required?, options? }`). Present → "New <object>" offers guided-vs-blank; each `key` names the field it fills.
