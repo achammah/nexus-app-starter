@@ -2,7 +2,11 @@
   "app": {
     "name": "Nexus App",
     "slug": "nexus-app",
-    "goChords": { "c": "#/o/companies", "p": "#/o/people", "d": "#/o/deals" }
+    "goChords": {
+      "c": "#/o/companies",
+      "p": "#/o/people",
+      "d": "#/o/deals"
+    }
   },
   "theme": {
     "skinPreset": "nexus"
@@ -13,7 +17,7 @@
   "copilot": {
     "title": "Copilot",
     "mark": "N",
-    "emptyStateCopy": "Your in-app assistant. It sees the record or list you're on — ask it to summarize, draft, or explain what you're looking at.",
+    "emptyStateCopy": "Your in-app assistant. It sees the record or list you're on \u2014 ask it to summarize, draft, or explain what you're looking at.",
     "suggestions": [
       "Summarize what I'm looking at",
       "Draft a follow-up for this record",
@@ -98,9 +102,21 @@
           "employees": 140,
           "city": "Ghent",
           "brief": [
-            { "id": "cb1a", "type": "h3", "text": "Account brief" },
-            { "id": "cb1b", "type": "p", "text": "Brightline builds a real-time analytics platform for mid-market software teams. They came in through the platform-rollout deal and expanded fast after the first pilot landed." },
-            { "id": "cb1c", "type": "p", "text": "Maya Verstraete (CTO) is the champion. The main open question is how deeply the rollout touches their existing data warehouse before the Q3 review." }
+            {
+              "id": "cb1a",
+              "type": "h3",
+              "text": "Account brief"
+            },
+            {
+              "id": "cb1b",
+              "type": "p",
+              "text": "Brightline builds a real-time analytics platform for mid-market software teams. They came in through the platform-rollout deal and expanded fast after the first pilot landed."
+            },
+            {
+              "id": "cb1c",
+              "type": "p",
+              "text": "Maya Verstraete (CTO) is the champion. The main open question is how deeply the rollout touches their existing data warehouse before the Q3 review."
+            }
           ]
         },
         {
@@ -111,9 +127,21 @@
           "employees": 900,
           "city": "Antwerp",
           "brief": [
-            { "id": "cb2a", "type": "h3", "text": "Account brief" },
-            { "id": "cb2b", "type": "p", "text": "Nordwind runs a 900-person retail operation across the Benelux. The store-copilot deal is early but the ops team is engaged and moving." },
-            { "id": "cb2c", "type": "p", "text": "Jonas Peeters (Ops Director) owns the evaluation. Next step is a scoped pilot in two flagship stores before a wider rollout." }
+            {
+              "id": "cb2a",
+              "type": "h3",
+              "text": "Account brief"
+            },
+            {
+              "id": "cb2b",
+              "type": "p",
+              "text": "Nordwind runs a 900-person retail operation across the Benelux. The store-copilot deal is early but the ops team is engaged and moving."
+            },
+            {
+              "id": "cb2c",
+              "type": "p",
+              "text": "Jonas Peeters (Ops Director) owns the evaluation. Next step is a scoped pilot in two flagship stores before a wider rollout."
+            }
           ]
         },
         {
@@ -168,6 +196,13 @@
       "contextFields": [
         "name",
         "industry",
+        "city",
+        "about"
+      ],
+      "columns": [
+        "domain",
+        "industry",
+        "employees",
         "city",
         "about"
       ]
@@ -463,13 +498,41 @@
           "title": "Q3 launch plan",
           "status": "In review",
           "body": [
-            { "id": "db1a", "type": "h1", "text": "Q3 launch plan" },
-            { "id": "db1b", "type": "p", "text": "The quarterly rollout happens in three phases, each gated on the previous one landing cleanly. The goal is a controlled ramp rather than a single big-bang release." },
-            { "id": "db1c", "type": "h2", "text": "Phase one — private beta" },
-            { "id": "db1d", "type": "p", "text": "A small private cohort gets access first. We watch activation and time-to-value closely and fix the sharp edges before widening the door." },
-            { "id": "db1e", "type": "h2", "text": "Phase two — waitlist" },
-            { "id": "db1f", "type": "p", "text": "Once the beta stabilises, the waitlist converts in batches. Support load and infrastructure headroom decide the batch size." },
-            { "id": "db1g", "type": "quote", "text": "Ship the ramp, not the big bang." }
+            {
+              "id": "db1a",
+              "type": "h1",
+              "text": "Q3 launch plan"
+            },
+            {
+              "id": "db1b",
+              "type": "p",
+              "text": "The quarterly rollout happens in three phases, each gated on the previous one landing cleanly. The goal is a controlled ramp rather than a single big-bang release."
+            },
+            {
+              "id": "db1c",
+              "type": "h2",
+              "text": "Phase one \u2014 private beta"
+            },
+            {
+              "id": "db1d",
+              "type": "p",
+              "text": "A small private cohort gets access first. We watch activation and time-to-value closely and fix the sharp edges before widening the door."
+            },
+            {
+              "id": "db1e",
+              "type": "h2",
+              "text": "Phase two \u2014 waitlist"
+            },
+            {
+              "id": "db1f",
+              "type": "p",
+              "text": "Once the beta stabilises, the waitlist converts in batches. Support load and infrastructure headroom decide the batch size."
+            },
+            {
+              "id": "db1g",
+              "type": "quote",
+              "text": "Ship the ramp, not the big bang."
+            }
           ]
         },
         {
@@ -477,18 +540,49 @@
           "title": "Onboarding playbook",
           "status": "Draft",
           "body": [
-            { "id": "db2a", "type": "h1", "text": "Onboarding playbook" },
-            { "id": "db2b", "type": "p", "text": "A new customer should reach their first real outcome inside the first session. Everything in this playbook works backward from that moment." },
-            { "id": "db2c", "type": "h2", "text": "The first session" },
-            { "id": "db2d", "type": "ul", "text": "Connect the primary data source" },
-            { "id": "db2e", "type": "ul", "text": "Import a starter dataset so the app is never empty" },
-            { "id": "db2f", "type": "ul", "text": "Land one visible win before the call ends" },
-            { "id": "db2g", "type": "p", "text": "The empty state is the enemy. Seed it, and the product sells itself." }
+            {
+              "id": "db2a",
+              "type": "h1",
+              "text": "Onboarding playbook"
+            },
+            {
+              "id": "db2b",
+              "type": "p",
+              "text": "A new customer should reach their first real outcome inside the first session. Everything in this playbook works backward from that moment."
+            },
+            {
+              "id": "db2c",
+              "type": "h2",
+              "text": "The first session"
+            },
+            {
+              "id": "db2d",
+              "type": "ul",
+              "text": "Connect the primary data source"
+            },
+            {
+              "id": "db2e",
+              "type": "ul",
+              "text": "Import a starter dataset so the app is never empty"
+            },
+            {
+              "id": "db2f",
+              "type": "ul",
+              "text": "Land one visible win before the call ends"
+            },
+            {
+              "id": "db2g",
+              "type": "p",
+              "text": "The empty state is the enemy. Seed it, and the product sells itself."
+            }
           ]
         }
       ],
       "contextFields": [
         "title",
+        "status"
+      ],
+      "columns": [
         "status"
       ]
     },
@@ -543,7 +637,8 @@
           "severity": "Critical",
           "active": true
         }
-      ]
+      ],
+      "hideInNav": true
     }
   ]
 }
