@@ -410,7 +410,9 @@
           "nowIndicator": true,
           "businessHours": true,
           "slotDuration": "30m",
-          "firstDay": "Monday"
+          "firstDay": "Monday",
+          "scrollTime": "08:00",
+          "snapDuration": "15m"
         }
       ],
       "fields": [
@@ -1592,7 +1594,9 @@
           "slotDuration": "30m",
           "snapDuration": "15m",
           "scrollTime": "08:00",
-          "firstDay": "Monday"
+          "firstDay": "Monday",
+          "editable": true,
+          "selectable": true
         },
         {
           "type": "table"
