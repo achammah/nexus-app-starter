@@ -1,0 +1,77 @@
+{
+  "app": {
+    "name": "Mobile Fixture",
+    "slug": "mobile-fixture",
+    "goChords": { "c": "#/o/companies", "p": "#/o/people", "d": "#/o/deals" }
+  },
+  "theme": {},
+  "users": [],
+  "copilot": {
+    "title": "Copilot",
+    "mark": "C",
+    "emptyStateCopy": "Your in-app assistant. It sees the record or list you're on.",
+    "suggestions": ["Summarize what I'm looking at"]
+  },
+  "objects": [
+    {
+      "key": "companies",
+      "label": "Companies",
+      "labelOne": "Company",
+      "icon": "building-2",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "city", "label": "City", "type": "text" }
+      ],
+      "sampleRows": [
+        { "id": "co_1", "name": "Northwind Trading", "city": "Berlin" },
+        { "id": "co_2", "name": "Cargolane Freight", "city": "Rotterdam" },
+        { "id": "co_3", "name": "Brightline Labs", "city": "Austin" }
+      ]
+    },
+    {
+      "key": "people",
+      "label": "People",
+      "labelOne": "Person",
+      "icon": "users",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "role", "label": "Role", "type": "text" }
+      ],
+      "sampleRows": [
+        { "id": "pe_1", "name": "Maya Chen", "role": "Operations" },
+        { "id": "pe_2", "name": "Sam Diaz", "role": "Sales" }
+      ]
+    },
+    {
+      "key": "deals",
+      "label": "Deals",
+      "labelOne": "Deal",
+      "icon": "handshake",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "stage", "label": "Stage", "type": "text" }
+      ],
+      "sampleRows": [
+        { "id": "de_1", "name": "Q3 Renewal", "stage": "Won" },
+        { "id": "de_2", "name": "Pilot Rollout", "stage": "Open" }
+      ]
+    },
+    {
+      "key": "audit",
+      "label": "Audit Log",
+      "labelOne": "Entry",
+      "icon": "file-text",
+      "hideInNav": true,
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Event", "type": "text", "primary": true }
+      ],
+      "sampleRows": [
+        { "id": "au_1", "name": "System boot" }
+      ]
+    }
+  ]
+}

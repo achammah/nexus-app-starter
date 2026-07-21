@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, Sun, Users, Table2, Kanban, X, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, Sun, Users, Table2, Kanban, X, Zap, Sparkles } from "lucide-react";
 import { api, type AppConfig } from "./api";
 import { favList, favToggle, type Fav } from "./favorites";
 import { formatCell } from "../ui/record-core/DataTable";
@@ -15,6 +15,7 @@ import { t } from "./i18n";
 import { ChatDock } from "./ChatDock";
 import { Copilot } from "./Copilot";
 import { CopilotToggle } from "../ui/blocks/copilot";
+import { ShortcutsOverlay, MobileReviewBanner, type ShortcutGroup } from "../ui/blocks/mobile";
 import { Login } from "./Login";
 import { Button } from "../ui/primitives/Button";
 import { Tip } from "../ui/primitives/fields";
@@ -86,6 +87,8 @@ export function App() {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   // copilot side-panel (renders only when config.copilot is present)
   const [copilotOpen, setCopilotOpen] = React.useState(false);
+  // keyboard-shortcuts help overlay (toggled by `?`)
+  const [shortcutsOpen, setShortcutsOpen] = React.useState(false);
   /* ---- side peek: one right-edge panel hosting a typed page STACK — records
      (the peek proper), search, and actions all push onto the same navigation
      history (crumbs/back/Escape ladder). The list stays behind. Only a RECORD
@@ -231,6 +234,36 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  /* keyboard-nav layer: `?` opens the shortcuts help; `g` then a key jumps via the
+     config-driven goChords map; `n` starts a new record. All yield to typing, editors,
+     open dialogs/sheets, and focused grid cells — like the `/` and `c` handlers. Runs in
+     capture so a resolved `g`-chord wins over any bare single-key shortcut for that key. */
+  const goChordsRef = React.useRef<Record<string, string> | undefined>(undefined);
+  goChordsRef.current = config?.app.goChords;
+  React.useEffect(() => {
+    let chordUntil = 0; // a pending `g` chord stays live until this timestamp
+    const busy = (el: HTMLElement | null) =>
+      (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) ||
+      !!document.querySelector('[data-slot="dialog-content"], [data-slot="sheet-content"], [role="dialog"]') ||
+      !!document.querySelector("td[data-cell-focus]");
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.defaultPrevented) return;
+      if (busy(e.target as HTMLElement | null)) return;
+      if (chordUntil && Date.now() < chordUntil) {
+        chordUntil = 0;
+        const dest = goChordsRef.current?.[e.key];
+        if (dest) { e.preventDefault(); e.stopPropagation(); window.location.hash = dest; }
+        return;
+      }
+      chordUntil = 0;
+      if (e.key === "?") { e.preventDefault(); setShortcutsOpen(true); return; }
+      if (e.key === "g" && goChordsRef.current) { e.preventDefault(); chordUntil = Date.now() + 1200; return; }
+      if (e.key === "n") { e.preventDefault(); window.dispatchEvent(new Event("nx-new-record")); return; }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
   const toast = React.useCallback((text: string) => {
     const id = Date.now() + Math.random();
     setToasts((t) => [...t, { id, text }]);
@@ -366,7 +399,7 @@ export function App() {
   );
   const navButtons = (prefix: "" | "drawer-") => (
     <>
-      {config.objects.map((o) => (
+      {config.objects.filter((o) => !o.hideInNav).map((o) => (
         <button
           key={o.key}
           className={`navItem ${o.key === active.key && !route.recordId && !route.page ? "navItem--active" : ""}`}
@@ -440,6 +473,32 @@ export function App() {
     else pushPanel({ kind: "actions" });
     return true;
   };
+
+  /* shortcuts help content — a Core group (the shell's own keys) + an App group built
+     from config (the go-to chords + new-record). Only what's actually wired is listed. */
+  const shortcutGroups: ShortcutGroup[] = (() => {
+    const core: ShortcutGroup["items"] = [
+      { keys: ["⌘", "K"], label: "Command palette" },
+      { keys: ["/"], label: "Search" },
+      ...(config.copilot ? [{ keys: ["⌘", "I"], label: "Toggle copilot" }, { keys: ["C"], label: "Open copilot" }] : []),
+      { keys: ["↑", "↓"], label: "Move between rows" },
+      { keys: ["J", "K"], label: "Move between rows (vim)" },
+      { keys: ["Enter"], label: "Open the focused row" },
+      { keys: ["?"], label: "Toggle this help" },
+      { keys: ["Esc"], label: "Close / go back" },
+    ];
+    const app: ShortcutGroup["items"] = [];
+    for (const [k, dest] of Object.entries(config.app.goChords ?? {})) {
+      const mo = dest.match(/^#\/o\/([^/?]+)/);
+      const mp = dest.match(/^#\/p\/([^/?]+)/);
+      const label = mo ? (config.objects.find((o) => o.key === mo[1])?.label ?? mo[1])
+        : mp ? (customPages.find((p) => p.key === mp[1])?.label ?? mp[1])
+        : dest;
+      app.push({ keys: ["G", "then", k.toUpperCase()], label: `Go to ${label}` });
+    }
+    app.push({ keys: ["N"], label: `New ${active.labelOne.toLowerCase()}` });
+    return [{ title: "Core", items: core }, { title: "App", items: app }];
+  })();
 
   return (
     <ToastCtx.Provider value={toast}>
@@ -650,7 +709,8 @@ export function App() {
           };
           const isDocPeek = top.kind === "record" && cfg?.recordLayout === "document";
           return (
-            <div className={`peekPanel${isDocPeek ? " peekPanel--doc" : ""}`} data-testid="peek-panel" data-doc-peek={String(!!isDocPeek)}>
+            <>
+            <div className={`peekPanel${isDocPeek ? " peekPanel--doc" : ""}${canPage && root.kind === "record" ? " peekPanel--paged" : ""}`} data-testid="peek-panel" data-doc-peek={String(!!isDocPeek)}>
               <div className="peekHead">
                 {peek.stack.length > 1 && (
                   <Button variant="ghost" size="sm" icon={<ArrowLeft size={13} />} aria-label="Back one page" data-testid="peek-back" onClick={popPeek} />
@@ -714,6 +774,19 @@ export function App() {
                 )}
               </div>
             </div>
+            {/* mobile twin of the desktop peek pager: step the record SET one at a time.
+                Hidden ≥769px (the head pager takes over there). */}
+            {canPage && root.kind === "record" && (
+              <MobileReviewBanner
+                index={rootIdx}
+                total={peek.set.length}
+                title={config.objects.find((o) => o.key === root.obj)?.labelOne}
+                onPrev={() => step(-1)}
+                onNext={() => step(1)}
+                actions={[{ label: "Open", testid: "review-open", onClick: () => route.go(`#/o/${root.obj}/r/${root.id}`) }]}
+              />
+            )}
+            </>
           );
         })()}
 
@@ -722,6 +795,34 @@ export function App() {
             <div className="toast" key={t.id} data-testid="toast">{t.text}</div>
           ))}
         </div>
+
+        {/* mobile bottom tab bar — primary navigation on phones: one tab per
+            config.objects (honours hideInNav) plus a Copilot tab when configured. A bounded
+            bar beats a crowded one, so utility + custom pages stay in the burger/drawer
+            (which also keeps favorites/team/sign-out). Hidden on desktop. */}
+        <nav className="mobileNav" data-testid="mobile-nav">
+          {config.objects.filter((o) => !o.hideInNav).map((o) => (
+            <button
+              key={o.key}
+              className={`mnItem${o.key === active.key && !route.page && !copilotOpen ? " mnItem--active" : ""}`}
+              data-testid={`mnav-${o.key}`}
+              onClick={() => { setCopilotOpen(false); route.go(`#/o/${o.key}`); }}
+            >
+              <span className="mnIcon">{ICONS[o.icon ?? ""] ?? <LayoutGrid size={18} />}</span>
+              <span className="mnLabel">{o.label}</span>
+            </button>
+          ))}
+          {config.copilot && (
+            <button
+              className={`mnItem${copilotOpen ? " mnItem--active" : ""}`}
+              data-testid="mnav-copilot"
+              onClick={() => setCopilotOpen((o) => !o)}
+            >
+              <span className="mnIcon"><Sparkles size={18} /></span>
+              <span className="mnLabel">{config.copilot.title ?? "Copilot"}</span>
+            </button>
+          )}
+        </nav>
 
         {/* mobile nav drawer — everything the sidebar holds, behind the burger */}
         <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -788,6 +889,9 @@ export function App() {
         {config.copilot
           ? <Copilot open={copilotOpen} onClose={() => setCopilotOpen(false)} config={config} />
           : <ChatDock embedUrl={config.chat?.embedUrl} />}
+        {shortcutsOpen && (
+          <ShortcutsOverlay groups={shortcutGroups} onClose={() => setShortcutsOpen(false)} />
+        )}
       </div>
     </ToastCtx.Provider>
   );

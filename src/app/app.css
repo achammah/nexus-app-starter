@@ -203,10 +203,47 @@
 }
 .nxCopilotDock.is-open { transform: none; }
 @media (prefers-reduced-motion: reduce) { .nxCopilotDock { transition: none; } }
-/* mobile: full-width overlay, no push (the content stays put behind it) */
+/* mobile: full-width, lifted to sit ABOVE the bottom tab bar so its input stays
+   reachable (the tab bar + its safe-area own the very bottom) */
 @media (max-width: 768px) {
   .shell--copilot { padding-right: 0; }
-  .nxCopilotDock { width: 100vw; }
+  .nxCopilotDock { width: 100vw; bottom: calc(var(--nx-mobilenav-h) + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---------- mobile bottom tab bar (phones) — primary nav; coexists with the burger +
+   drawer (favorites/team/sign-out stay there). App-shell chrome; the reusable
+   ShortcutsOverlay + MobileReviewBanner live in nexus-ui (blocks/mobile). ---------- */
+:root { --nx-mobilenav-h: 56px; }
+.mobileNav { display: none; }
+@media (max-width: 768px) {
+  .mobileNav {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    background: var(--nx-bg); border-top: 1px solid var(--nx-chrome-border);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom, 0px));
+    box-shadow: 0 -6px 20px rgb(0 0 0 / 0.06);
+  }
+  .mnItem {
+    flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px;
+    min-height: 44px; background: none; border: 0; padding: 6px 2px 4px; cursor: pointer;
+    color: var(--nx-fg-muted); position: relative;
+    font: var(--nx-text-micro); text-transform: var(--nx-label-transform); letter-spacing: var(--nx-label-tracking);
+    transition: color var(--nx-t-fast);
+  }
+  .mnIcon { display: grid; place-items: center; transition: transform var(--nx-t-fast) var(--nx-ease-settle); }
+  .mnItem:active .mnIcon { transform: scale(0.88); }
+  .mnItem--active { color: var(--nx-accent); }
+  .mnItem--active::before {
+    content: ""; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 24px; height: 2px; background: var(--nx-accent); border-radius: 0 0 2px 2px;
+  }
+  .mnLabel { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* content clears the fixed tab bar; the mobile peek clears the bar (and the review
+     banner too, when it is paged) so no record content hides behind them */
+  .content { padding-bottom: calc(var(--nx-mobilenav-h) + env(safe-area-inset-bottom, 0px) + 14px); }
+  .peekPanel .peekBody { padding-bottom: calc(var(--nx-mobilenav-h) + env(safe-area-inset-bottom, 0px) + 16px); }
+  .peekPanel--paged .peekBody { padding-bottom: calc(var(--nx-mobilenav-h) + env(safe-area-inset-bottom, 0px) + 132px); }
+  /* iOS: form controls below 16px trigger a focus-zoom — pin to 16px on phones */
+  input:not([type="checkbox"]):not([type="radio"]), textarea, select { font-size: 16px; }
 }
 
 /* dialogs open/close INSTANTLY — enter/exit animations on stacked layers (palette →

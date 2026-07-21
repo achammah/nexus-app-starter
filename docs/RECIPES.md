@@ -80,6 +80,9 @@ Tasks are cross-record to-dos — title, status (`todo`/`doing`/`done`), optiona
 
 `starter.config.json` → `"app": { …, "nav": "top" }` — the left sidebar is replaced by one horizontal bar: brand, object/page items (with live counts), and search/theme/sign-out on the right; favorites and the team switcher become compact controls in the bar. Omit the field (or set `"side"`) for the default sidebar. Both modes are mobile-responsive out of the box: at ≤768px the nav collapses to a burger that opens a drawer (objects, pages, favorites, team switcher, search, sign-out), and the side peek becomes a full-screen sheet.
 
+## Mobile: the bottom tab bar, shortcuts, and go-to chords
+At ≤768px a bottom tab bar renders one tab per `config.objects` — plus a Copilot tab when `copilot` is set — for one-tap navigation; a bounded bar beats a crowded one, so custom/utility pages stay in the burger/drawer (which also keeps favorites, the team switcher, and sign-out). Flag an object `"hideInNav": true` to keep it fully routable (deep links, search, relations) while omitting it from every nav surface (sidebar, drawer, tab bar). `app.goChords` is a config-driven go-to map — `{ "c": "#/o/companies" }` means `g` then `c` jumps there; `?` opens a shortcuts overlay that lists the shell's Core keys beside these App chords (and `n` starts a new record). The reusable overlay + review banner live in nexus-ui (`src/ui/blocks/mobile`); the tab bar is app-shell chrome in `src/app`. The mobile peek gains a bottom review banner that steps the record set you opened (the phone twin of the desktop N-of-M pager).
+
 ## Change the base theme
 `src/ui/tokens/tokens.css` holds the `--nx-*` canvas (light + dark) — the static layer skins write over. Fix tokens in nexus-ui, re-sync.
 
