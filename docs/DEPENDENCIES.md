@@ -43,6 +43,8 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | @fullcalendar/interaction | 6.1.21 (pinned) → 6.1.21 | MIT | drag-to-reschedule, resize, and day-click (dateClick) | 344 | lazy chunk (calendar view) |
 | react-map-gl | 8.1.1 (pinned) → 8.1.1 | MIT | React wrapper for the map view: `<Map>` lifecycle, `<Marker>`/`<Popup>` portal real React children, `<Source cluster>`+`<Layer>` declarative GL layers (imported via the `react-map-gl/maplibre` entrypoint) | 800 (+19972 `@vis.gl/react-maplibre`, the runtime it re-exports) | lazy view chunk (MapView) |
 | maplibre-gl | 5.24.0 (pinned) → 5.24.0 | BSD-3-Clause | the GL vector-tile renderer under the map view — free stack, no vendor token, no account (OpenFreeMap style; falls back to an inline background style offline) | 45148 | lazy chunk (own, loaded with MapView) |
+| @univerjs/presets | 0.25.1 (pinned exact) → 0.25.1 | Apache-2.0 | the Spreadsheet page's full Univer workbook: the `createUniver` entry point that composes the sheet preset. Pulls the sheet engine packages transitively (@univerjs/core, sheets, sheets-ui, engine-formula, engine-render, design, themes, ...). Pinned exact (no `^`): the pre-1.0 line ships breaking changes on minors | 14040 | LAZY only, rides the WorkbookSurface chunk (React.lazy); zero eager cost |
+| @univerjs/preset-sheets-core | 0.25.1 (pinned exact) → 0.25.1 | Apache-2.0 | the sheets preset: the ribbon toolbar, formula bar (400+ functions via engine-formula), number formats, bold/fill, merge, freeze, multi-sheet, insert/delete rows and columns. The full workbook UI plus engine | 10048 | LAZY only, rides the WorkbookSurface chunk |
 
 ## Dev
 
@@ -88,11 +90,11 @@ Budget rule: the eager bundle must not grow more than 2% over the previous basel
 
 The map view's eager side (the registry definition, RecordCard, and the token→literal color resolver) adds +0.46% min / +0.45% gzip over the current-main baseline (db0cddb: 1,316.21 kB min / 389.45 kB gzip) — inside the 2% budget. Both the MapView chunk and the maplibre-gl renderer are fully lazy: they load only when a `map` view first renders.
 
-**Documented budget exceptions** (maintainer-approved): the map view's maplibre-gl chunk (283.63 kB gzip) exceeds the ~250 kB lazy line. The GL renderer is a monolith with no tree-shakeable subset; it and the MapView code load only when a `map` view actually renders, and the eager bundle stays flat. Excalidraw (whiteboard lane, below) is the other approved exception.
+**Documented budget exceptions** (maintainer-approved): the map view's maplibre-gl chunk (283.63 kB gzip) exceeds the ~250 kB lazy line. The GL renderer is a monolith with no tree-shakeable subset; it and the MapView code load only when a `map` view actually renders, and the eager bundle stays flat. Excalidraw (whiteboard lane, below) and the Univer workbook (spreadsheet page, below, 1,551.58 kB gzip lazy) are the other approved exceptions.
 
 **deck.gl — the named escalation path, deliberately NOT adopted.** Token pins and GL clusters at business-record scale (proven to 10k rows by the `map-cluster-scale` journey) do not need GPU aggregation. If a future surface genuinely outgrows that — hundreds of thousands of points, heatmap/hexbin density layers — the upgrade path is `@deck.gl/mapbox`'s `MapboxOverlay` mounted through react-map-gl's `useControl` on the SAME maplibre basemap: no container rewrite, the view keeps its config surface. deck.gl core plus its per-layer packages are a substantial further GL dependency, so this is a scale-forced escalation, never a default.
 
-### Whiteboard chunks (the one documented exception to the 250 KB lazy cap)
+### Whiteboard chunks (a documented exception to the 250 KB lazy cap)
 
 The whiteboard field loads nothing eagerly: empty cells render a static glyph with zero imports. Measured chunks (`vite build`, this repo's dist):
 
@@ -105,6 +107,20 @@ The whiteboard field loads nothing eagerly: empty cells render a static glyph wi
 | mermaid-to-excalidraw diagram family (~20 chunks: cytoscape, katex, per-diagram) | never — the text-to-diagram dialog is not exposed in our `UIOptions` | on disk only | on disk only |
 
 Fonts self-host: the build emits the woff2 files into `dist/assets` (no CDN fetch; journeys run fully offline). `@excalidraw/utils` is deliberately NOT used for thumbnails: its latest published build predates the current scene format by three years, while the main package exports the same `exportToSvg`/`getSceneVersion` version-matched to the editor.
+
+### Workbook chunk (Univer, a documented exception to the 250 KB lazy cap)
+
+The Spreadsheet page loads nothing of Univer eagerly: the page component carries only the light block
+core (store key, snapshot validation, the seed generators), and the engine mounts behind
+`LazyWorkbookSurface` (React.lazy). Measured chunks (`vite build`, this repo's dist):
+
+| Chunk | When it loads | min | gzip |
+|---|---|---|---|
+| WorkbookSurface (Univer engine plus sheets UI, `WorkbookSurface-*.js`) | first navigation to `#/p/spreadsheet` (or any mount of the block) | 5,578.80 kB | 1,551.58 kB |
+| Univer design CSS (`WorkbookSurface-*.css`) | with the engine chunk | 86.86 kB | 13.57 kB |
+| per-language locale data | on demand, only the active locale loads | code-split | code-split |
+
+The workbook chunk exceeds the 250 KB lazy cap about 6x. It is a documented exception, like excalidraw: a full 400+ function formula engine plus a canvas render engine is irreducible for a real spreadsheet, and it loads only on navigation to the Spreadsheet page. The hard budget (eager/main +≤2%) holds: the eager main chunk moves from 391.35 kB gzip (base ee7eef6) to 395.60 kB gzip with the page, +4.25 kB / +1.09% (the Spreadsheet page component, the snapshot core, 13 i18n strings, and the KitDemo card; the eager CSS is unchanged, Univer's CSS rides the lazy chunk). Pinned exact at 0.25.1 (the pre-1.0 line ships breaking changes on minors).
 
 ## Adapted-source provenance
 

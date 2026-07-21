@@ -84,6 +84,14 @@ Every field type's editors live in ONE registry — `src/ui/record-core/fields/`
 2. Register in `src/app/pages.tsx` (`key/label/icon/component`) → nav + `#/p/<key>` route appear.
 3. Journey + manifest row.
 
+## Add a Spreadsheet (full Univer workbook) page
+The built-in Spreadsheet page (`#/p/spreadsheet`) is the reference. For ANOTHER, independently-persisted workbook page:
+1. Component under `src/app/pages/YourSheet.tsx`: load/save an `IWorkbookData` blob through `api.state()` / `api.setState(workbookStoreKey("<key>"), snap)` (own key = own workbook), and mount `LazyWorkbookSurface` from `../../ui/blocks/workbook` under Suspense (`value` in, `onChange` out, host debounces).
+2. Register in `src/app/pages.tsx` → nav + `#/p/<key>` appear. Journey + manifest row.
+3. Free surface (the host owns the snapshot); the `@univerjs` engine is a lazy chunk (zero eager cost); Univer's chrome themes to `--nx-*` and syncs dark to `data-theme` automatically. Copy the loading/empty/error/save states from `src/app/pages/Spreadsheet.tsx`.
+
+Reuse: the block (nexus-ui `src/blocks/workbook`; barrel exports `WorkbookSurface` / `LazyWorkbookSurface` / `workbookStoreKey` / `isWorkbookSnapshot` / `seedWorkbook`) is what a future config-driven pages host renders as `kind:"spreadsheet"`. The record-bound variant (rows to records via the store patch path) is a documented seam, not built. A workflow or agent can produce a workbook by writing the same app_state key (`POST /api/state {key,value}`) with Univer's `IWorkbookData` shape.
+
 ## Add an activity kind (beyond call/email/meeting)
 1. `server/server.mjs` → extend the allowed-kind list in the `/activities` route.
 2. `src/ui/record-core/RecordPage.tsx` is the library copy — add the kind + icon in nexus-ui (`ACTIVITY_KINDS` + `evIcon`), then `npm run sync-ui`. Never edit `src/ui/` directly.

@@ -140,6 +140,17 @@ export function KitDemo() {
             </Button>
           </div>
         </div>
+        <div>
+          <Micro>{t("kit.workbookTitle")}</Micro>
+          <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+            <span style={{ font: "var(--nx-text-meta)", color: "var(--nx-fg-muted)" }}>
+              {t("kit.workbookBlurb")}
+            </span>
+            <Button data-testid="kit-workbook-open" onClick={() => (window.location.hash = "#/p/spreadsheet")}>
+              {t("kit.workbookOpen")}
+            </Button>
+          </div>
+        </div>
       </div>
 
       <div className="nxCard" style={{ padding: 16, display: "grid", gap: 10, alignContent: "start" }} data-testid="kit-views">

@@ -1,0 +1,124 @@
+import * as React from "react";
+import { RotateCcw, Table2 } from "lucide-react";
+import type { IWorkbookData } from "@univerjs/core";
+import { api } from "../api";
+import { t } from "../i18n";
+import { Button } from "../../ui/primitives/Button";
+import { ThinkingDots } from "../../ui/primitives/ThinkingDots";
+import { LazyWorkbookSurface, isWorkbookSnapshot, seedWorkbook, workbookStoreKey } from "../../ui/blocks/workbook";
+
+/* Spreadsheet page — a full Univer workbook as a standalone nav surface. Free-
+   surface: the whole workbook persists as ONE snapshot under an app-state key (not
+   record data), loaded here and autosaved on every edit. The heavy engine is the
+   LazyWorkbookSurface split, so this page adds ~0 to the eager bundle. */
+
+const PAGE_KEY = "spreadsheet";
+const KEY = workbookStoreKey(PAGE_KEY);
+const SAVE_DELAY = 700;
+
+type Phase = "loading" | "empty" | "ready";
+
+const skeleton = (
+  <div className="nxWorkbookOverlay nxWorkbookOverlay--transparent" style={{ position: "static", height: "100%" }} data-testid="workbook-page-loading">
+    <ThinkingDots label={t("page.spreadsheet.loading")} />
+    <span className="nxWorkbookOverlayBody">{t("page.spreadsheet.loading")}</span>
+  </div>
+);
+
+export function SpreadsheetPage() {
+  const [phase, setPhase] = React.useState<Phase>("loading");
+  const [initial, setInitial] = React.useState<IWorkbookData | null>(null);
+  const [reloadNonce, setReloadNonce] = React.useState(0);
+  const [saveState, setSaveState] = React.useState<"idle" | "saving" | "saved">("idle");
+
+  // one debouncer for the lifetime of the page: coalesce rapid edits into one write
+  const saveTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const persist = React.useCallback((snap: IWorkbookData) => {
+    setSaveState("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      api.setState(KEY, snap).then(() => setSaveState("saved")).catch(() => setSaveState("idle"));
+    }, SAVE_DELAY);
+  }, []);
+  React.useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
+
+  // load the stored workbook once: valid snapshot → mount · explicit null → empty ·
+  // never-set/corrupt → seed the demo and persist it so a reload restores it
+  React.useEffect(() => {
+    let live = true;
+    api.state().then((s) => {
+      if (!live) return;
+      const snap = s[KEY];
+      if (isWorkbookSnapshot(snap)) { setInitial(snap); setPhase("ready"); }
+      else if (snap === null) { setPhase("empty"); }
+      else {
+        const seed = seedWorkbook();
+        setInitial(seed); setPhase("ready");
+        api.setState(KEY, seed).catch(() => {});
+      }
+    }).catch(() => setPhase("empty"));
+    return () => { live = false; };
+  }, []);
+
+  const mountSeed = React.useCallback(() => {
+    const seed = seedWorkbook();
+    setInitial(seed);
+    setPhase("ready");
+    setReloadNonce((n) => n + 1);
+    setSaveState("saved");
+    api.setState(KEY, seed).catch(() => {});
+  }, []);
+
+  const clearWorkbook = React.useCallback(() => {
+    setPhase("empty");
+    setInitial(null);
+    api.setState(KEY, null).catch(() => {});
+  }, []);
+
+  const bar = (
+    <>
+      <span className="nxWorkbookSave" data-state={saveState} data-testid="workbook-save">
+        {saveState === "saving" ? <ThinkingDots label={t("page.spreadsheet.saving")} /> : null}
+        {saveState === "saving" ? t("page.spreadsheet.saving") : saveState === "saved" ? t("page.spreadsheet.saved") : ""}
+      </span>
+      <Button size="sm" variant="ghost" icon={<RotateCcw size={13} />} data-testid="workbook-reset" onClick={mountSeed}>
+        {t("page.spreadsheet.reset")}
+      </Button>
+      <Button size="sm" variant="ghost" data-testid="workbook-clear" onClick={clearWorkbook}>
+        {t("page.spreadsheet.clear")}
+      </Button>
+    </>
+  );
+
+  return (
+    <div style={{ height: "100%", minHeight: "72vh", display: "flex", flexDirection: "column" }} data-testid="page-spreadsheet">
+      {phase === "loading" && <div className="nxWorkbook nx-rise-in-sm">{skeleton}</div>}
+
+      {phase === "empty" && (
+        <div className="nxWorkbook nx-rise-in-sm">
+          <div className="nxWorkbookOverlay" style={{ position: "static", height: "100%" }} data-testid="workbook-empty">
+            <Table2 size={28} className="nxWorkbookOverlayIcon" />
+            <span className="nxWorkbookOverlayTitle">{t("page.spreadsheet.emptyTitle")}</span>
+            <span className="nxWorkbookOverlayBody">{t("page.spreadsheet.emptyBody")}</span>
+            <Button icon={<Table2 size={14} />} data-testid="workbook-create" onClick={mountSeed}>
+              {t("page.spreadsheet.create")}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {phase === "ready" && (
+        <React.Suspense fallback={<div className="nxWorkbook nx-rise-in-sm">{skeleton}</div>}>
+          <LazyWorkbookSurface
+            value={initial}
+            reloadNonce={reloadNonce}
+            onChange={persist}
+            title={t("page.spreadsheet.demoTitle")}
+            actions={bar}
+            data-testid="workbook-surface"
+          />
+        </React.Suspense>
+      )}
+    </div>
+  );
+}
