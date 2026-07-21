@@ -1302,16 +1302,8 @@
       "defaultView": "gallery",
       "hideInNav": true,
       "views": [
-        {
-          "type": "gallery",
-          "coverField": "cover",
-          "metaFields": [
-            "kind"
-          ]
-        },
-        {
-          "type": "table"
-        }
+        { "type": "gallery", "coverField": "cover", "coverFit": "cover", "groupField": "kind", "sortField": "title", "cardFields": ["kind", "notes"] },
+        { "type": "table" }
       ],
       "fields": [
         {
@@ -1354,56 +1346,27 @@
         }
       ],
       "sampleRows": [
-        {
-          "id": "ds_1",
-          "title": "Harbor at dusk",
-          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%234f46e5'/%3E%3Ccircle cx='3' cy='1' r='.7' fill='%23eef1fe'/%3E%3C/svg%3E",
-          "kind": "Photo",
-          "notes": "Golden hour"
-        },
-        {
-          "id": "ds_2",
-          "title": "Sprint whiteboard",
-          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%230d9488'/%3E%3Cpath d='M0 3 L2 1 L4 2.4' stroke='%23e9f6ee' stroke-width='.25' fill='none'/%3E%3C/svg%3E",
-          "kind": "Sketch",
-          "notes": "Week 19"
-        },
-        {
-          "id": "ds_3",
-          "title": "Quarterly funnel",
-          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23b45309'/%3E%3Crect x='.5' y='1.4' width='.6' height='1.2' fill='%23fdf3e4'/%3E%3Crect x='1.5' y='.9' width='.6' height='1.7' fill='%23fdf3e4'/%3E%3Crect x='2.5' y='.4' width='.6' height='2.2' fill='%23fdf3e4'/%3E%3C/svg%3E",
-          "kind": "Chart"
-        },
-        {
-          "id": "ds_4",
-          "title": "Team offsite",
-          "kind": "Photo",
-          "notes": "No cover on purpose"
-        },
-        {
-          "id": "ds_5",
-          "title": "Cargo route sketch",
-          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23db2777'/%3E%3Cpath d='M.4 2.6 C1.5.4 2.5 2.8 3.6.6' stroke='%23fdeaea' stroke-width='.22' fill='none'/%3E%3C/svg%3E",
-          "kind": "Sketch"
-        },
-        {
-          "id": "ds_6",
-          "title": "Winter lookbook",
-          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%232563eb'/%3E%3Crect x='.4' y='.4' width='1.4' height='2.2' fill='%23eef1fe' opacity='.85'/%3E%3Crect x='2.2' y='.4' width='1.4' height='2.2' fill='%23eef1fe' opacity='.55'/%3E%3C/svg%3E",
-          "kind": "Photo",
-          "notes": "Draft picks"
-        },
-        {
-          "id": "ds_7",
-          "title": "Untitled scan",
-          "kind": "Chart"
-        },
-        {
-          "id": "ds_8",
-          "title": "Rooftop panorama",
-          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%239333ea'/%3E%3Cpath d='M0 2.2 L1 1.5 L1.8 2 L2.7 1.2 L4 1.9 L4 3 L0 3 Z' fill='%23f3e8ff'/%3E%3C/svg%3E",
-          "kind": "Photo"
-        }
+        { "id": "ds_1", "title": "Harbor at dusk", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234f46e5'/%3E%3Cstop offset='1' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Golden hour" },
+        { "id": "ds_2", "title": "Rooftop panorama", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239333ea'/%3E%3Cstop offset='1' stop-color='%23f0abfc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Blue hour" },
+        { "id": "ds_3", "title": "Winter lookbook", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%2393c5fd'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Draft picks" },
+        { "id": "ds_4", "title": "Coastal fog", "kind": "Photo", "notes": "Long exposure" },
+        { "id": "ds_5", "title": "Night market", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23db2777'/%3E%3Cstop offset='1' stop-color='%23fbcfe8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Neon set" },
+        { "id": "ds_6", "title": "Desert dunes", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f59e0b'/%3E%3Cstop offset='1' stop-color='%23fde68a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Sunrise" },
+        { "id": "ds_7", "title": "Studio portrait", "kind": "Photo", "notes": "Rim light" },
+        { "id": "ds_8", "title": "Sprint whiteboard", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230d9488'/%3E%3Cstop offset='1' stop-color='%235eead4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Week 19" },
+        { "id": "ds_9", "title": "Cargo route sketch", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23db2777'/%3E%3Cstop offset='1' stop-color='%23fbcfe8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Concept" },
+        { "id": "ds_10", "title": "Wireframe pass", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%23ddd6fe'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "v3" },
+        { "id": "ds_11", "title": "Storyboard beats", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230891b2'/%3E%3Cstop offset='1' stop-color='%23a5f3fc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Act two" },
+        { "id": "ds_12", "title": "Napkin math", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2365a30d'/%3E%3Cstop offset='1' stop-color='%23d9f99d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Unit economics" },
+        { "id": "ds_13", "title": "Character turnaround", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ea580c'/%3E%3Cstop offset='1' stop-color='%23fed7aa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Inks" },
+        { "id": "ds_14", "title": "Floor plan", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23475569'/%3E%3Cstop offset='1' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Option B" },
+        { "id": "ds_15", "title": "Quarterly funnel", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23b45309'/%3E%3Cstop offset='1' stop-color='%23fed7aa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "Q3" },
+        { "id": "ds_16", "title": "Cohort retention", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2316a34a'/%3E%3Cstop offset='1' stop-color='%23bbf7d0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "D30" },
+        { "id": "ds_17", "title": "Revenue bridge", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230f766e'/%3E%3Cstop offset='1' stop-color='%2399f6e4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "YoY" },
+        { "id": "ds_18", "title": "Latency histogram", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23dc2626'/%3E%3Cstop offset='1' stop-color='%23fecaca'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "p99" },
+        { "id": "ds_19", "title": "Market share", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%23bfdbfe'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "2026" },
+        { "id": "ds_20", "title": "Burn-down", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239333ea'/%3E%3Cstop offset='1' stop-color='%23e9d5ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "Sprint 12" },
+        { "id": "ds_21", "title": "NPS trend", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ca8a04'/%3E%3Cstop offset='1' stop-color='%23fef08a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "Rolling" }
       ]
     },
     {

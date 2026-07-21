@@ -49,11 +49,13 @@ test("visibleIndices windows to the viewport plus overscan", () => {
   assert.equal(withOverscan[withOverscan.length - 1], 16);
 });
 
-test("cardHeight is exact by construction and varies by cover/meta presence", () => {
-  const covered = cardHeight({ colWidth: 260, coverConfigured: true, hasCover: true, hasMeta: true });
-  const coverless = cardHeight({ colWidth: 260, coverConfigured: true, hasCover: false, hasMeta: true });
-  const noMeta = cardHeight({ colWidth: 260, coverConfigured: true, hasCover: true, hasMeta: false });
-  assert.equal(covered, Math.round(260 * 0.75) + 10 + 38 + 26 + 10);
+test("cardHeight is exact by construction and varies by cover + card-field count", () => {
+  const covered = cardHeight({ colWidth: 260, coverConfigured: true, hasCover: true, fieldRows: 2 });
+  const coverless = cardHeight({ colWidth: 260, coverConfigured: true, hasCover: false, fieldRows: 2 });
+  const oneField = cardHeight({ colWidth: 260, coverConfigured: true, hasCover: true, fieldRows: 1 });
+  const noFields = cardHeight({ colWidth: 260, coverConfigured: true, hasCover: true, fieldRows: 0 });
+  assert.equal(covered, Math.round(260 * 0.75) + 10 + 38 + 2 * 22 + 10);
   assert.ok(coverless < covered);
-  assert.equal(covered - noMeta, 26);
+  assert.equal(covered - oneField, 22); // one line per card field
+  assert.equal(oneField - noFields, 22);
 });
