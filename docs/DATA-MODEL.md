@@ -67,6 +67,13 @@ erDiagram
     number lat
     number lng
   }
+  demo_calendar {
+    text title "PK"
+    date_ime start
+    date_ime end
+    select track
+    text repeat
+  }
   companies ||--o{ people : "company"
   companies ||--o{ deals : "company"
 ```
@@ -167,6 +174,17 @@ Default view: map
 | `city` | text |  |
 | `lat` | number |  |
 | `lng` | number |  |
+
+### Sessions (`demo_calendar`)
+Default view: calendar
+
+| Field | Type | Notes |
+|---|---|---|
+| `title` | text | primary |
+| `start` | dateTime |  |
+| `end` | dateTime |  |
+| `track` | select | options: [object Object] / [object Object] / [object Object] |
+| `repeat` | text |  |
 
 Users directory: `you`, `Maya Verstraete`, `Jonas Peeters`, `Sofia Marchetti` (drives `user`-type fields).
 

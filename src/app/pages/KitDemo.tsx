@@ -158,6 +158,9 @@ export function KitDemo() {
         <a className="nxRowLink" href="#/o/demo_showcase" data-testid="kit-views-gallery">
           {t("kit.views.gallery")}
         </a>
+        <a className="nxRowLink" href="#/o/demo_calendar" data-testid="kit-views-calendar">
+          {t("kit.views.calendar")}
+        </a>
         <a className="nxRowLink" href="#/o/people" data-testid="kit-views-form">
           {t("kit.views.form")}
         </a>

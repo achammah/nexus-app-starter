@@ -178,19 +178,67 @@ Runtime behavior: with 2+ relation fields a "via" picker appears beside the view
 
 Scope note: the flow view is records-as-graph. A workflow-builder canvas (node palettes, per-node config drawers, executable runs, edge drawing) is future work and deliberately out of this view's scope — the canvas never mutates records, draws connections, or deletes nodes.
 
-## Add a calendar to an object
-1. `starter.config.json`, on the object, add a `calendar` entry to its `views` (the demo `deals` object carries one):
+## Add a full-fidelity calendar to an object
+
+Any object with a `date` or `dateTime` field can render a `calendar` view. Add a view entry to the object's `views` array in `starter.config.json`. The minimum is a start field:
+
 ```jsonc
-"views": [
-  { "type": "table" },
-  { "type": "calendar", "startDateField": "closeDate", "colorField": "stage" }
-]
+{ "type": "calendar", "startDateField": "closeDate" }
 ```
-2. Keys: `startDateField` (required, a `date` or `dateTime` field key; `defaultConfig` picks the first one) drives placement. A `date` field renders all-day events; a `dateTime` field renders timed events. `endDateField` (optional, same types) turns events into resizable spans; the stored end date is INCLUSIVE, the view converts to the calendar's exclusive convention internally, so records never leak calendar conventions. `titleField` defaults to the primary field. `colorField` names a select field: events then take that field's own option palette, the same colors as table chips and kanban columns (give options the `{ "value": "New", "color": "blue" }` form).
-3. Interactions: click an event to open its record in the peek. Drag an event to another day (or resize a span when `endDateField` is set) to PATCH the date field(s), with the standard "Saved" toast and revert on failure. Click an empty day to open the create dialog prefilled with that date (rendered only for callers with create rights). Month and week persist per object in the view-state bag (`calMode`, plus `calDate`, the anchor you were on, so a reload lands where you left). Week mode picks its grid from the start field: `date` objects get the one-row day grid, `dateTime` objects the hourly time grid.
-4. Mobile (≤768px) replaces the grid with a virtualized agenda list: every day of the anchor month is a row, tapping a day creates on that day, tapping an event opens the peek. Drag-to-reschedule stays desktop-only; on mobile, reschedule via the record's date field in the peek.
-5. An object with no date field, or a `startDateField` naming a non-date field, degrades to the standard explanatory chip in place of the view; the other tabs keep working.
-6. Wiring to Nexus: the calendar has no write path of its own. Every change goes through the record PATCH route, so dates written by a workflow or an agent (through the warehouse and `/api/sync`, or the API directly) land on the calendar via the normal rev poll with no extra wiring.
+
+The full option set (every key optional but `startDateField`, resolved through the pure `viewOptions` mapping so config is the single source):
+
+```jsonc
+{
+  "type": "calendar",
+  "startDateField": "start",
+  "endDateField": "end",
+  "titleField": "title",
+  "colorField": "track",
+  "recurrenceField": "repeat",
+  "defaultView": "week",
+  "enabledViews": ["month", "week", "day", "listWeek", "listMonth", "year"],
+  "editable": true,
+  "selectable": true,
+  "firstDay": "Monday",
+  "slotDuration": "30m",
+  "slotMinTime": "08:00",
+  "slotMaxTime": "20:00",
+  "weekNumbers": true,
+  "businessHours": true,
+  "nowIndicator": true,
+  "eventOverlap": true
+}
+```
+
+| Key | Values | Drives |
+|---|---|---|
+| `startDateField` | a `date`/`dateTime` field key (required) | which field places the event |
+| `endDateField` | a `date`/`dateTime` field key | events become spans, resizable |
+| `titleField` | any field key (defaults to the primary) | the event label |
+| `colorField` | a `select` field key | events take the field's own option palette |
+| `recurrenceField` | a `text` field key holding an RRULE string | rows render as a recurring series (render-only) |
+| `defaultView` | `month`·`week`·`day`·`listWeek`·`listMonth`·`year` (default `month`) | the initial view |
+| `enabledViews` | a subset of the six above (default all) | which views the picker offers |
+| `editable` | boolean (default true) | drag-move, resize, and edit-dialog saves |
+| `selectable` | boolean (default true) | drag-select a range to create |
+| `firstDay` | a weekday name `Sunday`…`Saturday` (default `Monday`) | the week start |
+| `slotDuration` | `15m`·`30m`·`60m` (default `30m`) | the time-grid slot size |
+| `slotMinTime` / `slotMaxTime` | `HH:MM` (default `00:00` / `24:00`) | the visible time window |
+| `weekNumbers` | boolean (default false) | the ISO week column |
+| `businessHours` | boolean (default false) | shade Mon to Fri, 9 to 5 |
+| `nowIndicator` | boolean (default true) | the current-time line |
+| `eventOverlap` | boolean (default true) | allow events to overlap |
+
+**Views**: a `date` object renders all-day; a `dateTime` object renders timed (with an all-day lane). `week` and `day` pick the day-grid form for all-day objects and the hourly time-grid for timed ones. An event on a `dateTime` field whose value is date-only (`2026-08-14`, no time) renders in the all-day lane, so one object can hold both all-day and timed events.
+
+**Event CRUD**: click (or Enter on a focused event) opens a quick edit dialog (title, dates, an all-day toggle on timed objects, the color field, and the object's other simple fields). Save writes through the store; "Open full record" opens the side peek; Delete asks for an inline confirm, then soft-deletes to trash. Drag-move and resize write the date field(s); dragging a timed event into the all-day lane stores a date-only value (and back). Drag-select a range, or click an empty day, opens the create dialog prefilled. Deletion uses the host's `onDelete` seam (a `ViewProps` member every view can use); the review surface is the dialog's inline confirm.
+
+**Recurring events**: point `recurrenceField` at a `text` field holding an RRULE string, e.g. `FREQ=WEEKLY;BYDAY=MO,WE,FR`. The row expands into occurrences across every view via the FullCalendar rrule plugin (the event's own start supplies the DTSTART). Render-only: editing a rule or a per-occurrence exception is an extension point, not built. Occurrences are drag-locked.
+
+**Resource / timeline views**: the per-resource and timeline views are FullCalendar Premium and are not bundled. Wire them by adding the `@fullcalendar/resource-*` packages (a paid license) and a `resource` config key.
+
+**Wiring to Nexus**: every event mutation goes through the store's patch/create/delete path, so a calendar over a `WAREHOUSE=local` or `bigquery`-backed object tolerates rows changing underneath it (an external writer or a workflow landing a row via the warehouse appears on the next sync with no interaction). To have a scheduled workflow or an agent create calendar rows, write records to the object through the warehouse; the calendar renders them with no extra wiring.
 
 ## Add a gallery view to an object
 1. `starter.config.json`, on the object, add a `gallery` entry to its `views` (the demo `demo_showcase` object carries one):
