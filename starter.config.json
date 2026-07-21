@@ -314,12 +314,58 @@
           "email": "erik@tidalfreight.example",
           "role": "COO",
           "company": "Tidal Freight"
+        },
+        {
+          "id": "pe_9",
+          "name": "Nora Vandael",
+          "email": "nora@brightline.example",
+          "role": "VP Engineering",
+          "tags": [
+            "Technical"
+          ],
+          "company": "Brightline Analytics"
+        },
+        {
+          "id": "pe_10",
+          "name": "Pieter Claes",
+          "email": "pieter@nordwind.example",
+          "role": "Store Ops Manager",
+          "tags": [
+            "Ops"
+          ],
+          "company": "Nordwind Retail"
+        },
+        {
+          "id": "pe_11",
+          "name": "Ines Verhoeven",
+          "email": "ines@cargolane.example",
+          "role": "Dispatch Lead",
+          "tags": [
+            "Ops"
+          ],
+          "company": "Cargolane"
+        },
+        {
+          "id": "pe_12",
+          "name": "Camille Roux",
+          "email": "camille@pixelforge.example",
+          "role": "Art Director",
+          "company": "Pixelforge Studio"
         }
       ],
       "contextFields": [
         "name",
         "role",
         "company"
+      ],
+      "views": [
+        {
+          "type": "table"
+        },
+        {
+          "type": "flow",
+          "relationField": "company"
+        }
       ]
     },
     {

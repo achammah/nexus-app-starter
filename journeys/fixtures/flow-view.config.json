@@ -1,0 +1,95 @@
+{
+  "_note": "flow-view lane — records-as-graph. `flow_tasks` proves self-relation record→record edges (multiple:true dependsOn), drag persistence, node→peek, and the relation picker (owner_ref draws cross-object hubs from flow_people). `flow_plain` (no relation field) proves the plain-language config chip; `flow_empty` proves the designed empty state. Booted by journeys/extra/flow-view.mjs on the lane band (5861).",
+  "app": { "name": "Flow View Fixture", "slug": "flow-view-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "flow_people",
+      "label": "Fixture people",
+      "labelOne": "Fixture person",
+      "icon": "users",
+      "defaultView": "table",
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
+        { "key": "role", "label": "Role", "type": "text", "width": 160 }
+      ],
+      "sampleRows": [
+        { "id": "fp_1", "name": "Ada Cheng", "role": "Lead" },
+        { "id": "fp_2", "name": "Malik Osei", "role": "Engineer" },
+        { "id": "fp_3", "name": "Rosa Lindgren", "role": "Writer" }
+      ]
+    },
+    {
+      "key": "flow_tasks",
+      "label": "Fixture tasks",
+      "labelOne": "Fixture task",
+      "icon": "list-checks",
+      "defaultView": "flow",
+      "views": [
+        { "type": "table" },
+        { "type": "flow", "relationField": "dependsOn" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            { "value": "Planned", "color": "gray" },
+            { "value": "Active", "color": "blue" },
+            { "value": "Done", "color": "green" }
+          ],
+          "width": 120
+        },
+        { "key": "dependsOn", "label": "Depends on", "type": "relation", "relation": "flow_tasks", "multiple": true, "width": 200 },
+        { "key": "owner_ref", "label": "Owner", "type": "relation", "relation": "flow_people", "width": 160 }
+      ],
+      "sampleRows": [
+        { "id": "ft_1", "name": "Design schema", "status": "Done", "owner_ref": "fp_1" },
+        { "id": "ft_2", "name": "Build API", "status": "Active", "dependsOn": ["ft_1"], "owner_ref": "fp_1" },
+        { "id": "ft_3", "name": "Build UI", "status": "Active", "dependsOn": ["ft_1"], "owner_ref": "fp_1" },
+        { "id": "ft_4", "name": "Integration tests", "status": "Planned", "dependsOn": ["ft_2", "ft_3"], "owner_ref": "fp_2" },
+        { "id": "ft_5", "name": "Docs pass", "status": "Planned", "dependsOn": ["ft_2"], "owner_ref": "fp_2" },
+        { "id": "ft_6", "name": "Launch checklist", "status": "Planned", "dependsOn": ["ft_4", "ft_5"], "owner_ref": "fp_3" },
+        { "id": "ft_7", "name": "Retro notes", "status": "Planned" }
+      ]
+    },
+    {
+      "key": "flow_plain",
+      "label": "Fixture notes",
+      "labelOne": "Fixture note",
+      "icon": "file-text",
+      "defaultView": "table",
+      "views": [
+        { "type": "table" },
+        { "type": "flow" }
+      ],
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 260 },
+        { "key": "kind", "label": "Kind", "type": "select", "options": ["Visit", "Call"], "width": 120 }
+      ],
+      "sampleRows": [
+        { "id": "fn_1", "title": "Site walkthrough", "kind": "Visit" }
+      ]
+    },
+    {
+      "key": "flow_empty",
+      "label": "Fixture ideas",
+      "labelOne": "Fixture idea",
+      "icon": "file-text",
+      "seedCount": 0,
+      "defaultView": "flow",
+      "views": [
+        { "type": "table" },
+        { "type": "flow", "relationField": "parent" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        { "key": "parent", "label": "Parent", "type": "relation", "relation": "flow_empty", "width": 180 }
+      ],
+      "sampleRows": []
+    }
+  ]
+}
