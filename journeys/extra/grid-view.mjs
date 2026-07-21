@@ -22,6 +22,8 @@ const PORT = 5851;
 const BASE = `http://localhost:${PORT}`;
 const PORT_10K = 5852;
 const BASE_10K = `http://localhost:${PORT_10K}`;
+const PORT_C = 5853;
+const BASE_C = `http://localhost:${PORT_C}`;
 
 async function boot(ROOT, cfg, port, base) {
   const env = { ...process.env, PORT: String(port), CONFIG_PATH: `journeys/fixtures/${cfg}` };
@@ -104,6 +106,16 @@ export default [
         const c = cellCenter(box, 2, 0);
         await p.mouse.click(c.x, c.y);
         await p.keyboard.press("ArrowRight");
+        // glide applies selection moves asynchronously off the keydown; wait until
+        // the active cell is really Notes before opening. Without this, Enter races
+        // the move and can open the still-selected Budget editor (a number cell →
+        // "kb-edited" coerces to null), the source of the ~33% flake. glide's a11y
+        // cell id is glide-cell-<sourceIndex>-<row>; the checkbox row-marker takes
+        // sourceIndex 0, so Notes (4th data column) is sourceIndex 4.
+        await p.waitForFunction(
+          () => document.querySelector('[data-testid="grid-projects"] [data-testid="glide-cell-4-0"]')?.getAttribute("aria-selected") === "true",
+          null, { timeout: 5000 },
+        );
         await p.keyboard.press("Enter");
         await p.waitForSelector("#portal textarea, #portal input", { timeout: 5000 });
         assert(true, "arrow-move + Enter opens the cell editor (keyboard path)");
@@ -280,6 +292,86 @@ export default [
         );
         const jumpMs = Date.now() - t1;
         assert(jumpMs < 4000, `jump-to-end lands at the bottom responsively (${jumpMs}ms < 4000ms)`);
+        await ctx.close();
+      } finally { proc.kill(); }
+    },
+  },
+  {
+    name: "grid-contrast", feature: "Sheet view (spreadsheet grid)",
+    async run(page, { assert, ROOT }) {
+      // a bold client skin drives the selection background to a wrong-way
+      // luminance in each theme (dark in light mode, light in dark mode); the
+      // selected-cell text must flip so it stays legible either way. We select a
+      // text cell and pixel-sample its interior straight off glide's canvas.
+      const proc = await boot(ROOT, "grid-contrast.config.json", PORT_C, BASE_C);
+      try {
+        const ctx = await page.context().browser().newContext({ viewport: { width: 1360, height: 900 } });
+        const p = await ctx.newPage();
+        await p.goto(`${BASE_C}/#/o/projects`);
+        const box = await gridCanvas(p, "projects");
+        const notesX = box.x + colX(3) + WIDTHS[3] / 2;
+        const notesY = box.y + HEADER + ROW_H / 2; // row 0 = "phase one"
+
+        /* brightest + darkest OPAQUE pixel luminance in a data cell's interior;
+           picks the grid canvas that actually holds paint at the sample (skips a
+           transparent overlay canvas) */
+        const sampleCell = (col, row) => {
+          const inset = 12;
+          const vx = box.x + colX(col) + inset;
+          const vy = box.y + HEADER + row * ROW_H + 7;
+          const vw = WIDTHS[col] - inset * 2;
+          const vh = ROW_H - 14;
+          return p.evaluate(({ vx, vy, vw, vh }) => {
+            let best = null;
+            for (const cvs of document.querySelectorAll('[data-testid="grid-projects"] canvas')) {
+              const r = cvs.getBoundingClientRect();
+              if (r.width === 0 || r.height === 0) continue;
+              const dpr = window.devicePixelRatio || 1;
+              const g = cvs.getContext("2d");
+              if (!g) continue;
+              const sx = Math.round((vx - r.left) * dpr);
+              const sy = Math.round((vy - r.top) * dpr);
+              const sw = Math.max(1, Math.round(vw * dpr));
+              const sh = Math.max(1, Math.round(vh * dpr));
+              if (sx < 0 || sy < 0 || sx + sw > cvs.width || sy + sh > cvs.height) continue;
+              let d;
+              try { d = g.getImageData(sx, sy, sw, sh).data; } catch { continue; }
+              let maxL = 0, minL = 1, opaque = 0;
+              for (let i = 0; i < d.length; i += 4) {
+                if (d[i + 3] < 10) continue;
+                opaque++;
+                const L = (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255;
+                if (L > maxL) maxL = L;
+                if (L < minL) minL = L;
+              }
+              if (opaque > 0 && (best === null || opaque > best.opaque)) best = { maxL, minL, opaque };
+            }
+            return best ?? { maxL: 0, minL: 1, opaque: 0 };
+          }, { vx, vy, vw, vh });
+        };
+
+        // LIGHT theme: selection bg is dark (#2e1065) → selected text flips WHITE
+        await p.mouse.click(notesX, notesY);
+        await p.waitForTimeout(250);
+        const light = await sampleCell(3, 0);
+        await shot(p, ROOT, "grid-contrast-light");
+        assert(light.opaque > 0, "the selected cell's canvas region was sampled");
+        assert(
+          light.maxL > 0.6,
+          `light theme: selected-cell text is light on the dark selection (peak luminance ${light.maxL.toFixed(2)} > 0.6)`,
+        );
+
+        // DARK theme: selection bg flips light (#e9d5ff) → selected text flips BLACK
+        await p.evaluate(() => { document.documentElement.dataset.theme = "dark"; });
+        await p.waitForTimeout(300); // theme.ts re-derives on the data-theme mutation
+        await p.mouse.click(notesX, notesY);
+        await p.waitForTimeout(250);
+        const dark = await sampleCell(3, 0);
+        await shot(p, ROOT, "grid-contrast-dark");
+        assert(
+          dark.minL < 0.25,
+          `dark theme: selected-cell text is dark on the light selection (min luminance ${dark.minL.toFixed(2)} < 0.25)`,
+        );
         await ctx.close();
       } finally { proc.kill(); }
     },

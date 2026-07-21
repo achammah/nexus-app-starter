@@ -1,0 +1,45 @@
+{
+  "_note": "grid contrast fixture — the SAME projects object + geometry as grid-view.config.json, under a bold client skin that pushes the selection background to a WRONG-WAY luminance in each theme: dark (#2e1065) in light mode, light (#e9d5ff) in dark mode. Cell text drawn with the base ink would be illegible on it either way; the Sheet view's selection-contrast fix must flip the selected-cell text (white in light mode, black in dark mode). Booted by journeys/extra/grid-view.mjs on band 5853; the grid-contrast journey pixel-samples a selected cell in both themes.",
+  "app": { "name": "Grid Contrast Fixture", "slug": "grid-contrast-fixture" },
+  "theme": {
+    "skin": {
+      "name": "bold-selection",
+      "overrides": {
+        "light": { "--nx-accent-soft": "#2e1065" },
+        "dark": { "--nx-accent-soft": "#e9d5ff" }
+      }
+    }
+  },
+  "users": ["Maya Verstraete", "Jonas Peeters"],
+  "objects": [
+    {
+      "key": "projects",
+      "label": "Projects",
+      "labelOne": "Project",
+      "icon": "building-2",
+      "defaultView": "grid",
+      "views": [
+        { "type": "table" },
+        { "type": "grid" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
+        { "key": "stage", "label": "Stage", "type": "select", "options": [
+          { "value": "Backlog", "color": "gray" },
+          { "value": "Building", "color": "orange" },
+          { "value": "Shipped", "color": "green" }
+        ], "width": 140 },
+        { "key": "budget", "label": "Budget", "type": "number", "width": 120 },
+        { "key": "notes", "label": "Notes", "type": "text", "width": 200 }
+      ],
+      "sampleRows": [
+        { "id": "pr_1", "name": "Atlas migration", "stage": "Building", "budget": 12000, "notes": "phase one" },
+        { "id": "pr_2", "name": "Beacon rollout", "stage": "Backlog", "budget": 8000, "notes": "waiting" },
+        { "id": "pr_3", "name": "Corridor refresh", "stage": "Backlog", "budget": 4500, "notes": "draft" },
+        { "id": "pr_4", "name": "Delta cleanup", "stage": "Shipped", "budget": 2000, "notes": "done" },
+        { "id": "pr_5", "name": "Echo audit", "stage": "Backlog", "budget": 3200, "notes": "queued" },
+        { "id": "pr_6", "name": "Foxtrot poc", "stage": "Building", "budget": 6100, "notes": "spike" }
+      ]
+    }
+  ]
+}
