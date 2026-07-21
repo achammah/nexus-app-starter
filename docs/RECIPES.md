@@ -109,7 +109,18 @@ At ≤768px a bottom tab bar renders one tab per `config.objects` — plus a Cop
 3. Omit `views` and the object derives the pre-registry set: the table, plus Board + Chart when a select/user field exists. Runtime precedence: a user's pick in the Columns/group-by/measure/rollup menus (persisted per object, captured by saved views) wins over the `views` entry, which wins over the definition's defaults.
 4. A `type` with no installed definition, or a config its definition rejects (a `groupField` that is not a select/user field), renders an inline "not installed" chip in place of the view; the other tabs keep working.
 
-## Save + share list views
+## Give an object a Sheet view (spreadsheet bulk editing)
+1. `starter.config.json` → add `{ "type": "grid" }` to the object's `views`:
+```jsonc
+"views": [
+  { "type": "table" },
+  { "type": "grid" }
+]
+```
+2. The Sheet tab renders an Excel-grade grid over the object's records: fill-handle drag, range selection, TSV copy/paste that round-trips with Excel/Sheets, full keyboard cell navigation, a frozen primary column, and row markers wired to the same bulk bar the table uses. The grid loads as its own lazy chunk on first switch.
+3. What edits in place: text, longText, url, email, number, currency, boolean, select, multiselect and user fields. Everything else renders formatted read-only (dates edit on the record page, relation identity in the picker, rich and shaped values in their own editors). A pasted or filled value the target field cannot hold (an unknown select option, a non-number) is SKIPPED, never written; paste clips to existing rows and never creates records.
+4. Table or Sheet: the table is the browse-and-manage surface (side peek, relation links, per-row navigation, the Columns menu); the Sheet is the bulk data-entry and cleanup surface (fill series of cells, move blocks of values, paste from a spreadsheet). Objects that need both declare both, as `demo_sheet` does (hidden from the nav, linked from the Kit demo page).
+5. Wiring to Nexus: every grid commit goes through the SAME record patch path as the table (one merged PATCH per touched row), so warehouse logging, live rev-poll sync and permissions all apply unchanged; a record generated or updated by an external writer lands in the open grid on the next sync like any other view.
 Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.
 
 ## Add a journey

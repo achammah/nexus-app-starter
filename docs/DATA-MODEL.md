@@ -45,6 +45,14 @@ erDiagram
     select severity
     boolean active
   }
+  demo_sheet {
+    text name "PK"
+    select stage
+    user owner
+    number budget
+    boolean active
+    text notes
+  }
   companies ||--o{ people : "company"
   companies ||--o{ deals : "company"
 ```
@@ -111,6 +119,18 @@ Default view: table
 | `rule` | text | primary |
 | `severity` | select | options: Critical / Important / Minor |
 | `active` | boolean |  |
+
+### Sheet demo (`demo_sheet`)
+Default view: grid
+
+| Field | Type | Notes |
+|---|---|---|
+| `name` | text | primary |
+| `stage` | select | options: [object Object] / [object Object] / [object Object] / [object Object] / [object Object] |
+| `owner` | user |  |
+| `budget` | number |  |
+| `active` | boolean |  |
+| `notes` | text |  |
 
 Users directory: `you`, `Maya Verstraete`, `Jonas Peeters`, `Sofia Marchetti` (drives `user`-type fields).
 

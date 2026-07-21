@@ -1,0 +1,52 @@
+{
+  "_note": "grid-view lane — the Sheet (spreadsheet) view. `projects` declares views [table, grid] with EXPLICIT column widths so journeys can hit canvas cells deterministically (marker 36 + name 200 + stage 140 + budget 120 + notes 200; rowHeight 34, header 36). `empty_x` has zero rows and proves the designed empty state. Booted by journeys/extra/grid-view.mjs on the lane band (5851).",
+  "app": { "name": "Grid View Fixture", "slug": "grid-view-fixture" },
+  "theme": {},
+  "users": ["Maya Verstraete", "Jonas Peeters"],
+  "objects": [
+    {
+      "key": "projects",
+      "label": "Projects",
+      "labelOne": "Project",
+      "icon": "building-2",
+      "defaultView": "grid",
+      "views": [
+        { "type": "table" },
+        { "type": "grid" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
+        { "key": "stage", "label": "Stage", "type": "select", "options": [
+          { "value": "Backlog", "color": "gray" },
+          { "value": "Building", "color": "orange" },
+          { "value": "Shipped", "color": "green" }
+        ], "width": 140 },
+        { "key": "budget", "label": "Budget", "type": "number", "width": 120 },
+        { "key": "notes", "label": "Notes", "type": "text", "width": 200 }
+      ],
+      "sampleRows": [
+        { "id": "pr_1", "name": "Atlas migration", "stage": "Building", "budget": 12000, "notes": "phase one" },
+        { "id": "pr_2", "name": "Beacon rollout", "stage": "Backlog", "budget": 8000, "notes": "waiting" },
+        { "id": "pr_3", "name": "Corridor refresh", "stage": "Backlog", "budget": 4500, "notes": "draft" },
+        { "id": "pr_4", "name": "Delta cleanup", "stage": "Shipped", "budget": 2000, "notes": "done" },
+        { "id": "pr_5", "name": "Echo audit", "stage": "Backlog", "budget": 3200, "notes": "queued" },
+        { "id": "pr_6", "name": "Foxtrot poc", "stage": "Building", "budget": 6100, "notes": "spike" }
+      ]
+    },
+    {
+      "key": "empty_x",
+      "label": "Empties",
+      "labelOne": "Empty",
+      "icon": "file-text",
+      "defaultView": "grid",
+      "seedCount": 0,
+      "views": [
+        { "type": "grid" }
+      ],
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 200 },
+        { "key": "kind", "label": "Kind", "type": "select", "options": ["A", "B"], "width": 120 }
+      ]
+    }
+  ]
+}

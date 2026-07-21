@@ -1,0 +1,24 @@
+{
+  "_note": "grid-view lane perf fixture — 10,000 deterministic generated rows (no sampleRows → the typed seed generator fills seedCount). Only the grid view; exercised by the grid-10k-perf journey on the lane band.",
+  "app": { "name": "Grid 10k Fixture", "slug": "grid-10k-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "rows_10k",
+      "label": "Rows",
+      "labelOne": "Row",
+      "icon": "grid-3x3",
+      "defaultView": "grid",
+      "seedCount": 10000,
+      "views": [
+        { "type": "grid" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        { "key": "status", "label": "Status", "type": "select", "options": ["A", "B", "C"], "width": 120 },
+        { "key": "value", "label": "Value", "type": "number", "width": 120 }
+      ]
+    }
+  ]
+}

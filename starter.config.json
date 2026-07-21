@@ -708,6 +708,46 @@
         }
       ],
       "hideInNav": true
+    },
+    {
+      "key": "demo_sheet",
+      "label": "Sheet demo",
+      "labelOne": "Line",
+      "icon": "grid-3x3",
+      "defaultView": "grid",
+      "hideInNav": true,
+      "views": [
+        { "type": "table" },
+        { "type": "grid" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
+        { "key": "stage", "label": "Stage", "type": "select", "options": [
+          { "value": "Backlog", "color": "gray" },
+          { "value": "Scoping", "color": "blue" },
+          { "value": "Building", "color": "orange" },
+          { "value": "Review", "color": "purple" },
+          { "value": "Shipped", "color": "green" }
+        ], "width": 130 },
+        { "key": "owner", "label": "Owner", "type": "user", "width": 150 },
+        { "key": "budget", "label": "Budget", "type": "number", "width": 110 },
+        { "key": "active", "label": "Active", "type": "boolean", "width": 80 },
+        { "key": "notes", "label": "Notes", "type": "text", "width": 240 }
+      ],
+      "sampleRows": [
+        { "id": "ds_1", "name": "Website refresh", "stage": "Building", "owner": "Maya Verstraete", "budget": 12000, "active": true, "notes": "Hero copy still open" },
+        { "id": "ds_2", "name": "Q3 partner event", "stage": "Scoping", "owner": "Jonas Peeters", "budget": 8500, "active": true, "notes": "Venue shortlist of three" },
+        { "id": "ds_3", "name": "Billing migration", "stage": "Review", "owner": "Sofia Marchetti", "budget": 21000, "active": true, "notes": "Waiting on finance sign-off" },
+        { "id": "ds_4", "name": "Mobile onboarding", "stage": "Backlog", "owner": "you", "budget": 6000, "active": false, "notes": "Blocked on design tokens" },
+        { "id": "ds_5", "name": "Data warehouse sync", "stage": "Shipped", "owner": "Maya Verstraete", "budget": 15500, "active": true, "notes": "Monitoring for a week" },
+        { "id": "ds_6", "name": "Support macros", "stage": "Building", "owner": "Jonas Peeters", "budget": 3000, "active": true, "notes": "Ten macros drafted" },
+        { "id": "ds_7", "name": "Pricing page test", "stage": "Scoping", "owner": "Sofia Marchetti", "budget": 4500, "active": true, "notes": "Two variants agreed" },
+        { "id": "ds_8", "name": "Sales deck refresh", "stage": "Review", "owner": "you", "budget": 2500, "active": true, "notes": "Awaiting brand pass" },
+        { "id": "ds_9", "name": "Churn interviews", "stage": "Backlog", "owner": "Maya Verstraete", "budget": 1800, "active": false, "notes": "Recruit eight accounts" },
+        { "id": "ds_10", "name": "API rate limits", "stage": "Shipped", "owner": "Jonas Peeters", "budget": 9800, "active": true, "notes": "Docs updated" },
+        { "id": "ds_11", "name": "Legal review cycle", "stage": "Building", "owner": "Sofia Marchetti", "budget": 7200, "active": true, "notes": "Second redline in" },
+        { "id": "ds_12", "name": "Hiring loop revamp", "stage": "Scoping", "owner": "you", "budget": 5400, "active": true, "notes": "Rubrics half done" }
+      ]
     }
   ]
 }
