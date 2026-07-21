@@ -472,7 +472,8 @@ export function ObjectView({
     const body: Record<string, unknown> = { ...draft };
     if (config.stageField && !body[config.stageField]) {
       const sf = config.fields.find((f) => f.key === config.stageField);
-      body[config.stageField] = sf?.options?.[0];
+      // first option VALUE, never the raw option (object options carry {value,color})
+      body[config.stageField] = optionValues(sf?.options)[0];
     }
     api
       .create(config.key, body)
@@ -499,7 +500,8 @@ export function ObjectView({
     // parity with the plain create: default the kanban stage when unset
     if (config.stageField && !body[config.stageField]) {
       const sf = config.fields.find((f) => f.key === config.stageField);
-      body[config.stageField] = sf?.options?.[0];
+      // first option VALUE, never the raw option (object options carry {value,color})
+      body[config.stageField] = optionValues(sf?.options)[0];
     }
     setWizardCreating(true);
     api
