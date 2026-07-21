@@ -55,7 +55,7 @@ The app builds as ONE main chunk plus a lazy chunk per heavy view. Measured eage
 |---|---|---|---|
 | pre view-registry (49292a9) | 1,268.07 kB | 374.81 kB | 158.79 kB |
 | with the view registry | 1,274.53 kB | 376.92 kB | 158.79 kB |
-| with the Sheet + flow view definitions (eager) | 1,280.88 kB | 379.02 kB | 158.82 kB |
+| with the Sheet + flow view definitions (eager) | 1,284.67 kB | 380.19 kB | 158.82 kB |
 
 Lazy view chunks (each loads on first open of its view tab):
 
@@ -64,7 +64,7 @@ Lazy view chunks (each loads on first open of its view tab):
 | SpreadsheetView (the Sheet view + glide) | 310.39 kB | 103.55 kB | 12.92 kB |
 | FlowView (xyflow + dagre + canvas) | 217.20 kB | 70.69 kB | 19.53 kB |
 
-Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager and the flow definition +0.50% min / +0.56% gzip). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip, FlowView at 70.69 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
+Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager; the flow definition adds +0.41% min / +0.41% gzip over the Sheet-merged baseline of 1,279.42 kB / 378.63 kB). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip, FlowView at 70.69 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
 
 ## Adapted-source provenance
 
