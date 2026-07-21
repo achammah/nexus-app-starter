@@ -98,3 +98,4 @@ Adapted foreign code (MIT / Apache-2.0 / BSD family only) carries a one-line `//
 | File | Adapted from | License | What was adapted |
 |---|---|---|---|
 | `src/ui/record-core/views/flow/FlowView.tsx` (nexus-ui `src/record-core/views/flow/FlowView.tsx`) | xyflow/xyflow `examples/react` Layouting | MIT | the auto-layout wiring shape (compute positions → set nodes → fitView); the layout algorithms themselves are a dependency (dagre) and in-repo code |
+| `src/ui/record-core/views/gallery/pack.ts` | usememos/memos `ColumnGrid` | MIT | the deterministic shortest-column masonry assignment (re-expressed as pure functions over exact card heights, plus windowing) |

@@ -365,7 +365,8 @@
         {
           "type": "flow",
           "relationField": "company"
-        }
+        },
+        { "type": "form", "requiredOverrides": { "email": true } }
       ]
     },
     {
@@ -806,6 +807,44 @@
         { "id": "ds_10", "name": "API rate limits", "stage": "Shipped", "owner": "Jonas Peeters", "budget": 9800, "active": true, "notes": "Docs updated" },
         { "id": "ds_11", "name": "Legal review cycle", "stage": "Building", "owner": "Sofia Marchetti", "budget": 7200, "active": true, "notes": "Second redline in" },
         { "id": "ds_12", "name": "Hiring loop revamp", "stage": "Scoping", "owner": "you", "budget": 5400, "active": true, "notes": "Rubrics half done" }
+      ]
+    },
+    {
+      "key": "demo_showcase",
+      "label": "Showcase",
+      "labelOne": "Showcase item",
+      "icon": "layout-grid",
+      "defaultView": "gallery",
+      "hideInNav": true,
+      "views": [
+        { "type": "gallery", "coverField": "cover", "metaFields": ["kind"] },
+        { "type": "table" }
+      ],
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 220 },
+        { "key": "cover", "label": "Cover", "type": "url", "width": 200 },
+        {
+          "key": "kind",
+          "label": "Kind",
+          "type": "select",
+          "options": [
+            { "value": "Photo", "color": "blue" },
+            { "value": "Sketch", "color": "orange" },
+            { "value": "Chart", "color": "green" }
+          ],
+          "width": 120
+        },
+        { "key": "notes", "label": "Notes", "type": "text" }
+      ],
+      "sampleRows": [
+        { "id": "ds_1", "title": "Harbor at dusk", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%234f46e5'/%3E%3Ccircle cx='3' cy='1' r='.7' fill='%23eef1fe'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Golden hour" },
+        { "id": "ds_2", "title": "Sprint whiteboard", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%230d9488'/%3E%3Cpath d='M0 3 L2 1 L4 2.4' stroke='%23e9f6ee' stroke-width='.25' fill='none'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Week 19" },
+        { "id": "ds_3", "title": "Quarterly funnel", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23b45309'/%3E%3Crect x='.5' y='1.4' width='.6' height='1.2' fill='%23fdf3e4'/%3E%3Crect x='1.5' y='.9' width='.6' height='1.7' fill='%23fdf3e4'/%3E%3Crect x='2.5' y='.4' width='.6' height='2.2' fill='%23fdf3e4'/%3E%3C/svg%3E", "kind": "Chart" },
+        { "id": "ds_4", "title": "Team offsite", "kind": "Photo", "notes": "No cover on purpose" },
+        { "id": "ds_5", "title": "Cargo route sketch", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23db2777'/%3E%3Cpath d='M.4 2.6 C1.5.4 2.5 2.8 3.6.6' stroke='%23fdeaea' stroke-width='.22' fill='none'/%3E%3C/svg%3E", "kind": "Sketch" },
+        { "id": "ds_6", "title": "Winter lookbook", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%232563eb'/%3E%3Crect x='.4' y='.4' width='1.4' height='2.2' fill='%23eef1fe' opacity='.85'/%3E%3Crect x='2.2' y='.4' width='1.4' height='2.2' fill='%23eef1fe' opacity='.55'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Draft picks" },
+        { "id": "ds_7", "title": "Untitled scan", "kind": "Chart" },
+        { "id": "ds_8", "title": "Rooftop panorama", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%239333ea'/%3E%3Cpath d='M0 2.2 L1 1.5 L1.8 2 L2.7 1.2 L4 1.9 L4 3 L0 3 Z' fill='%23f3e8ff'/%3E%3C/svg%3E", "kind": "Photo" }
       ]
     }
   ]

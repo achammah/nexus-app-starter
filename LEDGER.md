@@ -1,21 +1,22 @@
-# Lane 5 ledger — calendar view
+# LEDGER — lane 6 (gallery + form + field editors)
 
-| Class | Entry |
+| Type | Entry |
 |---|---|
-| DECISION | Engine = FullCalendar 6.1.21 exact pins (5 packages, MIT). Deciding axis drag-reschedule quality; v7.0.1 restructure (temporal-polyfill peer, split packages) deliberately avoided. Fan-out: package.json both repos, DEPENDENCIES.md, the whole view implementation. |
-| DECISION | Week mode picks its grid from the start field type: `date` objects render dayGridWeek (one all-day row), `dateTime` objects render timeGridWeek (hourly). No extra config knob. |
-| DECISION | `calDate` (visible anchor) persists in the view-state bag beside `calMode`: reload lands where you were, saved views capture it, and journeys anchor deterministically through the app's own persistence instead of a test backdoor. |
-| DECISION | Date navigation (prev/today/next + title) lives in the view body header; only the Month⇄Week toggle sits in the view bar (side trail, `.nxSeg` idiom). FC headerToolbar disabled, all chrome ours. |
-| DECISION | Record end dates are INCLUSIVE; the calendar's exclusive all-day ends are converted at the boundary (events.ts spanToEventEnd/eventEndToSpan, unit-tested). Malformed data (end<start, invalid start) normalizes, never crashes. |
-| DECISION | No dedicated pointer-drag RESIZE journey: the mandated drag journey proves the pointer→PATCH pipeline, resize shares it, and its patch math is unit-tested; the span SHAPE is journey-asserted (st_1 renders across its range). Conscious CI-fragility budget call, disclosed in the report. |
-| DECISION | CalendarView stays out of index.ts exports: lazy-only via the registry, so an eager library import cannot defeat the chunk split. |
-| CONSTRAINT | Lead ruling (wave-wide): bare `*Field` config-key grammar (startDateField, endDateField, titleField, colorField) matching the shipped `groupField` grammar. |
-| CONSTRAINT | Lead ruling: mobile agenda collapse is a gate criterion (contract §4b supersedes the lane file's stale "stretch" line); drag declared desktop-only with the peek date-field as the mobile path. |
-| CONSTRAINT | Lead ruling: the drag journey's assertion is never weakened; bounded pointer retries, STOP per §11 if irreducibly flaky. |
-| CONSTRAINT | Lead ruling: deals.stage option colorization is Lane 5's edit; builder-6 hands off deals. |
-| REUSE | optionMeta/chipStyle (record-core/options.tsx) = the ONE palette formula for event colors; formatCell (DataTable) for titles/dates; @tanstack/react-virtual (existing dep) for the agenda; `.nxSeg` segmented idiom for the mode toggle; the host's create dialog via the new ViewProps.onCreate seam; nxPopIn/motion tokens for the "+N more" popover. |
-| REUSE | builder-1 §10 broadcast consumed (import, never re-extract). builder-4's token→literal resolver NOT needed here: the --fc-* mapping is pure var()→var() indirection, no literals anywhere. |
-| BINDING | starter.config.json deals: `views` list (table/kanban/chart/calendar with startDateField closeDate, colorField stage) + stage options upgraded to `{value,color}` (New blue, Qualified purple, Proposal yellow, Won green, Lost red). Kanban columns and table chips now show the same colors, which is the shared-palette point. |
-| BINDING | ViewProps gains optional `onCreateDraft?(prefill?)`; ObjectView passes it canCreate-gated, seeding the PLAIN create dialog (the wizard has no prefill seam). Named per lead arbitration: L6 owns `onCreate?(body): Promise<RecordRow>` (direct create); this seam only opens the reviewed dialog. |
-| CONSTRAINT | builder-6 footgun (peer exchange that changed the build): the base create/wizard stage default stored the RAW first option — an object option would land `{value,color}` in the row and mis-group the board. Minimal value-fix in this branch (`optionValues(sf?.options)[0]`, both call sites, UI-verified: untouched Stage stores "New"); superseded cleanly by L6's shared `withStageDefault` when it merges. |
-| CONSTRAINT | Journey anchoring writes localStorage via addInitScript (pre-boot, MERGE into the existing blob) — an evaluate-then-reload write races ObjectView's own persistence effect and loses nondeterministically (the measured 3-journey July-instead-of-August failure). |
+| DECISION | Gallery layout = JS column-packing (memos ColumnGrid idea, MIT, adapted as pure `pack.ts`) over literal CSS columns — append-stability + 10k windowing; lead-approved deviation. |
+| DECISION | ViewProps gains `onCreate?: (body)=>Promise<RecordRow>` (mine, form submit). L5 holds a distinct `onCreateDraft?: (prefill?)=>void`. Second merger rebases the additive line. Lead arbitration. |
+| CONSTRAINT | Wave config grammar: bare `*Field` keys (`coverField`, `titleField`, `metaFields`; form `fields`) — never `*FieldId`. Lead ruling. |
+| CONSTRAINT | `deals.stage` colored-options upgrade belongs to builder-5; lane 6 never edits `deals` in starter.config.json. |
+| CONSTRAINT | Library components keep English defaults (L0 precedent); starter-side strings go through `t()`. |
+| DECISION | Shared RecordCard owned by builder-4 (L1 §10 ruling): path `src/record-core/RecordCard.tsx`, sig `{object,row,fields?,onOpen?,testid?}`, nxKCard visual model. GalleryCard built to that prop shape; one-import swap on L4's broadcast. |
+| CONSTRAINT | d2 fix must ship WITH a journey asserting a numeric create via the dialog persists (lead condition). |
+| REUSE | memos `ColumnGrid.tsx` (MIT) — `assignColumnsByEstimatedHeight`/`columnCountForWidth` shapes adapted into `views/gallery/pack.ts` w/ provenance header. |
+| EVIDENCE | d2 confirmed live: `POST /api/objects/companies {"employees":"50"}` → 400 "Employees must be a number"; dialog stores raw strings (ObjectView default Input branch). |
+| EVIDENCE | No repo config uses `{value,label}` select options (grep) → RecordPage option-label unification is latent-safe; depth journeys selectOption by VALUE, unaffected. |
+| DECISION | One-registry arbitration executed: b3's `fields/` shell taken verbatim from their local commit aa736b4 (4 files only); my module re-homed as `fields/draft.ts` + `fields/editors.tsx` + 22 per-type `fields/<type>/definition.ts` Draft entries + `fields/draft-resolve.ts`. coerceDraft/validateDraft consult registered per-type coerce/validate slots first (custom types ride the same pipeline). |
+| DECISION | FieldDraftProps counter sent to b3 (add optional `fieldKey` + `users`, adopt `error`); both branches carry the identical amended types.ts for a clean add/add merge; second-merger rebases fields/*. |
+| CONSTRAINT | tsconfig gains `allowImportingTsExtensions` (both repos) — node strip-types needs `.ts`-extension RUNTIME relative imports for node-tested pure modules (L1 broadcast; hit independently, same fix). L1 lands the same two-liner. |
+| BINDING | Form relation drafts author by target primary label; the SERVER's label→id resolution (RECIPES "Relations") is the load-bearing seam — a picker upgrade needs a `relationItems` ViewProps member (named follow-up, not built). |
+| REUSE | GalleryCard prop-shaped to L4's RecordCard contract (`{object,row,fields,titleField,onOpen,testid}`, commit 4489e00 on their branch) — swap at merge is one import + a height-model recheck (their nxKCard chrome adds padding/border). |
+| CONSTRAINT | `withStageDefault` now takes the first option VALUE (never the raw option object) — protects b5's `deals.stage` `{value,color}` upgrade from storing objects via the dialog default. |
+| CONSTRAINT | Catalog restamp must precede `npm run build`: `gallery.catalog.json` AND `.ui-version` are BUNDLED (`?raw` + JSON import), so a post-build restamp leaves dist stale and fails the gallery stamp journey. Order: sync-ui → restamp → build. |
+| CONSTRAINT | Playwright `tap` on a card whose CENTER sits under the fixed mobile tab bar times out on the receives-events check (a human taps the visible part) — mobile journeys tap the top-of-wrap card; the runner's failure screenshot shows ITS page (about:blank), the lane's own `_shots` pre-action shot is the real evidence. |
