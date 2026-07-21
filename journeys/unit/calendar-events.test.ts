@@ -108,18 +108,30 @@ test("patchForDrop writes the start (day-sliced for all-day) and converts a carr
   );
 });
 
-test("patchForResize writes only the end field and clamps a span that would end before it starts", () => {
+test("patchForResize writes BOTH edges (resize-from-start persists) and clamps a span that would end before it starts", () => {
   const fields = { start: f("from", "date"), end: f("to", "date"), title: f("t", "text") };
   assert.deepEqual(
     patchForResize({ startStr: "2026-08-10", endStr: "2026-08-14", allDay: true }, fields),
-    { to: "2026-08-13" },
+    { from: "2026-08-10", to: "2026-08-13" },
+    "bottom edge moved: the end shifts, the start is rewritten unchanged (idempotent)",
+  );
+  assert.deepEqual(
+    patchForResize({ startStr: "2026-08-08", endStr: "2026-08-12", allDay: true }, fields),
+    { from: "2026-08-08", to: "2026-08-11" },
+    "top edge moved: the earlier start persists — the resize-from-start fix",
   );
   assert.deepEqual(
     patchForResize({ startStr: "2026-08-10", endStr: "2026-08-09", allDay: true }, fields),
-    { to: "2026-08-10" },
-    "a degenerate resize clamps to the start day",
+    { from: "2026-08-10", to: "2026-08-10" },
+    "a degenerate resize clamps the end to the start day",
   );
-  assert.deepEqual(patchForResize({ startStr: "x", endStr: "y", allDay: true }, { start: f("a", "date"), title: f("t", "text") }), {});
+  const timed = { start: f("at", "dateTime"), end: f("until", "dateTime"), title: f("t", "text") };
+  assert.deepEqual(
+    patchForResize({ startStr: "2026-08-06T08:30:00.000Z", endStr: "2026-08-06T10:00:00.000Z", allDay: false }, timed),
+    { at: "2026-08-06T08:30:00.000Z", until: "2026-08-06T10:00:00.000Z" },
+    "a timed resize-from-start writes the new start instant plus the end",
+  );
+  assert.deepEqual(patchForResize({ startStr: "x", endStr: "y", allDay: true }, { start: f("a", "date"), title: f("t", "text") }), {}, "no end field → nothing to resize");
 });
 
 test("createPrefill seeds the start field, day-only for date fields", () => {

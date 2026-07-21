@@ -202,8 +202,11 @@ The full option set (every key optional but `startDateField`, resolved through t
   "selectable": true,
   "firstDay": "Monday",
   "slotDuration": "30m",
-  "slotMinTime": "08:00",
-  "slotMaxTime": "20:00",
+  "snapDuration": "15m",
+  "slotMinTime": "00:00",
+  "slotMaxTime": "24:00",
+  "scrollTime": "08:00",
+  "allDaySlot": true,
   "weekNumbers": true,
   "businessHours": true,
   "nowIndicator": true,
@@ -223,14 +226,21 @@ The full option set (every key optional but `startDateField`, resolved through t
 | `editable` | boolean (default true) | drag-move, resize, and edit-dialog saves |
 | `selectable` | boolean (default true) | drag-select a range to create |
 | `firstDay` | a weekday name `Sunday`…`Saturday` (default `Monday`) | the week start |
-| `slotDuration` | `15m`·`30m`·`60m` (default `30m`) | the time-grid slot size |
-| `slotMinTime` / `slotMaxTime` | `HH:MM` (default `00:00` / `24:00`) | the visible time window |
+| `slotDuration` | `15m`·`30m`·`60m` (default `30m`) | the time-grid slot line spacing |
+| `snapDuration` | `5m`·`10m`·`15m`·`30m` (default `15m`) | the increment a drag/create/resize snaps to (finer than the slot, for precise-hour placement) |
+| `slotMinTime` / `slotMaxTime` | `HH:MM` (default `00:00` / `24:00`) | the reachable time window — keep the full day so early/late events stay reachable |
+| `scrollTime` | `HH:MM` (default `08:00`) | the hour a time-grid view opens scrolled to (the rest scrolls into view) |
+| `allDaySlot` | boolean (default true) | the all-day lane at the top of week/day |
 | `weekNumbers` | boolean (default false) | the ISO week column |
 | `businessHours` | boolean (default false) | shade Mon to Fri, 9 to 5 |
 | `nowIndicator` | boolean (default true) | the current-time line |
 | `eventOverlap` | boolean (default true) | allow events to overlap |
 
 **Views**: a `date` object renders all-day; a `dateTime` object renders timed (with an all-day lane). `week` and `day` pick the day-grid form for all-day objects and the hourly time-grid for timed ones. An event on a `dateTime` field whose value is date-only (`2026-08-14`, no time) renders in the all-day lane, so one object can hold both all-day and timed events.
+
+**Time-grid precision (day/week on a `dateTime` object)**: the hourly grid opens scrolled to `scrollTime` (default 08:00) with the whole 24h reachable by scroll; every hour is labelled and the half/quarter-hour lines are minor. Dragging, creating, and resizing snap to `snapDuration` (default 15m), so events land on precise times. Events resize from EITHER edge — drag the top to move the start, the bottom to move the end. Concurrent events lay out side by side, and the red now-indicator line marks the current time on today's column.
+
+**Demo dates that stay current**: a `sampleRows` string value of the form `@w<weekOffset>.<isoWeekday>[T<HH:MM>]` is resolved at seed time relative to today (`@w0.2T09:00` = this week's Tuesday 09:00; `@w1.1` = next Monday; a value with no time seeds an all-day date). A demo calendar seeded this way always lands on the current week instead of a fixed month. Only `@`-prefixed strings are transformed — absolute dates and every other value pass through. See `server/seed.mjs`.
 
 **Event CRUD**: click (or Enter on a focused event) opens a quick edit dialog (title, dates, an all-day toggle on timed objects, the color field, and the object's other simple fields). Save writes through the store; "Open full record" opens the side peek; Delete asks for an inline confirm, then soft-deletes to trash. Drag-move and resize write the date field(s); dragging a timed event into the all-day lane stores a date-only value (and back). Drag-select a range, or click an empty day, opens the create dialog prefilled. Deletion uses the host's `onDelete` seam (a `ViewProps` member every view can use); the review surface is the dialog's inline confirm.
 

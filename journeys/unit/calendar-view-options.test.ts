@@ -53,8 +53,11 @@ test("viewOptions applies sane defaults", () => {
   const o = viewOptions({});
   assert.equal(o.firstDay, 1, "Monday by default");
   assert.equal(o.slotDuration, "00:30:00");
+  assert.equal(o.snapDuration, "00:15:00", "drags snap to 15 min by default (finer than the slot)");
   assert.equal(o.slotMinTime, "00:00:00");
   assert.equal(o.slotMaxTime, "24:00:00");
+  assert.equal(o.scrollTime, "08:00:00", "opens scrolled to 08:00");
+  assert.equal(o.allDaySlot, true, "the all-day lane shows by default");
   assert.equal(o.weekNumbers, false);
   assert.equal(o.businessHours, false);
   assert.equal(o.nowIndicator, true);
@@ -65,8 +68,11 @@ test("viewOptions maps configured values (weekday name, slot size, times, toggle
   const o = viewOptions({
     firstDay: "Sunday",
     slotDuration: "15m",
+    snapDuration: "30m",
     slotMinTime: "8:00",
     slotMaxTime: "20:00",
+    scrollTime: "9:30",
+    allDaySlot: false,
     weekNumbers: true,
     businessHours: true,
     nowIndicator: false,
@@ -74,8 +80,11 @@ test("viewOptions maps configured values (weekday name, slot size, times, toggle
   });
   assert.equal(o.firstDay, 0, "Sunday → 0");
   assert.equal(o.slotDuration, "00:15:00");
+  assert.equal(o.snapDuration, "00:30:00");
   assert.equal(o.slotMinTime, "08:00:00", "a single-digit hour pads");
   assert.equal(o.slotMaxTime, "20:00:00");
+  assert.equal(o.scrollTime, "09:30:00", "a single-digit hour pads");
+  assert.equal(o.allDaySlot, false);
   assert.equal(o.weekNumbers, true);
   assert.deepEqual(o.businessHours, { daysOfWeek: [1, 2, 3, 4, 5], startTime: "09:00", endTime: "17:00" });
   assert.equal(o.nowIndicator, false);
@@ -83,11 +92,13 @@ test("viewOptions maps configured values (weekday name, slot size, times, toggle
 });
 
 test("viewOptions rejects malformed times and slot sizes, keeping the defaults", () => {
-  const o = viewOptions({ firstDay: "Nonday", slotDuration: "45m", slotMinTime: "99:99", slotMaxTime: "noon" });
+  const o = viewOptions({ firstDay: "Nonday", slotDuration: "45m", snapDuration: "7m", slotMinTime: "99:99", slotMaxTime: "noon", scrollTime: "25:00" });
   assert.equal(o.firstDay, 1, "an unknown weekday name → Monday");
   assert.equal(o.slotDuration, "00:30:00", "an unlisted slot size → 30 min");
+  assert.equal(o.snapDuration, "00:15:00", "an unlisted snap size → 15 min");
   assert.equal(o.slotMinTime, "00:00:00", "an out-of-range hour → the default");
   assert.equal(o.slotMaxTime, "24:00:00");
+  assert.equal(o.scrollTime, "08:00:00", "an out-of-range scroll hour → the default");
 });
 
 test("configEditable / configSelectable default to true and honour a false override", () => {

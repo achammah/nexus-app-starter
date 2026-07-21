@@ -11,6 +11,29 @@ const CITY = ["Ghent", "Antwerp", "Rotterdam", "Leuven", "Brussels", "Lille", "U
 
 const optVal = (o) => (typeof o === "string" ? o : o.value);
 
+/* Relative demo-date tokens — a sampleRow string value resolved at SEED TIME so a
+   demo (the calendar especially) always lands on the CURRENT week, never a stale
+   fixed month. Grammar: `@w<weekOffset>.<isoWeekday>[T<HH:MM>]`
+     weekOffset  0 = this week, 1 = next, -1 = last (relative to today)
+     isoWeekday  1 = Mon … 7 = Sun
+     with a time → a floating-local ISO (a timed event, shown at that wall-clock);
+     without a time → a bare day string (an all-day event).
+   Anchored on the Monday of the current local week. ONLY "@"-prefixed strings are
+   transformed; every other value (ids, titles, absolute dates) passes through. */
+const REL_DATE_RE = /^@w(-?\d+)\.([1-7])(?:T(\d{1,2}):(\d{2}))?$/;
+export function resolveRelDate(v, now = new Date()) {
+  if (typeof v !== "string" || v[0] !== "@") return v;
+  const m = REL_DATE_RE.exec(v.trim());
+  if (!m) return v;
+  const [, off, dow, hh, mm] = m;
+  const isoToday = ((now.getDay() + 6) % 7) + 1; // getDay 0=Sun..6=Sat → 1=Mon..7=Sun
+  const monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (isoToday - 1));
+  const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + Number(off) * 7 + (Number(dow) - 1));
+  const p = (n) => String(n).padStart(2, "0");
+  const day = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  return hh === undefined ? day : `${day}T${p(Number(hh))}:${mm}:00`;
+}
+
 function typedValue(field, i, rowsByObject, config) {
   switch (field.type) {
     case "select":
@@ -89,7 +112,10 @@ export function seed(config) {
     if (Array.isArray(obj.sampleRows) && obj.sampleRows.length) {
       obj.sampleRows.forEach((r, i) => {
         const id = r.id ?? `${obj.key.slice(0, 2)}_${i + 1}`;
-        const row = { id, ...r };
+        const row = { ...r, id };
+        // resolve any relative demo-date tokens (@w..) so a calendar demo lands on
+        // the current week; ids and non-token values pass through untouched
+        for (const k of Object.keys(row)) if (k !== "id") row[k] = resolveRelDate(row[k]);
         row.__primary = String(row[primary.key] ?? id);
         out.push(row);
       });
