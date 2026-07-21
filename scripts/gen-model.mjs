@@ -62,5 +62,15 @@ ${tables}
 Users directory: ${CONFIG.users?.length ? CONFIG.users.map((u) => `\`${u}\``).join(", ") : "none configured"} (drives \`user\`-type fields).
 `;
 
-writeFileSync(path.join(ROOT, "docs", "DATA-MODEL.md"), md);
-console.log(`[gen-model] docs/DATA-MODEL.md ← ${CONFIG.objects.length} objects from ${cfgPath}`);
+/* everything below the marker is hand-maintained (config surface the generator
+   does not derive, e.g. App-object options) — preserved across regenerations */
+const MARKER = "<!-- hand-maintained below -->";
+const out = path.join(ROOT, "docs", "DATA-MODEL.md");
+let tail = "";
+try {
+  const prev = readFileSync(out, "utf8");
+  const i = prev.indexOf(MARKER);
+  if (i >= 0) tail = "\n" + prev.slice(i);
+} catch { /* first generation */ }
+writeFileSync(out, md + tail);
+console.log(`[gen-model] docs/DATA-MODEL.md ← ${CONFIG.objects.length} objects from ${cfgPath}${tail ? " (+ hand-maintained tail)" : ""}`);

@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, RefreshCw, Sun, Users, Table2, Kanban, X, Zap, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, RefreshCw, Sun, Users, X, Zap, Sparkles } from "lucide-react";
 import { api, type AppConfig } from "./api";
 import { favList, favToggle, type Fav } from "./favorites";
 import { formatCell } from "../ui/record-core/DataTable";
@@ -738,7 +738,6 @@ export function App() {
                     : openPeek(active.key, id, set ?? [])
                 }
                 onCountChange={onCount}
-                viewIcons={{ table: <Table2 size={13} />, kanban: <Kanban size={13} /> }}
               />
             )}
           </main>

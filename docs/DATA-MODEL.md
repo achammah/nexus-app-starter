@@ -13,6 +13,7 @@ erDiagram
     number employees
     text city
     text about
+    rich_ext brief
   }
   people {
     text name "PK"
@@ -28,6 +29,16 @@ erDiagram
     date closeDate
     relation company
     user owner
+  }
+  docs {
+    text title "PK"
+    select status
+    rich_ext body
+  }
+  reports {
+    text title "PK"
+    select status
+    rich_ext body
   }
   settings_rules {
     text rule "PK"
@@ -49,6 +60,7 @@ Default view: table
 | `employees` | number |  |
 | `city` | text |  |
 | `about` | text | enrich: Company research |
+| `brief` | richText |  |
 
 ### People (`people`)
 Default view: table
@@ -73,6 +85,24 @@ Default view: kanban · stage field: `stage`
 | `company` | relation | → companies |
 | `owner` | user |  |
 
+### Docs (`docs`)
+Default view: table
+
+| Field | Type | Notes |
+|---|---|---|
+| `title` | text | primary |
+| `status` | select | options: Draft / In review / Approved / Published |
+| `body` | richText |  |
+
+### Reports (`reports`)
+Default view: table
+
+| Field | Type | Notes |
+|---|---|---|
+| `title` | text | primary |
+| `status` | select | options: Generating / Ready |
+| `body` | richText |  |
+
 ### Settings rules (`settings_rules`)
 Default view: table
 
@@ -84,9 +114,12 @@ Default view: table
 
 Users directory: `you`, `Maya Verstraete`, `Jonas Peeters`, `Sofia Marchetti` (drives `user`-type fields).
 
+<!-- hand-maintained below -->
+
 ## App-object options (non-field)
 Per object in `starter.config.json`, alongside the field list:
 - `hideInNav?: boolean` — hide the object from the sidebar + mobile tab bar (still reachable by URL/relations).
 - `recordLayout?: "standard" | "document"` — `standard` = fields + timeline tabs; `document` = a centered Notion-style editor that opens as a wide side-panel.
 - `createWizard?: { questions: Q[] }` — a guided-create flow; `Q` is the library Wizard question shape (`{ key, label, kind: text|long|select|list|sources, required?, options? }`). Present → "New <object>" offers guided-vs-blank; each `key` names the field it fills.
 - `generate?: { statusField, resultField?, label?, generating?, ready?, titlePlaceholder?, delayMs?, stallAfterMs? }` — a config-driven async-generation action (demo object: `reports`). Present → the object's list gains a "Generate" button that drops a placeholder row (`statusField` = `generating`, default the first status option) and fires the labeled `/api/_mock/generate` writeback; the finished record lands from the warehouse and the SAME row settles (`statusField` = `ready`, default the last option; `resultField` filled). `delayMs` is the mock writeback delay; `stallAfterMs` the "taking longer than usual" threshold. Needs a warehouse (`WAREHOUSE=local` or `bigquery`) for the external-writer catch-up; on the in-memory app the placeholder settles in-process instead.
+- `views?: { type, …config }[]` — the object's view tabs, in order. `type` picks an installed view definition (`table` | `kanban` | `chart` built in; adding one: CONTRIBUTING-AGENTS "Adding a view type"); the other keys are that type's config (kanban/chart take `groupField`, a select/user field key; chart takes `measure`, `"count"` or a number/currency/money field key). Omitted → derived set: every object gets the table, plus Board + Chart when a select/user field exists. `defaultView` names the initially-active tab. A runtime pick in the Columns/group-by/measure/rollup menus overrides the config per user (persisted per object; saved views capture it). An entry naming an uninstalled or invalid type renders as an inline "not installed" chip in place of the view, never a crash.
