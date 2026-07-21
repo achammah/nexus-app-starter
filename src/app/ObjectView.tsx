@@ -23,7 +23,9 @@ import {
   AlertDialogTitle,
 } from "../ui/components/ui/alert-dialog";
 import { csvCell, formatCell } from "../ui/record-core/DataTable";
-import { AddressField, FullNameField, ListField, listValidators, MoneyField } from "../ui/record-core/RecordPage";
+import { AddressField, FullNameField, ListField, MoneyField } from "../ui/record-core/fields/editors";
+import { coerceDraft, isEmptyValue, listValidators, withStageDefault } from "../ui/record-core/fields/draft";
+import { fieldTypeDefinitions } from "../ui/record-core/fields/registry";
 import type { RelationItem } from "../ui/record-core/types";
 import { getViewDefinition } from "../ui/record-core/views/registry";
 import { groupableFields } from "../ui/record-core/views/group";
@@ -181,11 +183,7 @@ export function ObjectView({
   // display text for a row's primary value — shaped primaries (fullName) render joined, never "[object Object]"
   const primaryLabel = (r: RecordRow | undefined | null) => (r ? formatCell(r[primary.key], primary.type) || r.id : "");
   // create gate: a string primary needs text; a shaped primary (fullName) needs any non-empty part
-  const draftHasPrimary = (() => {
-    const v = draft[primary.key];
-    if (typeof v === "string") return !!v.trim();
-    return v !== null && typeof v === "object" && Object.values(v as Record<string, unknown>).some((x) => String(x ?? "").trim() !== "");
-  })();
+  const draftHasPrimary = !isEmptyValue(draft[primary.key]);
   const selectedIds = Object.keys(selection).filter((k) => selection[k]);
 
   // palette actions target the ACTIVE list via events (the palette lives app-level)
@@ -469,12 +467,9 @@ export function ObjectView({
   };
 
   const create = () => {
-    const body: Record<string, unknown> = { ...draft };
-    if (config.stageField && !body[config.stageField]) {
-      const sf = config.fields.find((f) => f.key === config.stageField);
-      // first option VALUE, never the raw option (object options carry {value,color})
-      body[config.stageField] = optionValues(sf?.options)[0];
-    }
+    // shared draft pipeline: typed strings coerce (a number field's "50" saves as
+    // 50, not a string the server rejects) and an unset kanban stage defaults
+    const body = withStageDefault(config, coerceDraft(config.fields, draft, { defs: fieldTypeDefinitions }));
     api
       .create(config.key, body)
       .then((row) => {
@@ -487,22 +482,14 @@ export function ObjectView({
       .catch((e) => toast(`Create failed: ${e.message}`));
   };
 
-  // guided create: map each wizard answer to the field named by its question key
-  // (a text/long answer to a richText field becomes a one-paragraph value), then create.
+  // guided create: each wizard answer fills the field named by its question key,
+  // through the SAME draft pipeline as the plain dialog (a text/long answer to a
+  // richText field becomes a one-paragraph value; typed numbers coerce; an unset
+  // kanban stage defaults).
   const createFromWizard = (answers: Ans) => {
-    const body: Record<string, unknown> = {};
-    for (const qq of config.createWizard?.questions ?? []) {
-      const v = answers[qq.key];
-      if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) continue;
-      const f = config.fields.find((x) => x.key === qq.key);
-      body[qq.key] = f?.type === "richText" && typeof v === "string" ? textToBlocks(v) : v;
-    }
-    // parity with the plain create: default the kanban stage when unset
-    if (config.stageField && !body[config.stageField]) {
-      const sf = config.fields.find((f) => f.key === config.stageField);
-      // first option VALUE, never the raw option (object options carry {value,color})
-      body[config.stageField] = optionValues(sf?.options)[0];
-    }
+    const raw: Record<string, unknown> = {};
+    for (const qq of config.createWizard?.questions ?? []) raw[qq.key] = answers[qq.key];
+    const body = withStageDefault(config, coerceDraft(config.fields, raw, { richText: textToBlocks, defs: fieldTypeDefinitions }));
     setWizardCreating(true);
     api
       .create(config.key, body)
@@ -755,6 +742,11 @@ export function ObjectView({
             onCreateDraft={canCreate ? (prefill?: Record<string, unknown>) => { setDraft(prefill ?? {}); setCreating(true); } : undefined}
             selection={selection}
             onSelectionChange={setSelection}
+            onCreate={
+              canCreate
+                ? (body) => api.create(config.key, body).then((row) => { load(); return row; })
+                : undefined
+            }
           />
         </React.Suspense>
       )}
