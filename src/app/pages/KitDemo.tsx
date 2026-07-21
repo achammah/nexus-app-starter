@@ -141,6 +141,16 @@ export function KitDemo() {
           </div>
         </div>
       </div>
+
+      <div className="nxCard" style={{ padding: 16, display: "grid", gap: 10, alignContent: "start" }} data-testid="kit-views">
+        <Micro>{t("kit.views.label")}</Micro>
+        <a className="nxRowLink" href="#/o/demo_showcase" data-testid="kit-views-gallery">
+          {t("kit.views.gallery")}
+        </a>
+        <a className="nxRowLink" href="#/o/people" data-testid="kit-views-form">
+          {t("kit.views.form")}
+        </a>
+      </div>
     </div>
   );
 }

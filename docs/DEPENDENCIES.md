@@ -64,6 +64,7 @@ The app builds as ONE main chunk plus a lazy chunk per heavy view. Measured eage
 | with the Sheet + flow view definitions (eager) | 1,284.67 kB | 380.19 kB | 158.82 kB |
 | with the field registry + whiteboard | 1,294.06 kB | 383.79 kB | 160.33 kB |
 | with the field registry + whiteboard + calendar view | 1,299.62 kB | 385.44 kB | 160.33 kB |
+| with the built-in draft editors + gallery/form views | 1,286.19 kB | 380.33 kB | 156.57 kB |
 
 The calendar view is a lazy view chunk: `CalendarView-*.js` 266.06 kB min / **77.88 kB gzip** (+ 4.81 kB CSS), loaded only when a calendar tab first renders. Its eager cost (the registry definition plus host wiring) adds +0.43% gzip over the whiteboard baseline, inside the 2% budget.
 
@@ -74,8 +75,10 @@ Lazy view chunks (each loads on first open of its view tab):
 | SpreadsheetView (the Sheet view + glide) | 310.39 kB | 103.55 kB | 12.92 kB |
 | FlowView (xyflow + dagre + canvas) | 217.20 kB | 70.69 kB | 19.53 kB |
 | CalendarView (FullCalendar month/week) | 266.06 kB | 77.88 kB | 4.81 kB |
+| GalleryView (cover-card masonry) | 6.24 kB | 2.78 kB | — |
+| FormView (config-driven intake) | 4.29 kB | 1.84 kB | — |
 
-Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager; the flow definition adds +0.41% min / +0.41% gzip over the Sheet-merged baseline; the field registry + whiteboard adds +0.73% min / +0.95% gzip over the Sheet+flow baseline — the field registry, the whiteboard definition + thumbnail shell, and the gallery's inline demo scene; excalidraw itself is fully lazy; the calendar view adds +0.43% gzip over the whiteboard baseline). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip, FlowView at 70.69 KB gzip, CalendarView at 77.88 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
+Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager; the flow definition adds +0.41% min / +0.41% gzip over the Sheet-merged baseline; the field registry + whiteboard adds +0.73% min / +0.95% gzip over the Sheet+flow baseline — the field registry, the whiteboard definition + thumbnail shell, and the gallery's inline demo scene; excalidraw itself is fully lazy; the calendar view adds +0.43% gzip over the whiteboard baseline; the built-in draft editors + gallery/form views leave the eager bundle at 380.33 kB gzip — at or under the calendar baseline (the per-type Draft editors the create dialog and record page share are the only eager addition; both new views are fully lazy; vite keeps excalidraw's chunk fully lazy on this graph)). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip, FlowView at 70.69 KB gzip, CalendarView at 77.88 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
 
 ### Whiteboard chunks (the one documented exception to the 250 KB lazy cap)
 
@@ -98,3 +101,4 @@ Adapted foreign code (MIT / Apache-2.0 / BSD family only) carries a one-line `//
 | File | Adapted from | License | What was adapted |
 |---|---|---|---|
 | `src/ui/record-core/views/flow/FlowView.tsx` (nexus-ui `src/record-core/views/flow/FlowView.tsx`) | xyflow/xyflow `examples/react` Layouting | MIT | the auto-layout wiring shape (compute positions → set nodes → fitView); the layout algorithms themselves are a dependency (dagre) and in-repo code |
+| `src/ui/record-core/views/gallery/pack.ts` | usememos/memos `ColumnGrid` | MIT | the deterministic shortest-column masonry assignment (re-expressed as pure functions over exact card heights, plus windowing) |
