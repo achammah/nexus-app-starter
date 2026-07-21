@@ -376,4 +376,61 @@ export default [
       assert(true, "the shipped docs demo seeds a real scene: its thumbnail renders in the main app");
     },
   },
+  {
+    // Native-not-widget (§4): excalidraw's chrome is themed to --nx-*, foreign UI is
+    // trimmed, and a live theme OR skin flip re-derives the chrome with zero JS.
+    name: "whiteboard-native-chrome", feature: "Whiteboard native chrome (themed + trimmed + re-skinnable)",
+    async run(page, { assert, ROOT }) {
+      const proc = await bootFixture(ROOT);
+      try {
+        const { ctx, p } = await openPage(page, `${BASE(PORT)}/#/o/sketches/r/sk_1`);
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: 60000 });
+        await p.waitForTimeout(800); // island + fonts settle
+        // resolve a --nx-* token to an rgb string the way the browser paints it
+        const tokenRgb = (name) => p.evaluate((n) => {
+          const s = document.createElement("span");
+          s.style.color = `var(${n})`; s.style.display = "none";
+          document.querySelector(".excalidraw").appendChild(s);
+          const c = getComputedStyle(s).color; s.remove(); return c;
+        }, name);
+        const islandBg = () => p.evaluate(() => {
+          const el = document.querySelector(".excalidraw .Island");
+          return el ? getComputedStyle(el).backgroundColor : null;
+        });
+        // 1. chrome-is-native: the toolbar island paints our --nx-bg-raised surface
+        const bgLight = await islandBg();
+        assert(bgLight === (await tokenRgb("--nx-bg-raised")), `toolbar island bg = --nx-bg-raised (${bgLight}), not excalidraw stock`);
+        // 2. trim: the library, keyboard-hint banner, and help trigger are not shown
+        // (excalidraw renders them; the native chrome hides them, so assert not-visible)
+        const trimmed = async (sel) => {
+          const loc = p.locator(sel);
+          return (await loc.count()) === 0 || !(await loc.first().isVisible().catch(() => false));
+        };
+        assert(await trimmed(".excalidraw .default-sidebar-trigger"), "the excalidraw Library is trimmed");
+        assert(await trimmed(".excalidraw .HintViewer"), "the keyboard-hint banner is trimmed");
+        assert(await trimmed(".excalidraw .help-icon"), "the help-dialog trigger is trimmed");
+        // 3. live-theme-flip: toggling dark re-derives the chrome, no reload
+        await p.click('[data-testid="theme-toggle"]');
+        await p.waitForSelector(".excalidraw.theme--dark", { timeout: 8000 });
+        await p.waitForTimeout(300);
+        const bgDark = await islandBg();
+        assert(bgDark === (await tokenRgb("--nx-bg-raised")) && bgDark !== bgLight, `live dark-flip re-derives the island to the dark --nx-bg-raised (${bgDark})`);
+        await p.click('[data-testid="theme-toggle"]'); // restore light
+        await p.waitForFunction(() => !document.querySelector(".excalidraw.theme--dark"), null, { timeout: 8000 });
+        // 4. skin-re-derive: overriding the brand accent re-derives excalidraw --color-primary
+        await p.evaluate(() => document.documentElement.style.setProperty("--nx-accent", "rgb(13, 148, 136)"));
+        await p.waitForTimeout(200);
+        const primAfter = await p.evaluate(() => {
+          const s = document.createElement("span");
+          s.style.color = "var(--color-primary)"; s.style.display = "none";
+          document.querySelector(".excalidraw").appendChild(s);
+          const c = getComputedStyle(s).color; s.remove(); return c;
+        });
+        assert(primAfter === "rgb(13, 148, 136)", `a live skin change re-derives excalidraw --color-primary from --nx-accent (${primAfter})`);
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
 ];
