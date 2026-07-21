@@ -465,6 +465,13 @@
       "defaultView": "table",
       "recordLayout": "document",
       "pipelineField": "status",
+      "createWizard": {
+        "questions": [
+          { "key": "title", "label": "What's the title?", "kind": "text", "placeholder": "e.g. Q3 launch plan", "required": true },
+          { "key": "status", "label": "What stage is it at?", "kind": "select", "options": ["Draft", "In review", "Approved", "Published"], "required": true },
+          { "key": "body", "label": "Write the opening paragraph", "hint": "You can flesh out the rest in the editor after.", "kind": "long", "placeholder": "A short summary to start from" }
+        ]
+      },
       "fields": [
         {
           "key": "title",

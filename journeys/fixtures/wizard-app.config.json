@@ -1,0 +1,39 @@
+{
+  "_note": "wizard-app lane — the config-driven guided create flow. The `notes` object declares `createWizard` (title -> status -> body), so 'New note' opens the library Wizard's guided-vs-blank landing instead of the plain dialog. `recordLayout:standard` + `openIn:page` -> the created record opens on a full page with deterministic testids (record-name, field-<key>). `body` is a richText field, so the guided plain-text answer is coerced to a one-paragraph Block[]. Other objects would keep the plain dialog (no createWizard).",
+  "app": { "name": "Wizard App Fixture", "slug": "wizard-app-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "notes",
+      "label": "Notes",
+      "labelOne": "Note",
+      "icon": "sticky-note",
+      "defaultView": "table",
+      "recordLayout": "standard",
+      "openIn": "page",
+      "createWizard": {
+        "questions": [
+          { "key": "title", "label": "What's the title?", "kind": "text", "placeholder": "e.g. Launch retro", "required": true },
+          { "key": "status", "label": "What stage is it at?", "kind": "select", "options": ["Draft", "In review", "Approved", "Published"], "required": true },
+          { "key": "body", "label": "Write the opening paragraph", "kind": "long", "placeholder": "A short summary to start from" }
+        ]
+      },
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 260 },
+        { "key": "status", "label": "Status", "type": "select", "options": ["Draft", "In review", "Approved", "Published"], "width": 130 },
+        { "key": "body", "label": "Body", "type": "richText" }
+      ],
+      "sampleRows": [
+        {
+          "id": "note_1",
+          "title": "Welcome note",
+          "status": "Draft",
+          "body": [
+            { "id": "nb1a", "type": "p", "text": "A seeded note so the list is never empty." }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "../ui/components/ui/dropdown-menu";
-import { api, type DupGroup, type ImportResult, type ImportTotals } from "./api";
+import { api, type AppObject, type DupGroup, type ImportResult, type ImportTotals } from "./api";
 import { useToast } from "./App";
 import { t } from "./i18n";
 import { Button } from "../ui/primitives/Button";
@@ -35,6 +35,8 @@ import type { FilterCond } from "../ui/record-core/Filters";
 import { can, type Role } from "./permissions";
 import { optionValues, normalizeOption, isMeasurable } from "../ui/record-core/types";
 import { activeFields } from "../ui/record-core/options";
+import { textToBlocks } from "../ui/record-core/NotionEditor";
+import { Wizard, ModalOverlay, type Ans } from "../ui/blocks/wizard";
 
 /* ObjectView — the list surface: view bar (search · filter chip · count · view switch ·
    New) + table or kanban. GLANCE → ZOOM → ACT: status visible per row, one click to
@@ -77,7 +79,7 @@ export function ObjectView({
 }: {
   /* the whole app config — relation targets' primaries resolve create-dialog labels */
   appConfig?: { objects: ObjectConfig[] };
-  config: ObjectConfig;
+  config: AppObject;
   users?: string[];
   role?: Role;
   onOpen: (id: string, set?: string[]) => void;
@@ -152,6 +154,9 @@ export function ObjectView({
   const [bulkEdit, setBulkEdit] = React.useState<{ field: string; value: string; running: boolean; done: number } | null>(null);
   const bulkCancel = React.useRef(false);
   const [creating, setCreating] = React.useState(false);
+  // guided-create (config.createWizard): the wizard modal + its in-flight create
+  const [wizardOpen, setWizardOpen] = React.useState(false);
+  const [wizardCreating, setWizardCreating] = React.useState(false);
   const [importOpen, setImportOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<Record<string, unknown>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
@@ -173,7 +178,7 @@ export function ObjectView({
 
   // palette actions target the ACTIVE list via events (the palette lives app-level)
   React.useEffect(() => {
-    const onNew = () => canCreate && setCreating(true);
+    const onNew = () => canCreate && (config.createWizard ? setWizardOpen(true) : setCreating(true));
     const onTrash = () => openTrashRef.current();
     window.addEventListener("nx-new-record", onNew);
     window.addEventListener("nx-open-trash", onTrash);
@@ -438,6 +443,37 @@ export function ObjectView({
       .catch((e) => toast(`Create failed: ${e.message}`));
   };
 
+  // guided create: map each wizard answer to the field named by its question key
+  // (a text/long answer to a richText field becomes a one-paragraph value), then create.
+  const createFromWizard = (answers: Ans) => {
+    const body: Record<string, unknown> = {};
+    for (const qq of config.createWizard?.questions ?? []) {
+      const v = answers[qq.key];
+      if (v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) continue;
+      const f = config.fields.find((x) => x.key === qq.key);
+      body[qq.key] = f?.type === "richText" && typeof v === "string" ? textToBlocks(v) : v;
+    }
+    // parity with the plain create: default the kanban stage when unset
+    if (config.stageField && !body[config.stageField]) {
+      const sf = config.fields.find((f) => f.key === config.stageField);
+      body[config.stageField] = sf?.options?.[0];
+    }
+    setWizardCreating(true);
+    api
+      .create(config.key, body)
+      .then((row) => {
+        setWizardCreating(false);
+        setWizardOpen(false);
+        toast(`${config.labelOne} created`);
+        load();
+        onOpen(row.id);
+      })
+      .catch((e) => {
+        setWizardCreating(false);
+        toast(`Create failed: ${e.message}`);
+      });
+  };
+
   return (
     <div>
       <div className="pageHead">
@@ -654,7 +690,7 @@ export function ObjectView({
           {t("dup.open")}
         </Button>
         {canCreate && (
-        <Button variant="primary" size="md" icon={<Plus size={14} />} data-testid="new-record" onClick={() => setCreating(true)}>
+        <Button variant="primary" size="md" icon={<Plus size={14} />} data-testid="new-record" onClick={() => (config.createWizard ? setWizardOpen(true) : setCreating(true))}>
           New {config.labelOne.toLowerCase()}
         </Button>
         )}
@@ -987,6 +1023,31 @@ export function ObjectView({
           })()}
         </div>
       </Dialog>
+
+      {wizardOpen && config.createWizard && (
+        <ModalOverlay
+          testId="create-wizard"
+          label={t("wizard.landingTitle", { label: config.labelOne.toLowerCase() })}
+          onClose={() => setWizardOpen(false)}
+        >
+          <Wizard
+            title={t("wizard.landingTitle", { label: config.labelOne.toLowerCase() })}
+            questions={config.createWizard.questions}
+            completing={wizardCreating}
+            completeLabel={t("wizard.complete", { label: config.labelOne.toLowerCase() })}
+            landing={{
+              title: t("wizard.landingTitle", { label: config.labelOne.toLowerCase() }),
+              hint: t("wizard.landingHint"),
+              guidedLabel: t("wizard.guided"),
+              guidedDesc: t("wizard.guidedDesc"),
+              blankLabel: t("wizard.blank"),
+              blankDesc: t("wizard.blankDesc", { label: config.labelOne.toLowerCase() }),
+              onBlank: () => { setWizardOpen(false); setCreating(true); },
+            }}
+            onComplete={createFromWizard}
+          />
+        </ModalOverlay>
+      )}
 
       <Dialog
         open={creating}

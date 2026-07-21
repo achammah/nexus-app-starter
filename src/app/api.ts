@@ -3,13 +3,20 @@
 
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
 import type { Suggestion } from "../ui/record-core/useSuggestions";
+import type { Q } from "../ui/blocks/wizard";
 
 import type { Skin } from "../ui/skins/skin";
 
 /* An object as the app shell sees it: the record-core ObjectConfig plus shell-only knobs.
    `hideInNav` omits it from every nav surface (sidebar · drawer · bottom tab bar) while it
-   stays fully routable via deep links and search. */
-export type AppObject = ObjectConfig & { hideInNav?: boolean };
+   stays fully routable via deep links and search.
+   `createWizard` turns "New <object>" into a guided flow (the library Wizard's guided-vs-blank
+   landing): each question's `key` names the field its answer fills, in order. Absent → the plain
+   create dialog, unchanged. A text/long answer to a `richText` field becomes a one-paragraph value. */
+export type AppObject = ObjectConfig & {
+  hideInNav?: boolean;
+  createWizard?: { questions: Q[] };
+};
 
 export interface AppConfig {
   /* nav: "side" (default) = left sidebar · "top" = one horizontal bar, no sidebar.
