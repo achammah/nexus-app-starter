@@ -1,0 +1,97 @@
+{
+  "_note": "calendar lane — the calendar view over four shapes: `events` (a date field + a colored select → all-day colored events; ev_7 is deliberately undated and must stay off the grid), `stays` (from/to span → multi-day events, resizable), `meetings` (a dateTime field → timed events, week mode = timeGrid), `plain` (no date field → the graceful misconfigured chip). Dates sit in 2026-08; journeys anchor the view there via the persisted calDate. Booted by journeys/extra/calendar-view.mjs on the lane band (5891).",
+  "app": { "name": "Calendar Fixture", "slug": "calendar-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "events",
+      "label": "Events",
+      "labelOne": "Event",
+      "icon": "building-2",
+      "defaultView": "calendar",
+      "views": [
+        { "type": "table" },
+        { "type": "calendar", "startDateField": "when", "colorField": "kind" }
+      ],
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 240 },
+        { "key": "when", "label": "When", "type": "date", "width": 130 },
+        {
+          "key": "kind",
+          "label": "Kind",
+          "type": "select",
+          "options": [
+            { "value": "Visit", "color": "blue" },
+            { "value": "Call", "color": "green" },
+            { "value": "Review", "color": "orange" }
+          ],
+          "width": 120
+        }
+      ],
+      "sampleRows": [
+        { "id": "ev_1", "title": "Site walkthrough", "when": "2026-08-05", "kind": "Visit" },
+        { "id": "ev_2", "title": "Intro call", "when": "2026-08-06", "kind": "Call" },
+        { "id": "ev_3", "title": "Quarterly review", "when": "2026-08-14", "kind": "Review" },
+        { "id": "ev_4", "title": "Follow-up call", "when": "2026-08-14", "kind": "Call" },
+        { "id": "ev_5", "title": "Warehouse visit", "when": "2026-08-27", "kind": "Visit" },
+        { "id": "ev_6", "title": "Contract review", "when": "2026-08-31", "kind": "Review" },
+        { "id": "ev_7", "title": "Unscheduled idea", "kind": "Call" }
+      ]
+    },
+    {
+      "key": "stays",
+      "label": "Stays",
+      "labelOne": "Stay",
+      "icon": "building-2",
+      "defaultView": "calendar",
+      "views": [
+        { "type": "calendar", "startDateField": "from", "endDateField": "to" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 240 },
+        { "key": "from", "label": "From", "type": "date", "width": 130 },
+        { "key": "to", "label": "To", "type": "date", "width": 130 }
+      ],
+      "sampleRows": [
+        { "id": "st_1", "name": "Ghent offsite", "from": "2026-08-10", "to": "2026-08-12" },
+        { "id": "st_2", "name": "Lille visit", "from": "2026-08-24", "to": "2026-08-24" }
+      ]
+    },
+    {
+      "key": "meetings",
+      "label": "Meetings",
+      "labelOne": "Meeting",
+      "icon": "users",
+      "defaultView": "calendar",
+      "views": [
+        { "type": "calendar", "startDateField": "at" }
+      ],
+      "fields": [
+        { "key": "topic", "label": "Topic", "type": "text", "primary": true, "width": 240 },
+        { "key": "at", "label": "At", "type": "dateTime", "width": 170 }
+      ],
+      "sampleRows": [
+        { "id": "me_1", "topic": "Pipeline sync", "at": "2026-08-06T09:30:00.000Z" },
+        { "id": "me_2", "topic": "Rollout review", "at": "2026-08-06T13:00:00.000Z" }
+      ]
+    },
+    {
+      "key": "plain",
+      "label": "Plain notes",
+      "labelOne": "Plain note",
+      "icon": "file-text",
+      "defaultView": "table",
+      "views": [
+        { "type": "table" },
+        { "type": "calendar" }
+      ],
+      "fields": [
+        { "key": "note", "label": "Note", "type": "text", "primary": true, "width": 300 }
+      ],
+      "sampleRows": [
+        { "id": "pl_1", "note": "No dates anywhere on this object" }
+      ]
+    }
+  ]
+}

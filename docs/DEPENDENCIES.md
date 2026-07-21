@@ -36,6 +36,11 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | @xyflow/react | 12.11.2 (pinned) → 12.11.2 | MIT | the flow view's node-graph canvas (pan/zoom, drag, minimap, controls, viewport windowing); transitive: @xyflow/system 1192 KB, classcat 24 KB, zustand 708 KB (internal to the library — the app adopts no store) | 2860 | lazy view chunk (FlowView) |
 | @dagrejs/dagre | 3.0.0 (pinned) → 3.0.0 | MIT | the flow view's tree auto-layout (TB ranks) for graphs up to 2,000 nodes; above that an in-repo O(V+E) BFS-rank grid takes over (`views/flow/layout.ts`) | 1404 | lazy view chunk (FlowView) |
 | @excalidraw/excalidraw | 0.18.1 (pinned exact) → 0.18.1 | MIT | the whiteboard field type's canvas engine + `exportToSvg` thumbnails (`fields/whiteboard/`) | 79184 | lazy only — see "Whiteboard chunks" below; zero eager cost |
+| @fullcalendar/core | 6.1.21 (pinned) → 6.1.21 | MIT | the calendar view's engine (month/week grids, event layout, "+N more" overflow). Pinned exact: the freshly-restructured v7 line splits the package set and adds a temporal-polyfill peer — do not bump past 6.x without re-validating the whole calendar lane | 3256 | lazy chunk (calendar view) |
+| @fullcalendar/react | 6.1.21 (pinned) → 6.1.21 | MIT | the React component wrapper around the engine | 44 | lazy chunk (calendar view) |
+| @fullcalendar/daygrid | 6.1.21 (pinned) → 6.1.21 | MIT | month + all-day week grids (dayGridMonth/dayGridWeek) | 228 | lazy chunk (calendar view) |
+| @fullcalendar/timegrid | 6.1.21 (pinned) → 6.1.21 | MIT | the hourly week grid for dateTime objects (timeGridWeek) | 260 | lazy chunk (calendar view) |
+| @fullcalendar/interaction | 6.1.21 (pinned) → 6.1.21 | MIT | drag-to-reschedule, resize, and day-click (dateClick) | 344 | lazy chunk (calendar view) |
 
 ## Dev
 
@@ -58,6 +63,10 @@ The app builds as ONE main chunk plus a lazy chunk per heavy view. Measured eage
 | with the view registry | 1,274.53 kB | 376.92 kB | 158.79 kB |
 | with the Sheet + flow view definitions (eager) | 1,284.67 kB | 380.19 kB | 158.82 kB |
 | with the field registry + whiteboard | 1,294.06 kB | 383.79 kB | 160.33 kB |
+| with the Sheet view (eager) | 1,279.42 kB | 378.63 kB | 158.82 kB |
+| with the calendar view (eager) | 1,281.28 kB | 379.21 kB | 158.79 kB |
+
+The calendar view is a lazy view chunk: `CalendarView-*.js` 266.03 kB min / **77.86 kB gzip** (+ 4.81 kB CSS), loaded only when a calendar tab first renders. Its eager cost (the registry definition plus host wiring) stays inside the 2% budget.
 
 Lazy view chunks (each loads on first open of its view tab):
 
@@ -65,6 +74,7 @@ Lazy view chunks (each loads on first open of its view tab):
 |---|---|---|---|
 | SpreadsheetView (the Sheet view + glide) | 310.39 kB | 103.55 kB | 12.92 kB |
 | FlowView (xyflow + dagre + canvas) | 217.20 kB | 70.69 kB | 19.53 kB |
+| CalendarView (FullCalendar month/week) | 266.03 kB | 77.86 kB | 4.81 kB |
 
 Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager; the flow definition adds +0.41% min / +0.41% gzip over the Sheet-merged baseline; the field registry + whiteboard adds +0.73% min / +0.95% gzip over the Sheet+flow baseline — the field registry, the whiteboard definition + thumbnail shell, and the gallery's inline demo scene; excalidraw itself is fully lazy). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip, FlowView at 70.69 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
 

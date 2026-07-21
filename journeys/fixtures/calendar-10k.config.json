@@ -1,0 +1,23 @@
+{
+  "_note": "calendar scale fixture — no sampleRows, so the deterministic seed generator fills seedCount=10000 dated rows (the date generator spreads July–September 2026; ~a third land in the August anchor month). Proves the calendar's 10k floor: FullCalendar's dayMaxEvents bounds the DOM per cell. Booted by journeys/extra/calendar-view.mjs on the lane band (5892).",
+  "app": { "name": "Calendar 10k Fixture", "slug": "calendar-10k-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "logs",
+      "label": "Logs",
+      "labelOne": "Log",
+      "icon": "file-text",
+      "defaultView": "calendar",
+      "seedCount": 10000,
+      "views": [
+        { "type": "calendar", "startDateField": "on" }
+      ],
+      "fields": [
+        { "key": "entry", "label": "Entry", "type": "text", "primary": true, "width": 240 },
+        { "key": "on", "label": "On", "type": "date", "width": 130 }
+      ]
+    }
+  ]
+}
