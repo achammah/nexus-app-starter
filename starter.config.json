@@ -846,6 +846,70 @@
         { "id": "ds_7", "title": "Untitled scan", "kind": "Chart" },
         { "id": "ds_8", "title": "Rooftop panorama", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%239333ea'/%3E%3Cpath d='M0 2.2 L1 1.5 L1.8 2 L2.7 1.2 L4 1.9 L4 3 L0 3 Z' fill='%23f3e8ff'/%3E%3C/svg%3E", "kind": "Photo" }
       ]
+    },
+    {
+      "key": "demo_places",
+      "label": "Places",
+      "labelOne": "Place",
+      "icon": "map-pin",
+      "hideInNav": true,
+      "defaultView": "map",
+      "views": [
+        { "type": "table" },
+        { "type": "map", "colorField": "kind" }
+      ],
+      "fields": [
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 220
+        },
+        {
+          "key": "kind",
+          "label": "Kind",
+          "type": "select",
+          "options": [
+            { "value": "Office", "color": "blue" },
+            { "value": "Warehouse", "color": "orange" },
+            { "value": "Partner", "color": "green" }
+          ],
+          "width": 130
+        },
+        {
+          "key": "city",
+          "label": "City",
+          "type": "text",
+          "width": 140
+        },
+        {
+          "key": "lat",
+          "label": "Latitude",
+          "type": "number",
+          "width": 110
+        },
+        {
+          "key": "lng",
+          "label": "Longitude",
+          "type": "number",
+          "width": 110
+        }
+      ],
+      "sampleRows": [
+        { "id": "pl_1", "name": "Aurora Works Ghent", "kind": "Office", "city": "Ghent", "lat": 51.0543, "lng": 3.7174 },
+        { "id": "pl_2", "name": "Nordwind Depot Antwerp", "kind": "Warehouse", "city": "Antwerp", "lat": 51.2194, "lng": 4.4025 },
+        { "id": "pl_3", "name": "Cargolane Dock Rotterdam", "kind": "Warehouse", "city": "Rotterdam", "lat": 51.9244, "lng": 4.4777 },
+        { "id": "pl_4", "name": "Meridian House Brussels", "kind": "Office", "city": "Brussels", "lat": 50.8503, "lng": 4.3517 },
+        { "id": "pl_5", "name": "GreenCrate Hub Utrecht", "kind": "Warehouse", "city": "Utrecht", "lat": 52.0907, "lng": 5.1214 },
+        { "id": "pl_6", "name": "Tidal Terminal Hamburg", "kind": "Warehouse", "city": "Hamburg", "lat": 53.5511, "lng": 9.9937 },
+        { "id": "pl_7", "name": "Pixelforge Annex Lille", "kind": "Office", "city": "Lille", "lat": 50.6292, "lng": 3.0573 },
+        { "id": "pl_8", "name": "Veldkliniek Campus Leuven", "kind": "Partner", "city": "Leuven", "lat": 50.8798, "lng": 4.7005 },
+        { "id": "pl_9", "name": "Amberline Office Paris", "kind": "Office", "city": "Paris", "lat": 48.8566, "lng": 2.3522 },
+        { "id": "pl_10", "name": "Koppel Partners Amsterdam", "kind": "Partner", "city": "Amsterdam", "lat": 52.3676, "lng": 4.9041 },
+        { "id": "pl_11", "name": "Solstice Annex", "kind": "Office", "city": "Brugge" },
+        { "id": "pl_12", "name": "Harborview Site", "kind": "Warehouse", "city": "Ostend" }
+      ]
     }
   ]
 }

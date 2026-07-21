@@ -1,0 +1,44 @@
+{
+  "_note": "map-view lane — cluster + scale fixtures. `places_perf` boots EMPTY (seedCount 0: the journey seeds 10,000 rows through the import API — a megabyte of committed fixture JSON would serve nobody) and proves GL clustering + the perf floor. `sites_nocoords` declares a map view on an object with no number fields, proving the graceful misconfig chip. Booted by journeys/extra/map-view.mjs on the lane band (5881).",
+  "app": { "name": "Map Perf Fixture", "slug": "map-perf-fixture" },
+  "theme": {},
+  "users": ["you"],
+  "objects": [
+    {
+      "key": "places_perf",
+      "label": "Perf places",
+      "labelOne": "Perf place",
+      "icon": "map-pin",
+      "defaultView": "map",
+      "seedCount": 0,
+      "views": [
+        { "type": "map" },
+        { "type": "table" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        { "key": "lat", "label": "Latitude", "type": "number", "width": 110 },
+        { "key": "lng", "label": "Longitude", "type": "number", "width": 110 }
+      ],
+      "sampleRows": []
+    },
+    {
+      "key": "sites_nocoords",
+      "label": "Sites",
+      "labelOne": "Site",
+      "icon": "building-2",
+      "defaultView": "table",
+      "views": [
+        { "type": "table" },
+        { "type": "map" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        { "key": "city", "label": "City", "type": "text", "width": 140 }
+      ],
+      "sampleRows": [
+        { "id": "sn_1", "name": "Harbor office", "city": "Ghent" }
+      ]
+    }
+  ]
+}
