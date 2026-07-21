@@ -135,6 +135,7 @@ At ≤768px a bottom tab bar renders one tab per `config.objects` — plus a Cop
 3. What edits in place: text, longText, url, email, number, currency, boolean, select, multiselect and user fields. Everything else renders formatted read-only (dates edit on the record page, relation identity in the picker, rich and shaped values in their own editors). A pasted or filled value the target field cannot hold (an unknown select option, a non-number) is SKIPPED, never written; paste clips to existing rows and never creates records.
 4. Table or Sheet: the table is the browse-and-manage surface (side peek, relation links, per-row navigation, the Columns menu); the Sheet is the bulk data-entry and cleanup surface (fill series of cells, move blocks of values, paste from a spreadsheet). Objects that need both declare both, as `demo_sheet` does (hidden from the nav, linked from the Kit demo page).
 5. Wiring to Nexus: every grid commit goes through the SAME record patch path as the table (one merged PATCH per touched row), so warehouse logging, live rev-poll sync and permissions all apply unchanged; a record generated or updated by an external writer lands in the open grid on the next sync like any other view.
+
 ## Add a flow (node-graph) view to an object
 
 Records render as draggable cards on a pan/zoom canvas (minimap + zoom controls), connected by ONE relation field's links. Two graph shapes, decided by where the relation points:
@@ -158,6 +159,20 @@ Config keys on the `views` entry: `relationField` (which relation draws the edge
 Runtime behavior: with 2+ relation fields a "via" picker appears beside the view switcher and re-draws the graph per relation (persisted per object, captured by saved views). Dragging arranges nodes; only dragged positions persist (per relation), un-dragged nodes re-run the auto layout — dagre ranks up to 2,000 nodes, an O(V+E) BFS-rank grid beyond that, and the canvas windows its DOM (`onlyRenderVisibleElements`), so 10k-row objects stay usable. Rows arriving from filters, searches, or external writers re-derive the graph live.
 
 Scope note: the flow view is records-as-graph. A workflow-builder canvas (node palettes, per-node config drawers, executable runs, edge drawing) is future work and deliberately out of this view's scope — the canvas never mutates records, draws connections, or deletes nodes.
+
+## Add a calendar to an object
+1. `starter.config.json`, on the object, add a `calendar` entry to its `views` (the demo `deals` object carries one):
+```jsonc
+"views": [
+  { "type": "table" },
+  { "type": "calendar", "startDateField": "closeDate", "colorField": "stage" }
+]
+```
+2. Keys: `startDateField` (required, a `date` or `dateTime` field key; `defaultConfig` picks the first one) drives placement. A `date` field renders all-day events; a `dateTime` field renders timed events. `endDateField` (optional, same types) turns events into resizable spans; the stored end date is INCLUSIVE, the view converts to the calendar's exclusive convention internally, so records never leak calendar conventions. `titleField` defaults to the primary field. `colorField` names a select field: events then take that field's own option palette, the same colors as table chips and kanban columns (give options the `{ "value": "New", "color": "blue" }` form).
+3. Interactions: click an event to open its record in the peek. Drag an event to another day (or resize a span when `endDateField` is set) to PATCH the date field(s), with the standard "Saved" toast and revert on failure. Click an empty day to open the create dialog prefilled with that date (rendered only for callers with create rights). Month and week persist per object in the view-state bag (`calMode`, plus `calDate`, the anchor you were on, so a reload lands where you left). Week mode picks its grid from the start field: `date` objects get the one-row day grid, `dateTime` objects the hourly time grid.
+4. Mobile (≤768px) replaces the grid with a virtualized agenda list: every day of the anchor month is a row, tapping a day creates on that day, tapping an event opens the peek. Drag-to-reschedule stays desktop-only; on mobile, reschedule via the record's date field in the peek.
+5. An object with no date field, or a `startDateField` naming a non-date field, degrades to the standard explanatory chip in place of the view; the other tabs keep working.
+6. Wiring to Nexus: the calendar has no write path of its own. Every change goes through the record PATCH route, so dates written by a workflow or an agent (through the warehouse and `/api/sync`, or the API directly) land on the calendar via the normal rev poll with no extra wiring.
 
 ## Save + share list views
 Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.

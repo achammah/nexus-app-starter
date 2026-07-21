@@ -375,6 +375,12 @@
       "icon": "handshake",
       "defaultView": "kanban",
       "stageField": "stage",
+      "views": [
+        { "type": "table" },
+        { "type": "kanban" },
+        { "type": "chart" },
+        { "type": "calendar", "startDateField": "closeDate", "colorField": "stage" }
+      ],
       "fields": [
         {
           "key": "name",
@@ -388,11 +394,11 @@
           "label": "Stage",
           "type": "select",
           "options": [
-            "New",
-            "Qualified",
-            "Proposal",
-            "Won",
-            "Lost"
+            { "value": "New", "color": "blue" },
+            { "value": "Qualified", "color": "purple" },
+            { "value": "Proposal", "color": "yellow" },
+            { "value": "Won", "color": "green" },
+            { "value": "Lost", "color": "red" }
           ],
           "width": 130
         },
