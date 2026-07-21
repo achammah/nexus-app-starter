@@ -33,6 +33,8 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | @glideapps/glide-data-grid | 6.0.3 (pinned) → 6.0.3 | MIT | the Sheet view's canvas grid engine (fill-handle, range selection, TSV clipboard, frozen columns, keyboard nav) | 5308 | LAZY chunk (React.lazy view; only the definition metadata is eager) |
 | @linaria/react + canvas-hypertxt + react-number-format | → 4.5.4 / 1.0.3 / 5.4.5 | MIT | glide-data-grid's own dependencies (build-time CSS-in-JS runtime, canvas text measuring, number formatting) | 132 / 72 / 268 | ride the grid's lazy chunk |
 | lodash + marked + react-responsive-carousel | → 4.18.1 / 4.3.0 / 3.2.23 | MIT | glide-data-grid peer dependencies (npm auto-installs); marked and the carousel serve its markdown/image cell kinds, which the Sheet view does not use and the bundler tree-shakes OUT of the chunk | 4972 / 460 / 320 | not bundled (verified by chunk size) |
+| @xyflow/react | 12.11.2 (pinned) → 12.11.2 | MIT | the flow view's node-graph canvas (pan/zoom, drag, minimap, controls, viewport windowing); transitive: @xyflow/system 1192 KB, classcat 24 KB, zustand 708 KB (internal to the library — the app adopts no store) | 2860 | lazy view chunk (FlowView) |
+| @dagrejs/dagre | 3.0.0 (pinned) → 3.0.0 | MIT | the flow view's tree auto-layout (TB ranks) for graphs up to 2,000 nodes; above that an in-repo O(V+E) BFS-rank grid takes over (`views/flow/layout.ts`) | 1404 | lazy view chunk (FlowView) |
 
 ## Dev
 
@@ -47,22 +49,27 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 
 ## Loading strategy + bundle budget
 
-The app builds as ONE main chunk today. Measured eager-bundle checkpoints (`vite build` output, `dist/assets/index-*.js`):
+The app builds as ONE main chunk plus a lazy chunk per heavy view. Measured eager-bundle checkpoints (`vite build` output, `dist/assets/index-*.js`):
 
 | State | JS min | JS gzip | CSS min |
 |---|---|---|---|
 | pre view-registry (49292a9) | 1,268.07 kB | 374.81 kB | 158.79 kB |
 | with the view registry | 1,274.53 kB | 376.92 kB | 158.79 kB |
-| with the Sheet view (eager) | 1,279.42 kB | 378.63 kB | 158.82 kB |
+| with the Sheet + flow view definitions (eager) | 1,280.88 kB | 379.02 kB | 158.82 kB |
 
-Lazy view chunks (each loads on first switch to that view):
+Lazy view chunks (each loads on first open of its view tab):
 
 | Chunk | JS min | JS gzip | CSS |
 |---|---|---|---|
 | SpreadsheetView (the Sheet view + glide) | 310.39 kB | 103.55 kB | 12.92 kB |
+| FlowView (xyflow + dagre + canvas) | 217.20 kB | 70.69 kB | 19.53 kB |
 
-Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager — the definition metadata plus the Kit-demo section). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
+Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager and the flow definition +0.50% min / +0.56% gzip). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip, FlowView at 70.69 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
 
 ## Adapted-source provenance
 
-Adapted foreign code (MIT / Apache-2.0 / BSD family only) carries a one-line `// adapted from <repo> (<license>)` header comment in the file and a row here. Current adapted files: none.
+Adapted foreign code (MIT / Apache-2.0 / BSD family only) carries a one-line `// adapted from <repo> (<license>)` header comment in the file and a row here. Current adapted files:
+
+| File | Adapted from | License | What was adapted |
+|---|---|---|---|
+| `src/ui/record-core/views/flow/FlowView.tsx` (nexus-ui `src/record-core/views/flow/FlowView.tsx`) | xyflow/xyflow `examples/react` Layouting | MIT | the auto-layout wiring shape (compute positions → set nodes → fitView); the layout algorithms themselves are a dependency (dagre) and in-repo code |

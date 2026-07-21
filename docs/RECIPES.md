@@ -121,6 +121,31 @@ At ≤768px a bottom tab bar renders one tab per `config.objects` — plus a Cop
 3. What edits in place: text, longText, url, email, number, currency, boolean, select, multiselect and user fields. Everything else renders formatted read-only (dates edit on the record page, relation identity in the picker, rich and shaped values in their own editors). A pasted or filled value the target field cannot hold (an unknown select option, a non-number) is SKIPPED, never written; paste clips to existing rows and never creates records.
 4. Table or Sheet: the table is the browse-and-manage surface (side peek, relation links, per-row navigation, the Columns menu); the Sheet is the bulk data-entry and cleanup surface (fill series of cells, move blocks of values, paste from a spreadsheet). Objects that need both declare both, as `demo_sheet` does (hidden from the nav, linked from the Kit demo page).
 5. Wiring to Nexus: every grid commit goes through the SAME record patch path as the table (one merged PATCH per touched row), so warehouse logging, live rev-poll sync and permissions all apply unchanged; a record generated or updated by an external writer lands in the open grid on the next sync like any other view.
+## Add a flow (node-graph) view to an object
+
+Records render as draggable cards on a pan/zoom canvas (minimap + zoom controls), connected by ONE relation field's links. Two graph shapes, decided by where the relation points:
+
+- **Self-relation** (`relation` = the object's own key) → record→child edges: org charts (`manager`), dependency maps (`dependsOn` with `multiple: true`).
+- **Cross-object relation** (demo: People's `company`) → each distinct target renders as a compact labeled hub with edges to its records: account webs, ownership maps. Hubs come from the relation's identity refs, so they work without the target object being on screen; clicking a hub selects it (records open the peek, hubs don't).
+
+```jsonc
+// self-relation dependency map
+{ "key": "tasks", "label": "Tasks", "labelOne": "Task", "defaultView": "flow",
+  "views": [ { "type": "table" }, { "type": "flow", "relationField": "dependsOn" } ],
+  "fields": [
+    { "key": "name", "label": "Name", "type": "text", "primary": true },
+    { "key": "status", "label": "Status", "type": "select", "options": ["Planned", "Active", "Done"] },
+    { "key": "dependsOn", "label": "Depends on", "type": "relation", "relation": "tasks", "multiple": true }
+  ] }
+```
+
+Config keys on the `views` entry: `relationField` (which relation draws the edges; default = the object's first relation field) · `labelField` (the card title; default = the primary field). A missing/invalid relation renders a plain-language chip in place of the view. The card's meta line shows the first 2 non-primary fields (selects as colored chips), excluding the active relation.
+
+Runtime behavior: with 2+ relation fields a "via" picker appears beside the view switcher and re-draws the graph per relation (persisted per object, captured by saved views). Dragging arranges nodes; only dragged positions persist (per relation), un-dragged nodes re-run the auto layout — dagre ranks up to 2,000 nodes, an O(V+E) BFS-rank grid beyond that, and the canvas windows its DOM (`onlyRenderVisibleElements`), so 10k-row objects stay usable. Rows arriving from filters, searches, or external writers re-derive the graph live.
+
+Scope note: the flow view is records-as-graph. A workflow-builder canvas (node palettes, per-node config drawers, executable runs, edge drawing) is future work and deliberately out of this view's scope — the canvas never mutates records, draws connections, or deletes nodes.
+
+## Save + share list views
 Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.
 
 ## Add a journey
