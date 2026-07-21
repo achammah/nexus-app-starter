@@ -6,3 +6,4 @@ journeys/.last-pass
 .DS_Store
 journeys/shots/
 .warehouse-local.jsonl
+*.tsbuildinfo
