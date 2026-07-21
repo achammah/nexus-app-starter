@@ -41,6 +41,8 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | @fullcalendar/daygrid | 6.1.21 (pinned) → 6.1.21 | MIT | month + all-day week grids (dayGridMonth/dayGridWeek) | 228 | lazy chunk (calendar view) |
 | @fullcalendar/timegrid | 6.1.21 (pinned) → 6.1.21 | MIT | the hourly week grid for dateTime objects (timeGridWeek) | 260 | lazy chunk (calendar view) |
 | @fullcalendar/interaction | 6.1.21 (pinned) → 6.1.21 | MIT | drag-to-reschedule, resize, and day-click (dateClick) | 344 | lazy chunk (calendar view) |
+| react-map-gl | 8.1.1 (pinned) → 8.1.1 | MIT | React wrapper for the map view: `<Map>` lifecycle, `<Marker>`/`<Popup>` portal real React children, `<Source cluster>`+`<Layer>` declarative GL layers (imported via the `react-map-gl/maplibre` entrypoint) | 800 (+19972 `@vis.gl/react-maplibre`, the runtime it re-exports) | lazy view chunk (MapView) |
+| maplibre-gl | 5.24.0 (pinned) → 5.24.0 | BSD-3-Clause | the GL vector-tile renderer under the map view — free stack, no vendor token, no account (OpenFreeMap style; falls back to an inline background style offline) | 45148 | lazy chunk (own, loaded with MapView) |
 
 ## Dev
 
@@ -65,6 +67,8 @@ The app builds as ONE main chunk plus a lazy chunk per heavy view. Measured eage
 | with the field registry + whiteboard | 1,294.06 kB | 383.79 kB | 160.33 kB |
 | with the field registry + whiteboard + calendar view | 1,299.62 kB | 385.44 kB | 160.33 kB |
 | with the built-in draft editors + gallery/form views | 1,286.19 kB | 380.33 kB | 156.57 kB |
+| current main with flow-native (db0cddb) | 1,316.21 kB | 389.45 kB | — |
+| with the map view (eager: definition + RecordCard + token resolver) | 1,322.23 kB | 391.20 kB | 160.54 kB |
 
 The calendar view is a lazy view chunk: `CalendarView-*.js` 266.06 kB min / **77.88 kB gzip** (+ 4.81 kB CSS), loaded only when a calendar tab first renders. Its eager cost (the registry definition plus host wiring) adds +0.43% gzip over the whiteboard baseline, inside the 2% budget.
 
@@ -77,8 +81,16 @@ Lazy view chunks (each loads on first open of its view tab):
 | CalendarView (FullCalendar month/week) | 266.06 kB | 77.88 kB | 4.81 kB |
 | GalleryView (cover-card masonry) | 6.24 kB | 2.78 kB | — |
 | FormView (config-driven intake) | 4.29 kB | 1.84 kB | — |
+| MapView (view code + react-map-gl wrapper) | 27.28 kB | 9.98 kB | 73.34 kB (10.91 kB gzip; mostly maplibre-gl.css) |
+| maplibre-gl (the GL renderer, loads only with MapView) | 1,053.93 kB | 283.63 kB | — |
 
 Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager; the flow definition adds +0.41% min / +0.41% gzip over the Sheet-merged baseline; the field registry + whiteboard adds +0.73% min / +0.95% gzip over the Sheet+flow baseline — the field registry, the whiteboard definition + thumbnail shell, and the gallery's inline demo scene; excalidraw itself is fully lazy; the calendar view adds +0.43% gzip over the whiteboard baseline; the built-in draft editors + gallery/form views leave the eager bundle at 380.33 kB gzip — at or under the calendar baseline (the per-type Draft editors the create dialog and record page share are the only eager addition; both new views are fully lazy; vite keeps excalidraw's chunk fully lazy on this graph)). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip, FlowView at 70.69 KB gzip, CalendarView at 77.88 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
+
+The map view's eager side (the registry definition, RecordCard, and the token→literal color resolver) adds +0.46% min / +0.45% gzip over the current-main baseline (db0cddb: 1,316.21 kB min / 389.45 kB gzip) — inside the 2% budget. Both the MapView chunk and the maplibre-gl renderer are fully lazy: they load only when a `map` view first renders.
+
+**Documented budget exceptions** (maintainer-approved): the map view's maplibre-gl chunk (283.63 kB gzip) exceeds the ~250 kB lazy line. The GL renderer is a monolith with no tree-shakeable subset; it and the MapView code load only when a `map` view actually renders, and the eager bundle stays flat. Excalidraw (whiteboard lane, below) is the other approved exception.
+
+**deck.gl — the named escalation path, deliberately NOT adopted.** Token pins and GL clusters at business-record scale (proven to 10k rows by the `map-cluster-scale` journey) do not need GPU aggregation. If a future surface genuinely outgrows that — hundreds of thousands of points, heatmap/hexbin density layers — the upgrade path is `@deck.gl/mapbox`'s `MapboxOverlay` mounted through react-map-gl's `useControl` on the SAME maplibre basemap: no container rewrite, the view keeps its config surface. deck.gl core plus its per-layer packages are a substantial further GL dependency, so this is a scale-forced escalation, never a default.
 
 ### Whiteboard chunks (the one documented exception to the 250 KB lazy cap)
 
@@ -102,3 +114,4 @@ Adapted foreign code (MIT / Apache-2.0 / BSD family only) carries a one-line `//
 |---|---|---|---|
 | `src/ui/record-core/views/flow/FlowView.tsx` (nexus-ui `src/record-core/views/flow/FlowView.tsx`) | xyflow/xyflow `examples/react` Layouting | MIT | the auto-layout wiring shape (compute positions → set nodes → fitView); the layout algorithms themselves are a dependency (dagre) and in-repo code |
 | `src/ui/record-core/views/gallery/pack.ts` | usememos/memos `ColumnGrid` | MIT | the deterministic shortest-column masonry assignment (re-expressed as pure functions over exact card heights, plus windowing) |
+| `src/ui/record-core/views/map/MapView.tsx` (cluster Source/Layer block) | visgl/react-map-gl `examples/maplibre/clusters` | MIT | the three-layer cluster config shape (cluster circles / count symbols / unclustered points, `point_count` filters, step-expression radii) — re-expressed on token-resolved literals |

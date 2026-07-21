@@ -211,6 +211,31 @@ Scope note: the flow view is records-as-graph. A workflow-builder canvas (node p
 5. Single relations author by the target's primary name; the server resolves a label matching exactly one live record to its id (an ambiguous name errors inline, naming the candidates).
 6. Wiring to Nexus: a form submit lands as an `<object>.created` event in the typed webhook catalog (`/p/webhooks`, HMAC-signed payload `{ event, data: { row } }`) — point a Nexus workflow's webhook trigger at it to run intake automation (enrich, notify, route) with no app changes. v1 is a config-driven form VIEW; a drag-and-drop form BUILDER (question palette, branching, public share links) is a future lane.
 
+## Give an object a map view
+
+Records with coordinates plot as markers with record-card popups; a corner chip counts records without coordinates (never silently dropped).
+
+1. The object needs two `number` fields holding latitude/longitude, and a `views` entry with `"type": "map"`:
+```jsonc
+{ "key": "sites", "label": "Sites", "labelOne": "Site", "defaultView": "map",
+  "views": [
+    { "type": "table" },
+    { "type": "map", "colorField": "kind" }
+  ],
+  "fields": [
+    { "key": "name", "label": "Name", "type": "text", "primary": true },
+    { "key": "kind", "label": "Kind", "type": "select",
+      "options": [ { "value": "Office", "color": "blue" }, { "value": "Warehouse", "color": "orange" } ] },
+    { "key": "lat", "label": "Latitude", "type": "number" },
+    { "key": "lng", "label": "Longitude", "type": "number" }
+  ] }
+```
+2. Config keys (all optional when inference can fill them): `latField`/`lngField` name the coordinate fields — omitted, the view infers them from number fields named `lat`/`latitude` and `lng`/`lon`/`long`/`longitude` (key first, label second). `titleField` names the popup/pin title (default: the primary field). `colorField` names a select field — pins and points tint from its option palette, the same colors its chips use everywhere else.
+3. Rendering scales by count: up to 25 located records each is a real pin button (keyboard-focusable, tap-to-open popup); past that the view switches to GL clustering (cluster click zooms to its expansion). Clicking a pin or point opens a record-card popup; Open lands on the record peek. The map fits bounds to the data once on load.
+4. Tiles come from OpenFreeMap (free, no token, no account). When the tile host is unreachable the view falls back to a plain token-colored canvas — markers, clustering and popups keep working — and shows a "Map tiles unavailable" chip. Offline CI runs on exactly this path.
+5. Wiring to Nexus: records usually arrive with coordinates already set (imports, warehouse sync). To geocode an address INTO `lat`/`lng`, follow the AI-enrichment seam ("Make a field AI-enrichable"): a `primitive` task on an address field whose output writes the two number fields — the map picks the values up on the next poll. No geocoding ships in the view itself.
+6. Demo object: `demo_places` (hidden from the nav; front door on the Kit demo page). Journey + manifest rows: `journeys/extra/map-view.mjs`.
+
 ## Save + share list views
 Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.
 

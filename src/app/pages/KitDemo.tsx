@@ -151,6 +151,18 @@ export function KitDemo() {
           {t("kit.views.form")}
         </a>
       </div>
+      {/* demo objects register HERE (hideInNav keeps the main nav clean) */}
+      <div className="nxCard" style={{ padding: 16 }} data-testid="kit-map-demo">
+        <Micro>map view (demo_places)</Micro>
+        <p style={{ margin: "10px 0", font: "var(--nx-text-meta)", color: "var(--nx-fg-muted)" }}>
+          Twelve fictional sites on the registry's map view: token pins tinted by a select
+          field's option palette, record-card popups into the peek, and two records without
+          coordinates proving the count chip.
+        </p>
+        <Button data-testid="kit-map-open" onClick={() => { location.hash = "#/o/demo_places"; }}>
+          Open the map demo
+        </Button>
+      </div>
     </div>
   );
 }
