@@ -1,7 +1,8 @@
 {
   "app": {
     "name": "Nexus App",
-    "slug": "nexus-app"
+    "slug": "nexus-app",
+    "goChords": { "c": "#/o/companies", "p": "#/o/people", "d": "#/o/deals" }
   },
   "theme": {
     "skinPreset": "nexus"

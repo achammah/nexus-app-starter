@@ -6,9 +6,16 @@ import type { Suggestion } from "../ui/record-core/useSuggestions";
 
 import type { Skin } from "../ui/skins/skin";
 
+/* An object as the app shell sees it: the record-core ObjectConfig plus shell-only knobs.
+   `hideInNav` omits it from every nav surface (sidebar · drawer · bottom tab bar) while it
+   stays fully routable via deep links and search. */
+export type AppObject = ObjectConfig & { hideInNav?: boolean };
+
 export interface AppConfig {
-  /* nav: "side" (default) = left sidebar · "top" = one horizontal bar, no sidebar */
-  app: { name: string; slug: string; nav?: "side" | "top" };
+  /* nav: "side" (default) = left sidebar · "top" = one horizontal bar, no sidebar.
+     goChords: config-driven go-to map — press `g` then a key to jump to a hash route
+     (e.g. { "c": "#/o/companies" }); absent = no go-to chords. */
+  app: { name: string; slug: string; nav?: "side" | "top"; goChords?: Record<string, string> };
   /* skinPreset names a built-in (nexus, ember); skin is a full inline Skin object
      (an org's brand as data); accent alone is the one-knob shortcut */
   theme: { accent?: string; skinPreset?: string; skin?: Skin };
@@ -24,7 +31,7 @@ export interface AppConfig {
   demo?: boolean;
   /* server-set: feature flags (one env flag gates nav + page + API) */
   features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean; tasks?: boolean; schema?: boolean; gallery?: boolean };
-  objects: ObjectConfig[];
+  objects: AppObject[];
 }
 
 async function j<T>(path: string, init?: RequestInit, timeoutMs = 15000): Promise<T> {
