@@ -20,7 +20,9 @@ const schema = z.object({
   TRASH_RETENTION_DAYS: z.coerce.number().nonnegative().optional(),
   DIGEST_TO: z.string().optional(),
   // native warehouse persistence (the command-log data spine)
-  WAREHOUSE: z.enum(["bigquery"]).optional(),
+  WAREHOUSE: z.enum(["bigquery", "local"]).optional(),
+  // WAREHOUSE=local → file-backed command-log (the offline warehouse twin); path below
+  WAREHOUSE_LOCAL_PATH: z.string().optional(),
   WAREHOUSE_TOOL_ID: z.string().default("ad6256fb-9e6b-51c0-975d-e2124097082a"), // Google Cloud marketplace connector
   WAREHOUSE_CREDENTIAL_ID: z.string().optional(),
   BQ_PROJECT: z.string().optional(),

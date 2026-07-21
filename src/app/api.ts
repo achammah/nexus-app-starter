@@ -12,10 +12,24 @@ import type { Skin } from "../ui/skins/skin";
    stays fully routable via deep links and search.
    `createWizard` turns "New <object>" into a guided flow (the library Wizard's guided-vs-blank
    landing): each question's `key` names the field its answer fills, in order. Absent → the plain
-   create dialog, unchanged. A text/long answer to a `richText` field becomes a one-paragraph value. */
+   create dialog, unchanged. A text/long answer to a `richText` field becomes a one-paragraph value.
+   `generate` declares an async-generation action: a "Generate" toolbar button drops a placeholder
+   row (statusField=`generating`) and the finished record lands via the warehouse + syncStore()
+   (statusField=`ready`, resultField filled). `delayMs` is the mock writeback delay; `stallAfterMs`
+   the "taking longer than usual" threshold. Absent → no Generate action. */
 export type AppObject = ObjectConfig & {
   hideInNav?: boolean;
   createWizard?: { questions: Q[] };
+  generate?: {
+    label?: string;
+    statusField: string;
+    resultField?: string;
+    generating?: string;
+    ready?: string;
+    titlePlaceholder?: string;
+    delayMs?: number;
+    stallAfterMs?: number;
+  };
 };
 
 export interface AppConfig {
@@ -143,6 +157,11 @@ export const api = {
     j<RecordRow>(`/api/objects/${obj}/${id}/suggest/${field}`, { method: "PATCH", body: JSON.stringify({ changes }) }),
   /* pull external warehouse writes (an async generation's finished record) into the live store */
   syncStore: () => j<{ applied: number }>("/api/sync", { method: "POST", body: "{}" }),
+  /* fire an async generation for an object that declares a `generate` config: drops a
+     placeholder row NOW and returns it; the finished record lands out-of-band (the
+     warehouse writeback) and surfaces via syncStore(). See docs/RECIPES.md. */
+  generate: (obj: string) =>
+    j<RecordRow>(`/api/objects/${obj}/generate`, { method: "POST", body: "{}" }),
   /* one turn of native agent chat via the server copilot proxy (emulatorChat) — long poll */
   copilot: (message: string, sessionId?: string, context?: string) =>
     j<{ reply: string; sessionId: string; tools?: string[] }>("/api/copilot", { method: "POST", body: JSON.stringify({ message, sessionId, context }) }, 200000),

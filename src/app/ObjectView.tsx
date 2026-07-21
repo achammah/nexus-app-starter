@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArchiveRestore, BarChart3, Bookmark, Columns3, CopyCheck, Download, GitMerge, Pencil, Plus, Search, Sigma, Trash2, Upload, X } from "lucide-react";
+import { ArchiveRestore, BarChart3, Bookmark, Columns3, CopyCheck, Download, GitMerge, Pencil, Plus, Search, Sigma, Sparkles, Trash2, Upload, X } from "lucide-react";
 import type { SortingState } from "@tanstack/react-table";
 import {
   DropdownMenu,
@@ -30,6 +30,8 @@ import { KanbanBoard } from "../ui/record-core/KanbanBoard";
 import { ChartView } from "../ui/record-core/ChartView";
 import type { ObjectConfig, RecordRow } from "../ui/record-core/types";
 import { usePollRev } from "../ui/hooks/usePollRev";
+import { useAsyncOp } from "../ui/hooks/useAsyncOp";
+import { ThinkingDots } from "../ui/primitives/ThinkingDots";
 import { FilterBar, FilterChips, matchFilters, filterableFields } from "../ui/record-core/Filters";
 import type { FilterCond } from "../ui/record-core/Filters";
 import { can, type Role } from "./permissions";
@@ -157,6 +159,10 @@ export function ObjectView({
   // guided-create (config.createWizard): the wizard modal + its in-flight create
   const [wizardOpen, setWizardOpen] = React.useState(false);
   const [wizardCreating, setWizardCreating] = React.useState(false);
+  // async-generation (config.generate): the placeholder's id + whether we're polling
+  // for its finished record to land from the warehouse (see fireGenerate / useAsyncOp)
+  const [genInFlight, setGenInFlight] = React.useState(false);
+  const [genId, setGenId] = React.useState<string | null>(null);
   const [importOpen, setImportOpen] = React.useState(false);
   const [draft, setDraft] = React.useState<Record<string, unknown>>({});
   const [selection, setSelection] = React.useState<Record<string, boolean>>({});
@@ -250,6 +256,39 @@ export function ObjectView({
   }, [config.key, q, onCountChange, toast]);
 
   React.useEffect(load, [load]);
+
+  /* async-generation (config.generate): fire it — a placeholder row drops NOW (status
+     = "generating") — then poll syncStore()+reload until the finished record lands from
+     the warehouse and the row's status moves off the generating value. useAsyncOp drives
+     the poll + the "taking longer than usual" stall hint. Objects with no `generate`
+     config never enter this path (genInFlight stays false → the hook is inert). */
+  const gen = config.generate;
+  const fireGenerate = React.useCallback(() => {
+    if (!gen || genInFlight) return;
+    setGenInFlight(true);
+    setGenId(null);
+    api
+      .generate(config.key)
+      .then((row) => { setGenId(row.id); load(); }) // placeholder shows on the next paint
+      .catch((e) => { setGenInFlight(false); toast(`Generation failed to start: ${e.message}`); });
+  }, [gen, genInFlight, config.key, load, toast]);
+  const genOp = useAsyncOp(genInFlight, {
+    pollFn: async () => { await api.syncStore(); load(); },
+    everyMs: 2000,
+    stallAfterMs: gen?.stallAfterMs ?? 8000,
+  });
+  // settle: the placeholder row is present AND its status left the generating value
+  React.useEffect(() => {
+    if (!genInFlight || !gen || !genId) return;
+    const cur = rows?.find((r) => r.id === genId)?.[gen.statusField];
+    const generating = gen.generating ?? "Generating";
+    if (cur !== undefined && cur !== generating) {
+      setGenInFlight(false);
+      setGenId(null);
+      toast(t("gen.ready", { label: config.labelOne }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows, genInFlight, genId, gen]);
   // live sync: refetch when ANOTHER viewer/writer mutates this object (rev poll)
   usePollRev(() => api.rev(config.key).then((r) => r.rev), load, config.key);
   React.useEffect(() => {
@@ -689,6 +728,30 @@ export function ObjectView({
         <Button size="md" variant="ghost" icon={<CopyCheck size={14} />} data-testid="dup-sweep-open" onClick={openSweep}>
           {t("dup.open")}
         </Button>
+        {gen && canCreate && (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <Button
+            size="md"
+            variant="ghost"
+            icon={<Sparkles size={14} />}
+            data-testid="generate-record"
+            onClick={fireGenerate}
+            disabled={genInFlight}
+          >
+            {gen.label ?? t("gen.action", { label: config.labelOne.toLowerCase() })}
+          </Button>
+          {genInFlight && (
+            <span
+              data-testid="generate-status"
+              data-stalled={genOp.stalled ? "1" : undefined}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, font: "var(--nx-text-meta)", color: "var(--nx-fg-faint)", whiteSpace: "nowrap" }}
+            >
+              <ThinkingDots label={t("gen.working")} />
+              {genOp.stalled ? t("gen.stalled") : t("gen.working")}
+            </span>
+          )}
+        </span>
+        )}
         {canCreate && (
         <Button variant="primary" size="md" icon={<Plus size={14} />} data-testid="new-record" onClick={() => (config.createWizard ? setWizardOpen(true) : setCreating(true))}>
           New {config.labelOne.toLowerCase()}

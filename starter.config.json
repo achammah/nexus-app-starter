@@ -594,6 +594,68 @@
       ]
     },
     {
+      "key": "reports",
+      "label": "Reports",
+      "labelOne": "Report",
+      "icon": "file-bar-chart",
+      "defaultView": "table",
+      "recordLayout": "document",
+      "pipelineField": "status",
+      "generate": {
+        "label": "Generate report",
+        "statusField": "status",
+        "resultField": "body",
+        "generating": "Generating",
+        "ready": "Ready",
+        "titlePlaceholder": "Generating…",
+        "delayMs": 1500,
+        "stallAfterMs": 8000
+      },
+      "fields": [
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "text",
+          "primary": true,
+          "width": 260
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "Generating",
+            "Ready"
+          ],
+          "width": 130
+        },
+        {
+          "key": "body",
+          "label": "Body",
+          "type": "richText"
+        }
+      ],
+      "sampleRows": [
+        {
+          "id": "rep_1",
+          "title": "Weekly pipeline summary",
+          "status": "Ready",
+          "body": [
+            {
+              "id": "rb1a",
+              "type": "h1",
+              "text": "Weekly pipeline summary"
+            },
+            {
+              "id": "rb1b",
+              "type": "p",
+              "text": "Pipeline held steady this week. Two deals advanced to Proposal and one closed, with the rest waiting on the Q3 review before they move."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "key": "settings_rules",
       "label": "Settings rules",
       "labelOne": "Rule",

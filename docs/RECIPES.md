@@ -45,6 +45,16 @@ Relation fields persist target row IDS — single: `"co_1"` · many (`multiple: 
 - **`fireAsyncGeneration(store, {objectKey, placeholder, webhookUrl, payload, emitEvent?})`** (`server/asyncGeneration.mjs`) — create a placeholder record now, make it durable, fire an off-machine generation webhook; the finished record lands back via the warehouse.
 - **`emulatorChat(deploymentId, {message, sessionId?, context?, contextLabel?})`** (`src/lib/nexusClient.mjs`) — one turn of native agent chat through the emulator session API.
 - **`RemoteStore.sync()` → `POST /api/sync`** pulls an external writer's warehouse events into the running app (no restart); `api.syncStore()` on the client. Pointer env vars follow the `<FEATURE>_TASK_ID`/`_DEPLOYMENT_ID`/`_WEBHOOK_URL` convention — optional, no live defaults (see `.env.example`).
+- **`WAREHOUSE=local` (`server/warehouse-local.mjs`)** — a file-backed command-log warehouse (node `fs` only, zero-dep, `WAREHOUSE_LOCAL_PATH` for the file) so `sync()` + the async-generation writeback run with NO platform creds. The demo + journeys set `WAREHOUSE=local`; the default app (no `WAREHOUSE`) stays in-memory and the Sync button reads "up to date".
+- **Live-sync affordance (topbar)** — a Sync button (`api.syncStore()`, ThinkingDots while working, then "synced N" / "up to date"). App-level, always present; on the in-memory app there is nothing external to pull.
+- **Rich-text save-state** — the `richText` field editor coalesces keystrokes through nexus-ui's `useDebouncedSave` and shows a "Saving… / Saved" chip. Automatic on every `richText` field; no config.
+
+## Add an async-generation action to an object
+1. `starter.config.json` → on the object add `generate` (see DATA-MODEL "App-object options"): name the `statusField` (a `select` with a generating value + a ready value) and optionally a `resultField` (the `richText`/text field the finished record fills). Demo: the `reports` object.
+2. Boot with a warehouse so the external-writer catch-up is live: `WAREHOUSE=local` (offline, file-backed) or `WAREHOUSE=bigquery`.
+3. The list gains a "Generate" button: it drops a placeholder row (status = the generating value) with an in-flight indicator, fires `/api/_mock/generate`, and the finished record lands via the warehouse + the poll's `syncStore()` — the SAME row settles to the ready value (a stall hint shows past `stallAfterMs`).
+4. Swap the labeled `/api/_mock/generate` writeback in `server/server.mjs` for a real generation workflow — a `fireAsyncGeneration` `webhookUrl` pointing at a Nexus workflow that writes the finished record back to the warehouse.
+5. Journey + manifest row.
 
 ## Add a custom page (non-record surface)
 1. Component under `src/app/pages/YourPage.tsx`.
