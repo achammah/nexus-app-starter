@@ -747,6 +747,16 @@ export function ObjectView({
                 ? (body) => api.create(config.key, body).then((row) => { load(); return row; })
                 : undefined
             }
+            /* soft delete (→ trash) through the store; the view owns the review
+               surface (an inline confirm) before it calls this */
+            onDelete={
+              canDelete
+                ? (id: string) =>
+                    api.remove(config.key, id)
+                      .then(() => { toast(`${config.labelOne} deleted`); load(); })
+                      .catch((e) => toast(`Delete failed: ${(e as Error).message}`))
+                : undefined
+            }
           />
         </React.Suspense>
       )}

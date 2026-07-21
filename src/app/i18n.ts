@@ -63,6 +63,7 @@ const dicts = {
     "gen.ready": "{label} ready",
     "kit.views.label": "record views",
     "kit.views.gallery": "Gallery view — cover-card masonry (Showcase demo)",
+    "kit.views.calendar": "Calendar view: every FullCalendar mode, event CRUD, recurring (Sessions demo, navigate to Aug 2026)",
     "kit.views.form": "Form view — config-driven intake (People › Form tab)",
     "panel.search": "Search",
     "panel.actions": "Actions",

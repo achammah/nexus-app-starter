@@ -40,7 +40,11 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | @fullcalendar/react | 6.1.21 (pinned) → 6.1.21 | MIT | the React component wrapper around the engine | 44 | lazy chunk (calendar view) |
 | @fullcalendar/daygrid | 6.1.21 (pinned) → 6.1.21 | MIT | month + all-day week grids (dayGridMonth/dayGridWeek) | 228 | lazy chunk (calendar view) |
 | @fullcalendar/timegrid | 6.1.21 (pinned) → 6.1.21 | MIT | the hourly week grid for dateTime objects (timeGridWeek) | 260 | lazy chunk (calendar view) |
-| @fullcalendar/interaction | 6.1.21 (pinned) → 6.1.21 | MIT | drag-to-reschedule, resize, and day-click (dateClick) | 344 | lazy chunk (calendar view) |
+| @fullcalendar/interaction | 6.1.21 (pinned) → 6.1.21 | MIT | drag-to-reschedule, resize, day-click (dateClick), and drag-select (range create) | 344 | lazy chunk (calendar view) |
+| @fullcalendar/list | 6.1.21 (pinned) → 6.1.21 | MIT | the agenda list views (listWeek / listMonth) | 96 | lazy chunk (calendar view) |
+| @fullcalendar/multimonth | 6.1.21 (pinned) → 6.1.21 | MIT | the year view (multiMonthYear — twelve month grids) | 72 | lazy chunk (calendar view) |
+| @fullcalendar/rrule | 6.1.21 (pinned) → 6.1.21 | MIT | render-only recurrence: expands an RRULE-string field into occurrences across every view | 44 | lazy chunk (calendar view) |
+| rrule | 2.8.1 (pinned exact) → 2.8.1 | BSD-3-Clause | the RRULE parser @fullcalendar/rrule consumes (a DTSTART+RRULE string → occurrence dates); installs at 980 KB but tree-shakes hard — the depth plugins + rrule together add ~30 KB gzip to the lazy chunk | 980 | lazy chunk (calendar view) |
 | react-map-gl | 8.1.1 (pinned) → 8.1.1 | MIT | React wrapper for the map view: `<Map>` lifecycle, `<Marker>`/`<Popup>` portal real React children, `<Source cluster>`+`<Layer>` declarative GL layers (imported via the `react-map-gl/maplibre` entrypoint) | 800 (+19972 `@vis.gl/react-maplibre`, the runtime it re-exports) | lazy view chunk (MapView) |
 | maplibre-gl | 5.24.0 (pinned) → 5.24.0 | BSD-3-Clause | the GL vector-tile renderer under the map view — free stack, no vendor token, no account (OpenFreeMap style; falls back to an inline background style offline) | 45148 | lazy chunk (own, loaded with MapView) |
 | @univerjs/presets | 0.25.1 (pinned exact) → 0.25.1 | Apache-2.0 | the Spreadsheet page's full Univer workbook: the `createUniver` entry point that composes the sheet preset. Pulls the sheet engine packages transitively (@univerjs/core, sheets, sheets-ui, engine-formula, engine-render, design, themes, ...). Pinned exact (no `^`): the pre-1.0 line ships breaking changes on minors | 14040 | LAZY only, rides the WorkbookSurface chunk (React.lazy); zero eager cost |
@@ -72,7 +76,7 @@ The app builds as ONE main chunk plus a lazy chunk per heavy view. Measured eage
 | current main with flow-native (db0cddb) | 1,316.21 kB | 389.45 kB | — |
 | with the map view (eager: definition + RecordCard + token resolver) | 1,322.23 kB | 391.20 kB | 160.54 kB |
 
-The calendar view is a lazy view chunk: `CalendarView-*.js` 266.06 kB min / **77.88 kB gzip** (+ 4.81 kB CSS), loaded only when a calendar tab first renders. Its eager cost (the registry definition plus host wiring) adds +0.43% gzip over the whiteboard baseline, inside the 2% budget.
+The calendar view is a lazy view chunk: `CalendarView-*.js` 366.37 kB min / **107.55 kB gzip** (+ 8.23 kB CSS min / 1.84 kB gzip), loaded only when a calendar tab first renders. The depth pass added @fullcalendar/{list,multimonth,rrule} + the rrule parser (v1 lazy was 77.88 kB gzip → +~30 kB gzip), well under the ~250 kB cap; every plugin stays in the lazy chunk, so the eager bundle carries only the grown view definition + the pure `viewOptions` mapping + the `onDelete` host wiring. Measured against the pre-lane baseline (origin/main, the two `index-*.js` app chunks): 544.77 kB gzip → 546.22 kB gzip, **+1.45 kB (+0.27%)**, well inside the 2% eager budget.
 
 Lazy view chunks (each loads on first open of its view tab):
 
@@ -80,7 +84,7 @@ Lazy view chunks (each loads on first open of its view tab):
 |---|---|---|---|
 | SpreadsheetView (the Sheet view + glide) | 311.84 kB | 104.19 kB | 13.50 kB |
 | FlowView (xyflow + dagre + canvas) | 217.20 kB | 70.69 kB | 19.53 kB |
-| CalendarView (FullCalendar month/week) | 266.06 kB | 77.88 kB | 4.81 kB |
+| CalendarView (FullCalendar, full fidelity: all views + CRUD + recurrence) | 366.37 kB | 107.55 kB | 8.23 kB |
 | GalleryView (cover-card masonry) | 6.24 kB | 2.78 kB | — |
 | FormView (config-driven intake) | 4.29 kB | 1.84 kB | — |
 | MapView (view code + react-map-gl wrapper) | 27.28 kB | 9.98 kB | 73.34 kB (10.91 kB gzip; mostly maplibre-gl.css) |

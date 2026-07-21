@@ -12,11 +12,14 @@ import {
   createPrefill,
   eventsByDay,
   firstDateField,
+  isDateOnly,
   localDay,
   monthDays,
   parseDay,
   patchForDrop,
   patchForResize,
+  rangePrefill,
+  recurrenceInput,
   rowsToEvents,
 } from "../../src/ui/record-core/views/calendar/events.ts";
 
@@ -160,4 +163,84 @@ test("eventsByDay covers every day of an all-day span and orders a day's timed e
   assert.equal(map.get("2026-08-13")?.some((e) => e.id === "s") ?? false, false, "the exclusive event end is not covered");
   const aug10 = map.get("2026-08-10") ?? [];
   assert.deepEqual(aug10.map((e) => e.id), ["s", "early", "late"], "all-day first, then timed by start");
+});
+
+test("isDateOnly distinguishes a bare day from an instant", () => {
+  assert.equal(isDateOnly("2026-08-14"), true);
+  assert.equal(isDateOnly("2026-08-14T10:00:00Z"), false);
+  assert.equal(isDateOnly(" 2026-08-14 "), true, "surrounding whitespace is tolerated");
+  assert.equal(isDateOnly(""), false);
+  assert.equal(isDateOnly(42), false);
+});
+
+test("a dateTime field holding a date-only value renders as an all-day event (mixed all-day + timed)", () => {
+  const fields = { start: f("at", "dateTime"), title: f("t", "text") };
+  const { events } = rowsToEvents(
+    [
+      { id: "allday", t: "Holiday", at: "2026-08-14" },
+      { id: "timed", t: "Sync", at: "2026-08-14T09:30:00.000Z" },
+    ],
+    fields,
+    noFmt,
+  );
+  assert.equal(events[0].allDay, true, "a date-only value on a dateTime field is all-day");
+  assert.equal(events[0].start, "2026-08-14");
+  assert.equal(events[1].allDay, false, "an instant on the same field stays timed");
+});
+
+test("patchForDrop flips a dateTime event into the all-day lane as a date-only value, and back", () => {
+  const timed = { start: f("at", "dateTime"), title: f("t", "text") };
+  assert.deepEqual(
+    patchForDrop({ startStr: "2026-08-20", endStr: null, allDay: true }, timed),
+    { at: "2026-08-20" },
+    "dropped into the all-day lane → a date-only value (renders all-day on read-back)",
+  );
+  assert.deepEqual(
+    patchForDrop({ startStr: "2026-08-20T14:00:00.000Z", endStr: null, allDay: false }, timed),
+    { at: "2026-08-20T14:00:00.000Z" },
+    "dropped back into a slot → the ISO instant",
+  );
+});
+
+test("rangePrefill seeds start + end for a drag-select, converting an all-day range end to inclusive", () => {
+  const allDay = { start: f("from", "date"), end: f("to", "date"), title: f("n", "text") };
+  assert.deepEqual(
+    rangePrefill("2026-08-10", "2026-08-13", allDay, true),
+    { from: "2026-08-10", to: "2026-08-12" },
+    "FC's exclusive 3-day range end (the 13th) stores as the inclusive last day (the 12th)",
+  );
+  const noEnd = { start: f("when", "date"), title: f("t", "text") };
+  assert.deepEqual(rangePrefill("2026-08-10", "2026-08-11", noEnd, true), { when: "2026-08-10" });
+  const timed = { start: f("at", "dateTime"), end: f("until", "dateTime"), title: f("t", "text") };
+  assert.deepEqual(
+    rangePrefill("2026-08-10T09:00:00.000Z", "2026-08-10T10:30:00.000Z", timed, false),
+    { at: "2026-08-10T09:00:00.000Z", until: "2026-08-10T10:30:00.000Z" },
+  );
+});
+
+test("recurrenceInput injects a DTSTART and preserves the rule; a value with no FREQ returns null", () => {
+  const allDay = recurrenceInput("2026-08-14", true, "FREQ=WEEKLY;BYDAY=MO");
+  assert.equal(allDay?.rrule, "DTSTART;VALUE=DATE:20260814\nRRULE:FREQ=WEEKLY;BYDAY=MO");
+  assert.equal(allDay?.duration, undefined, "all-day occurrences carry no duration");
+  const timed = recurrenceInput("2026-08-03T10:00:00.000Z", false, "FREQ=DAILY", "2026-08-03T11:30:00.000Z");
+  assert.equal(timed?.rrule, "DTSTART:20260803T100000Z\nRRULE:FREQ=DAILY");
+  assert.equal(timed?.duration, "01:30", "a timed occurrence's length comes from start→end");
+  const prefixed = recurrenceInput("2026-08-03", true, "RRULE:FREQ=MONTHLY");
+  assert.equal(prefixed?.rrule, "DTSTART;VALUE=DATE:20260803\nRRULE:FREQ=MONTHLY", "an existing RRULE: prefix is stripped, our DTSTART wins");
+  assert.equal(recurrenceInput("2026-08-03", true, "not a rule"), null);
+  assert.equal(recurrenceInput("2026-08-03", true, undefined), null);
+});
+
+test("rowsToEvents emits an rrule for a row carrying a recurrence value, a plain event otherwise", () => {
+  const fields = { start: f("at", "dateTime"), title: f("t", "text"), recurrence: f("rule", "text") };
+  const { events } = rowsToEvents(
+    [
+      { id: "r", t: "Standup", at: "2026-08-03T09:00:00.000Z", rule: "FREQ=WEEKLY;BYDAY=MO" },
+      { id: "once", t: "One-off", at: "2026-08-04T09:00:00.000Z", rule: "" },
+    ],
+    fields,
+    noFmt,
+  );
+  assert.equal(events[0].rrule, "DTSTART:20260803T090000Z\nRRULE:FREQ=WEEKLY;BYDAY=MO");
+  assert.equal(events[1].rrule, undefined, "an empty rule leaves the row a single event");
 });
