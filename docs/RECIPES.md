@@ -174,6 +174,34 @@ Scope note: the flow view is records-as-graph. A workflow-builder canvas (node p
 5. An object with no date field, or a `startDateField` naming a non-date field, degrades to the standard explanatory chip in place of the view; the other tabs keep working.
 6. Wiring to Nexus: the calendar has no write path of its own. Every change goes through the record PATCH route, so dates written by a workflow or an agent (through the warehouse and `/api/sync`, or the API directly) land on the calendar via the normal rev poll with no extra wiring.
 
+## Add a gallery view to an object
+1. `starter.config.json`, on the object, add a `gallery` entry to its `views` (the demo `demo_showcase` object carries one):
+```jsonc
+"views": [
+  { "type": "gallery", "coverField": "cover", "titleField": "title", "metaFields": ["kind"], "cardSize": "m" },
+  { "type": "table" }
+]
+```
+2. Keys (all optional): `coverField` names a `url` field rendered as the card cover at a fixed 4/3 aspect; a missing or broken image falls back to a tokenized initials placeholder, and if the key is omitted the first `url` field is inferred (an object with none renders cover-less cards). `titleField` is the card title (default: the primary field). `metaFields` (≤3 field keys) render under the title — select/multiselect values as their own colored chips, the same palette as table chips. `cardSize` is `"s" | "m" | "l"` and sets the column min-width (200/260/340px).
+3. Interactions: click or Enter on a card opens its record in the peek (cmd/ctrl-click opens a real browser tab, like the table's primary cell). Cards pack into masonry columns by shortest-column assignment over exact card heights (no measurement pass), and rendering is windowed — only cards near the viewport mount, so a 10k-row object scrolls smoothly.
+4. Mobile: the masonry reflows to a single full-width column; tapping a card opens the peek (no hover-only affordance).
+5. States: rows render as cards; empty renders a designed empty state with a "create the first one" CTA (when the caller has create rights); a still-generating placeholder row renders gracefully. A `coverField` naming a non-url field, or more than 3 `metaFields`, degrades to the standard explanatory chip in place of the view; the other tabs keep working.
+6. Wiring to Nexus: the gallery has no write path of its own — it reads records like any view, so rows created or updated by a workflow, an agent, or an external writer (through the warehouse and `/api/sync`) appear on the next rev poll with no extra wiring.
+
+## Add a form view to an object
+1. `starter.config.json`, on the object, add a `form` entry to its `views` (the demo `people` object carries one):
+```jsonc
+"views": [
+  { "type": "table" },
+  { "type": "form", "fields": ["name", "email", "company"], "requiredOverrides": { "email": true }, "submitLabel": "Add lead", "successMode": "another" }
+]
+```
+2. Keys (all optional): `fields` picks the field subset and their order (default: every form-editable field in config order — `json` and multi-relations are excluded, they edit on the record page). `requiredOverrides` (`{ key: true|false }`) adjusts the required set over the default (the primary field). `submitLabel` renames the submit button. `successMode` is `"another"` (default — a success card with "Create another") or `"view"` (open the created record).
+3. Rendering: a centered single column at document-layout width; each field is the same per-type editor the create dialog and record page use (one shared field-type registry), with an inline error slot. Submit shows a busy state; on success the designed success card offers "Create another" (resets the form) or opens the record.
+4. Validation is layered: the required check + the existing per-type validators run client-side (the same rules the server implies from field types), and a server rejection maps back onto the field its message names (unmatched → a form-level banner). Submit goes through the SAME create path as the dialog — typed numbers coerce (a `"50"` saves as `50`, not a rejected string) and an unset kanban stage defaults to its first option.
+5. Single relations author by the target's primary name; the server resolves a label matching exactly one live record to its id (an ambiguous name errors inline, naming the candidates).
+6. Wiring to Nexus: a form submit lands as an `<object>.created` event in the typed webhook catalog (`/p/webhooks`, HMAC-signed payload `{ event, data: { row } }`) — point a Nexus workflow's webhook trigger at it to run intake automation (enrich, notify, route) with no app changes. v1 is a config-driven form VIEW; a drag-and-drop form BUILDER (question palette, branching, public share links) is a future lane.
+
 ## Save + share list views
 Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.
 
