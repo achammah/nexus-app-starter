@@ -22,18 +22,20 @@ export interface PageDef {
   component: React.ComponentType;
 }
 
-import { Boxes, Database, KeyRound, ListTodo, Palette, Settings2, Shapes, Users2, Webhook } from "lucide-react";
+import { Boxes, Database, KeyRound, ListTodo, Palette, Settings2, Shapes, Table2, Users2, Webhook } from "lucide-react";
 import { ApiKeysPage } from "./pages/ApiKeys";
 import { GalleryPage } from "./pages/Gallery";
 import { KitDemo } from "./pages/KitDemo";
 import { SchemaPage } from "./pages/Schema";
 import { SettingsPage } from "./pages/Settings";
+import { SpreadsheetPage } from "./pages/Spreadsheet";
 import { TasksPage } from "./pages/Tasks";
 import { TeamPage } from "./pages/Team";
 import { ThemePage } from "./pages/Theme";
 import { WebhooksPage } from "./pages/Webhooks";
 
 export const customPages: PageDef[] = [
+  { key: "spreadsheet", label: "Spreadsheet", icon: <Table2 size={15} />, component: SpreadsheetPage },
   { key: "tasks", label: "Tasks", icon: <ListTodo size={15} />, component: TasksPage },
   { key: "team", label: "Team", icon: <Users2 size={15} />, component: TeamPage },
   { key: "webhooks", label: "Webhooks", icon: <Webhook size={15} />, component: WebhooksPage },

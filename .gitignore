@@ -5,6 +5,8 @@ journeys/.last-pass
 *.log
 .DS_Store
 journeys/shots/
+_shots/
+_*.mjs
 .warehouse-local.jsonl
 *.tsbuildinfo
 LEDGER.md
