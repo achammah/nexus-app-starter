@@ -17,7 +17,7 @@
   "copilot": {
     "title": "Copilot",
     "mark": "N",
-    "emptyStateCopy": "Your in-app assistant. It sees the record or list you're on \u2014 ask it to summarize, draft, or explain what you're looking at.",
+    "emptyStateCopy": "Your in-app assistant. It sees the record or list you're on — ask it to summarize, draft, or explain what you're looking at.",
     "suggestions": [
       "Summarize what I'm looking at",
       "Draft a follow-up for this record",
@@ -366,7 +366,12 @@
           "type": "flow",
           "relationField": "company"
         },
-        { "type": "form", "requiredOverrides": { "email": true } }
+        {
+          "type": "form",
+          "requiredOverrides": {
+            "email": true
+          }
+        }
       ]
     },
     {
@@ -377,10 +382,36 @@
       "defaultView": "kanban",
       "stageField": "stage",
       "views": [
-        { "type": "table" },
-        { "type": "kanban" },
-        { "type": "chart" },
-        { "type": "calendar", "startDateField": "closeDate", "colorField": "stage", "enabledViews": ["month", "week", "listMonth", "year"], "defaultView": "month" }
+        {
+          "type": "table"
+        },
+        {
+          "type": "kanban"
+        },
+        {
+          "type": "chart"
+        },
+        {
+          "type": "calendar",
+          "startDateField": "closeDate",
+          "colorField": "stage",
+          "enabledViews": [
+            "month",
+            "week",
+            "day",
+            "listWeek",
+            "listMonth",
+            "year"
+          ],
+          "defaultView": "week",
+          "editable": true,
+          "selectable": true,
+          "weekNumbers": true,
+          "nowIndicator": true,
+          "businessHours": true,
+          "slotDuration": "30m",
+          "firstDay": "Monday"
+        }
       ],
       "fields": [
         {
@@ -395,11 +426,26 @@
           "label": "Stage",
           "type": "select",
           "options": [
-            { "value": "New", "color": "blue" },
-            { "value": "Qualified", "color": "purple" },
-            { "value": "Proposal", "color": "yellow" },
-            { "value": "Won", "color": "green" },
-            { "value": "Lost", "color": "red" }
+            {
+              "value": "New",
+              "color": "blue"
+            },
+            {
+              "value": "Qualified",
+              "color": "purple"
+            },
+            {
+              "value": "Proposal",
+              "color": "yellow"
+            },
+            {
+              "value": "Won",
+              "color": "green"
+            },
+            {
+              "value": "Lost",
+              "color": "red"
+            }
           ],
           "width": 130
         },
@@ -520,9 +566,32 @@
       "pipelineField": "status",
       "createWizard": {
         "questions": [
-          { "key": "title", "label": "What's the title?", "kind": "text", "placeholder": "e.g. Q3 launch plan", "required": true },
-          { "key": "status", "label": "What stage is it at?", "kind": "select", "options": ["Draft", "In review", "Approved", "Published"], "required": true },
-          { "key": "body", "label": "Write the opening paragraph", "hint": "You can flesh out the rest in the editor after.", "kind": "long", "placeholder": "A short summary to start from" }
+          {
+            "key": "title",
+            "label": "What's the title?",
+            "kind": "text",
+            "placeholder": "e.g. Q3 launch plan",
+            "required": true
+          },
+          {
+            "key": "status",
+            "label": "What stage is it at?",
+            "kind": "select",
+            "options": [
+              "Draft",
+              "In review",
+              "Approved",
+              "Published"
+            ],
+            "required": true
+          },
+          {
+            "key": "body",
+            "label": "Write the opening paragraph",
+            "hint": "You can flesh out the rest in the editor after.",
+            "kind": "long",
+            "placeholder": "A short summary to start from"
+          }
         ]
       },
       "fields": [
@@ -577,7 +646,7 @@
             {
               "id": "db1c",
               "type": "h2",
-              "text": "Phase one \u2014 private beta"
+              "text": "Phase one — private beta"
             },
             {
               "id": "db1d",
@@ -587,7 +656,7 @@
             {
               "id": "db1e",
               "type": "h2",
-              "text": "Phase two \u2014 waitlist"
+              "text": "Phase two — waitlist"
             },
             {
               "id": "db1f",
@@ -600,7 +669,274 @@
               "text": "Ship the ramp, not the big bang."
             }
           ],
-          "sketch": {"elements":[{"id":"tJt1BGezMBonkDSriCkk0","type":"rectangle","x":324.08001708984375,"y":-415,"width":123.8399658203125,"height":121,"angle":0,"strokeColor":"#1e1e1e","backgroundColor":"transparent","fillStyle":"solid","strokeWidth":2,"strokeStyle":"solid","roughness":1,"opacity":100,"groupIds":[],"frameId":null,"index":"a0","roundness":{"type":3},"seed":766322496,"version":15,"versionNonce":1106357440,"isDeleted":false,"boundElements":[{"id":"y0_gy2ILgKnDuLSjfi5F7","type":"arrow"}],"updated":1784640447736,"link":null,"locked":false},{"id":"iO6gZa0fuDhIcZIM1UZ0I","type":"ellipse","x":556.280029296875,"y":-415,"width":139.3199462890625,"height":121,"angle":0,"strokeColor":"#1e1e1e","backgroundColor":"transparent","fillStyle":"solid","strokeWidth":2,"strokeStyle":"solid","roughness":1,"opacity":100,"groupIds":[],"frameId":null,"index":"a1","roundness":{"type":2},"seed":480372544,"version":15,"versionNonce":763198656,"isDeleted":false,"boundElements":[{"id":"y0_gy2ILgKnDuLSjfi5F7","type":"arrow"}],"updated":1784640447736,"link":null,"locked":false},{"id":"y0_gy2ILgKnDuLSjfi5F7","type":"arrow","x":455.65997314453125,"y":-354.5,"width":92.8800048828125,"height":0,"angle":0,"strokeColor":"#1e1e1e","backgroundColor":"transparent","fillStyle":"solid","strokeWidth":2,"strokeStyle":"solid","roughness":1,"opacity":100,"groupIds":[],"frameId":null,"index":"a2","roundness":{"type":2},"seed":987146048,"version":16,"versionNonce":413013184,"isDeleted":false,"boundElements":null,"updated":1784640447736,"link":null,"locked":false,"points":[[0,0],[92.8800048828125,0]],"lastCommittedPoint":null,"startBinding":{"elementId":"tJt1BGezMBonkDSriCkk0","focus":0,"gap":7.739990234375},"endBinding":{"elementId":"iO6gZa0fuDhIcZIM1UZ0I","focus":0,"gap":7.74005126953125},"startArrowhead":null,"endArrowhead":"arrow","elbowed":false},{"id":"AZof3xeEwyi5XMHOwZPh2","type":"freedraw","x":324.08001708984375,"y":-184,"width":371.51995849609375,"height":43.74139404296875,"angle":0,"strokeColor":"#1e1e1e","backgroundColor":"transparent","fillStyle":"solid","strokeWidth":2,"strokeStyle":"solid","roughness":1,"opacity":100,"groupIds":[],"frameId":null,"index":"a3","roundness":null,"seed":616417088,"version":27,"versionNonce":1870435520,"isDeleted":false,"boundElements":null,"updated":1784640448233,"link":null,"locked":false,"points":[[0,0],[15.47998046875,9.6591796875],[30.9599609375,17.3568115234375],[46.44000244140625,21.52960205078125],[61.91998291015625,21.33026123046875],[77.39996337890625,16.79913330078125],[92.8800048828125,8.85650634765625],[108.3599853515625,-0.88470458984375],[123.8399658203125,-10.4462890625],[139.32000732421875,-17.88641357421875],[154.79998779296875,-21.69415283203125],[170.27996826171875,-21.0963134765625],[185.760009765625,-16.21429443359375],[201.239990234375,-8.0394287109375],[216.719970703125,1.76800537109375],[232.20001220703125,11.2164306640625],[247.67999267578125,18.38702392578125],[263.15997314453125,21.8236083984375],[278.63995361328125,20.82830810546875],[294.11993408203125,15.60321044921875],[309.60003662109375,7.20941162109375],[325.08001708984375,-2.6484375],[340.55999755859375,-11.96844482421875],[356.03997802734375,-18.85797119140625],[371.51995849609375,-21.91778564453125],[371.51995849609375,-21.91778564453125]],"pressures":[],"simulatePressure":true,"lastCommittedPoint":[371.51995849609375,-21.91778564453125]}]}
+          "sketch": {
+            "elements": [
+              {
+                "id": "tJt1BGezMBonkDSriCkk0",
+                "type": "rectangle",
+                "x": 324.08001708984375,
+                "y": -415,
+                "width": 123.8399658203125,
+                "height": 121,
+                "angle": 0,
+                "strokeColor": "#1e1e1e",
+                "backgroundColor": "transparent",
+                "fillStyle": "solid",
+                "strokeWidth": 2,
+                "strokeStyle": "solid",
+                "roughness": 1,
+                "opacity": 100,
+                "groupIds": [],
+                "frameId": null,
+                "index": "a0",
+                "roundness": {
+                  "type": 3
+                },
+                "seed": 766322496,
+                "version": 15,
+                "versionNonce": 1106357440,
+                "isDeleted": false,
+                "boundElements": [
+                  {
+                    "id": "y0_gy2ILgKnDuLSjfi5F7",
+                    "type": "arrow"
+                  }
+                ],
+                "updated": 1784640447736,
+                "link": null,
+                "locked": false
+              },
+              {
+                "id": "iO6gZa0fuDhIcZIM1UZ0I",
+                "type": "ellipse",
+                "x": 556.280029296875,
+                "y": -415,
+                "width": 139.3199462890625,
+                "height": 121,
+                "angle": 0,
+                "strokeColor": "#1e1e1e",
+                "backgroundColor": "transparent",
+                "fillStyle": "solid",
+                "strokeWidth": 2,
+                "strokeStyle": "solid",
+                "roughness": 1,
+                "opacity": 100,
+                "groupIds": [],
+                "frameId": null,
+                "index": "a1",
+                "roundness": {
+                  "type": 2
+                },
+                "seed": 480372544,
+                "version": 15,
+                "versionNonce": 763198656,
+                "isDeleted": false,
+                "boundElements": [
+                  {
+                    "id": "y0_gy2ILgKnDuLSjfi5F7",
+                    "type": "arrow"
+                  }
+                ],
+                "updated": 1784640447736,
+                "link": null,
+                "locked": false
+              },
+              {
+                "id": "y0_gy2ILgKnDuLSjfi5F7",
+                "type": "arrow",
+                "x": 455.65997314453125,
+                "y": -354.5,
+                "width": 92.8800048828125,
+                "height": 0,
+                "angle": 0,
+                "strokeColor": "#1e1e1e",
+                "backgroundColor": "transparent",
+                "fillStyle": "solid",
+                "strokeWidth": 2,
+                "strokeStyle": "solid",
+                "roughness": 1,
+                "opacity": 100,
+                "groupIds": [],
+                "frameId": null,
+                "index": "a2",
+                "roundness": {
+                  "type": 2
+                },
+                "seed": 987146048,
+                "version": 16,
+                "versionNonce": 413013184,
+                "isDeleted": false,
+                "boundElements": null,
+                "updated": 1784640447736,
+                "link": null,
+                "locked": false,
+                "points": [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    92.8800048828125,
+                    0
+                  ]
+                ],
+                "lastCommittedPoint": null,
+                "startBinding": {
+                  "elementId": "tJt1BGezMBonkDSriCkk0",
+                  "focus": 0,
+                  "gap": 7.739990234375
+                },
+                "endBinding": {
+                  "elementId": "iO6gZa0fuDhIcZIM1UZ0I",
+                  "focus": 0,
+                  "gap": 7.74005126953125
+                },
+                "startArrowhead": null,
+                "endArrowhead": "arrow",
+                "elbowed": false
+              },
+              {
+                "id": "AZof3xeEwyi5XMHOwZPh2",
+                "type": "freedraw",
+                "x": 324.08001708984375,
+                "y": -184,
+                "width": 371.51995849609375,
+                "height": 43.74139404296875,
+                "angle": 0,
+                "strokeColor": "#1e1e1e",
+                "backgroundColor": "transparent",
+                "fillStyle": "solid",
+                "strokeWidth": 2,
+                "strokeStyle": "solid",
+                "roughness": 1,
+                "opacity": 100,
+                "groupIds": [],
+                "frameId": null,
+                "index": "a3",
+                "roundness": null,
+                "seed": 616417088,
+                "version": 27,
+                "versionNonce": 1870435520,
+                "isDeleted": false,
+                "boundElements": null,
+                "updated": 1784640448233,
+                "link": null,
+                "locked": false,
+                "points": [
+                  [
+                    0,
+                    0
+                  ],
+                  [
+                    15.47998046875,
+                    9.6591796875
+                  ],
+                  [
+                    30.9599609375,
+                    17.3568115234375
+                  ],
+                  [
+                    46.44000244140625,
+                    21.52960205078125
+                  ],
+                  [
+                    61.91998291015625,
+                    21.33026123046875
+                  ],
+                  [
+                    77.39996337890625,
+                    16.79913330078125
+                  ],
+                  [
+                    92.8800048828125,
+                    8.85650634765625
+                  ],
+                  [
+                    108.3599853515625,
+                    -0.88470458984375
+                  ],
+                  [
+                    123.8399658203125,
+                    -10.4462890625
+                  ],
+                  [
+                    139.32000732421875,
+                    -17.88641357421875
+                  ],
+                  [
+                    154.79998779296875,
+                    -21.69415283203125
+                  ],
+                  [
+                    170.27996826171875,
+                    -21.0963134765625
+                  ],
+                  [
+                    185.760009765625,
+                    -16.21429443359375
+                  ],
+                  [
+                    201.239990234375,
+                    -8.0394287109375
+                  ],
+                  [
+                    216.719970703125,
+                    1.76800537109375
+                  ],
+                  [
+                    232.20001220703125,
+                    11.2164306640625
+                  ],
+                  [
+                    247.67999267578125,
+                    18.38702392578125
+                  ],
+                  [
+                    263.15997314453125,
+                    21.8236083984375
+                  ],
+                  [
+                    278.63995361328125,
+                    20.82830810546875
+                  ],
+                  [
+                    294.11993408203125,
+                    15.60321044921875
+                  ],
+                  [
+                    309.60003662109375,
+                    7.20941162109375
+                  ],
+                  [
+                    325.08001708984375,
+                    -2.6484375
+                  ],
+                  [
+                    340.55999755859375,
+                    -11.96844482421875
+                  ],
+                  [
+                    356.03997802734375,
+                    -18.85797119140625
+                  ],
+                  [
+                    371.51995849609375,
+                    -21.91778564453125
+                  ],
+                  [
+                    371.51995849609375,
+                    -21.91778564453125
+                  ]
+                ],
+                "pressures": [],
+                "simulatePressure": true,
+                "lastCommittedPoint": [
+                  371.51995849609375,
+                  -21.91778564453125
+                ]
+              }
+            ]
+          }
         },
         {
           "id": "doc_2",
@@ -777,36 +1113,183 @@
       "defaultView": "grid",
       "hideInNav": true,
       "views": [
-        { "type": "table" },
-        { "type": "grid" }
+        {
+          "type": "table"
+        },
+        {
+          "type": "grid"
+        }
       ],
       "fields": [
-        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
-        { "key": "stage", "label": "Stage", "type": "select", "options": [
-          { "value": "Backlog", "color": "gray" },
-          { "value": "Scoping", "color": "blue" },
-          { "value": "Building", "color": "orange" },
-          { "value": "Review", "color": "purple" },
-          { "value": "Shipped", "color": "green" }
-        ], "width": 130 },
-        { "key": "owner", "label": "Owner", "type": "user", "width": 150 },
-        { "key": "budget", "label": "Budget", "type": "number", "width": 110 },
-        { "key": "active", "label": "Active", "type": "boolean", "width": 80 },
-        { "key": "notes", "label": "Notes", "type": "text", "width": 240 }
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 200
+        },
+        {
+          "key": "stage",
+          "label": "Stage",
+          "type": "select",
+          "options": [
+            {
+              "value": "Backlog",
+              "color": "gray"
+            },
+            {
+              "value": "Scoping",
+              "color": "blue"
+            },
+            {
+              "value": "Building",
+              "color": "orange"
+            },
+            {
+              "value": "Review",
+              "color": "purple"
+            },
+            {
+              "value": "Shipped",
+              "color": "green"
+            }
+          ],
+          "width": 130
+        },
+        {
+          "key": "owner",
+          "label": "Owner",
+          "type": "user",
+          "width": 150
+        },
+        {
+          "key": "budget",
+          "label": "Budget",
+          "type": "number",
+          "width": 110
+        },
+        {
+          "key": "active",
+          "label": "Active",
+          "type": "boolean",
+          "width": 80
+        },
+        {
+          "key": "notes",
+          "label": "Notes",
+          "type": "text",
+          "width": 240
+        }
       ],
       "sampleRows": [
-        { "id": "ds_1", "name": "Website refresh", "stage": "Building", "owner": "Maya Verstraete", "budget": 12000, "active": true, "notes": "Hero copy still open" },
-        { "id": "ds_2", "name": "Q3 partner event", "stage": "Scoping", "owner": "Jonas Peeters", "budget": 8500, "active": true, "notes": "Venue shortlist of three" },
-        { "id": "ds_3", "name": "Billing migration", "stage": "Review", "owner": "Sofia Marchetti", "budget": 21000, "active": true, "notes": "Waiting on finance sign-off" },
-        { "id": "ds_4", "name": "Mobile onboarding", "stage": "Backlog", "owner": "you", "budget": 6000, "active": false, "notes": "Blocked on design tokens" },
-        { "id": "ds_5", "name": "Data warehouse sync", "stage": "Shipped", "owner": "Maya Verstraete", "budget": 15500, "active": true, "notes": "Monitoring for a week" },
-        { "id": "ds_6", "name": "Support macros", "stage": "Building", "owner": "Jonas Peeters", "budget": 3000, "active": true, "notes": "Ten macros drafted" },
-        { "id": "ds_7", "name": "Pricing page test", "stage": "Scoping", "owner": "Sofia Marchetti", "budget": 4500, "active": true, "notes": "Two variants agreed" },
-        { "id": "ds_8", "name": "Sales deck refresh", "stage": "Review", "owner": "you", "budget": 2500, "active": true, "notes": "Awaiting brand pass" },
-        { "id": "ds_9", "name": "Churn interviews", "stage": "Backlog", "owner": "Maya Verstraete", "budget": 1800, "active": false, "notes": "Recruit eight accounts" },
-        { "id": "ds_10", "name": "API rate limits", "stage": "Shipped", "owner": "Jonas Peeters", "budget": 9800, "active": true, "notes": "Docs updated" },
-        { "id": "ds_11", "name": "Legal review cycle", "stage": "Building", "owner": "Sofia Marchetti", "budget": 7200, "active": true, "notes": "Second redline in" },
-        { "id": "ds_12", "name": "Hiring loop revamp", "stage": "Scoping", "owner": "you", "budget": 5400, "active": true, "notes": "Rubrics half done" }
+        {
+          "id": "ds_1",
+          "name": "Website refresh",
+          "stage": "Building",
+          "owner": "Maya Verstraete",
+          "budget": 12000,
+          "active": true,
+          "notes": "Hero copy still open"
+        },
+        {
+          "id": "ds_2",
+          "name": "Q3 partner event",
+          "stage": "Scoping",
+          "owner": "Jonas Peeters",
+          "budget": 8500,
+          "active": true,
+          "notes": "Venue shortlist of three"
+        },
+        {
+          "id": "ds_3",
+          "name": "Billing migration",
+          "stage": "Review",
+          "owner": "Sofia Marchetti",
+          "budget": 21000,
+          "active": true,
+          "notes": "Waiting on finance sign-off"
+        },
+        {
+          "id": "ds_4",
+          "name": "Mobile onboarding",
+          "stage": "Backlog",
+          "owner": "you",
+          "budget": 6000,
+          "active": false,
+          "notes": "Blocked on design tokens"
+        },
+        {
+          "id": "ds_5",
+          "name": "Data warehouse sync",
+          "stage": "Shipped",
+          "owner": "Maya Verstraete",
+          "budget": 15500,
+          "active": true,
+          "notes": "Monitoring for a week"
+        },
+        {
+          "id": "ds_6",
+          "name": "Support macros",
+          "stage": "Building",
+          "owner": "Jonas Peeters",
+          "budget": 3000,
+          "active": true,
+          "notes": "Ten macros drafted"
+        },
+        {
+          "id": "ds_7",
+          "name": "Pricing page test",
+          "stage": "Scoping",
+          "owner": "Sofia Marchetti",
+          "budget": 4500,
+          "active": true,
+          "notes": "Two variants agreed"
+        },
+        {
+          "id": "ds_8",
+          "name": "Sales deck refresh",
+          "stage": "Review",
+          "owner": "you",
+          "budget": 2500,
+          "active": true,
+          "notes": "Awaiting brand pass"
+        },
+        {
+          "id": "ds_9",
+          "name": "Churn interviews",
+          "stage": "Backlog",
+          "owner": "Maya Verstraete",
+          "budget": 1800,
+          "active": false,
+          "notes": "Recruit eight accounts"
+        },
+        {
+          "id": "ds_10",
+          "name": "API rate limits",
+          "stage": "Shipped",
+          "owner": "Jonas Peeters",
+          "budget": 9800,
+          "active": true,
+          "notes": "Docs updated"
+        },
+        {
+          "id": "ds_11",
+          "name": "Legal review cycle",
+          "stage": "Building",
+          "owner": "Sofia Marchetti",
+          "budget": 7200,
+          "active": true,
+          "notes": "Second redline in"
+        },
+        {
+          "id": "ds_12",
+          "name": "Hiring loop revamp",
+          "stage": "Scoping",
+          "owner": "you",
+          "budget": 5400,
+          "active": true,
+          "notes": "Rubrics half done"
+        }
       ]
     },
     {
@@ -817,34 +1300,108 @@
       "defaultView": "gallery",
       "hideInNav": true,
       "views": [
-        { "type": "gallery", "coverField": "cover", "metaFields": ["kind"] },
-        { "type": "table" }
+        {
+          "type": "gallery",
+          "coverField": "cover",
+          "metaFields": [
+            "kind"
+          ]
+        },
+        {
+          "type": "table"
+        }
       ],
       "fields": [
-        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 220 },
-        { "key": "cover", "label": "Cover", "type": "url", "width": 200 },
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "text",
+          "primary": true,
+          "width": 220
+        },
+        {
+          "key": "cover",
+          "label": "Cover",
+          "type": "url",
+          "width": 200
+        },
         {
           "key": "kind",
           "label": "Kind",
           "type": "select",
           "options": [
-            { "value": "Photo", "color": "blue" },
-            { "value": "Sketch", "color": "orange" },
-            { "value": "Chart", "color": "green" }
+            {
+              "value": "Photo",
+              "color": "blue"
+            },
+            {
+              "value": "Sketch",
+              "color": "orange"
+            },
+            {
+              "value": "Chart",
+              "color": "green"
+            }
           ],
           "width": 120
         },
-        { "key": "notes", "label": "Notes", "type": "text" }
+        {
+          "key": "notes",
+          "label": "Notes",
+          "type": "text"
+        }
       ],
       "sampleRows": [
-        { "id": "ds_1", "title": "Harbor at dusk", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%234f46e5'/%3E%3Ccircle cx='3' cy='1' r='.7' fill='%23eef1fe'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Golden hour" },
-        { "id": "ds_2", "title": "Sprint whiteboard", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%230d9488'/%3E%3Cpath d='M0 3 L2 1 L4 2.4' stroke='%23e9f6ee' stroke-width='.25' fill='none'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Week 19" },
-        { "id": "ds_3", "title": "Quarterly funnel", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23b45309'/%3E%3Crect x='.5' y='1.4' width='.6' height='1.2' fill='%23fdf3e4'/%3E%3Crect x='1.5' y='.9' width='.6' height='1.7' fill='%23fdf3e4'/%3E%3Crect x='2.5' y='.4' width='.6' height='2.2' fill='%23fdf3e4'/%3E%3C/svg%3E", "kind": "Chart" },
-        { "id": "ds_4", "title": "Team offsite", "kind": "Photo", "notes": "No cover on purpose" },
-        { "id": "ds_5", "title": "Cargo route sketch", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23db2777'/%3E%3Cpath d='M.4 2.6 C1.5.4 2.5 2.8 3.6.6' stroke='%23fdeaea' stroke-width='.22' fill='none'/%3E%3C/svg%3E", "kind": "Sketch" },
-        { "id": "ds_6", "title": "Winter lookbook", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%232563eb'/%3E%3Crect x='.4' y='.4' width='1.4' height='2.2' fill='%23eef1fe' opacity='.85'/%3E%3Crect x='2.2' y='.4' width='1.4' height='2.2' fill='%23eef1fe' opacity='.55'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Draft picks" },
-        { "id": "ds_7", "title": "Untitled scan", "kind": "Chart" },
-        { "id": "ds_8", "title": "Rooftop panorama", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%239333ea'/%3E%3Cpath d='M0 2.2 L1 1.5 L1.8 2 L2.7 1.2 L4 1.9 L4 3 L0 3 Z' fill='%23f3e8ff'/%3E%3C/svg%3E", "kind": "Photo" }
+        {
+          "id": "ds_1",
+          "title": "Harbor at dusk",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%234f46e5'/%3E%3Ccircle cx='3' cy='1' r='.7' fill='%23eef1fe'/%3E%3C/svg%3E",
+          "kind": "Photo",
+          "notes": "Golden hour"
+        },
+        {
+          "id": "ds_2",
+          "title": "Sprint whiteboard",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%230d9488'/%3E%3Cpath d='M0 3 L2 1 L4 2.4' stroke='%23e9f6ee' stroke-width='.25' fill='none'/%3E%3C/svg%3E",
+          "kind": "Sketch",
+          "notes": "Week 19"
+        },
+        {
+          "id": "ds_3",
+          "title": "Quarterly funnel",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23b45309'/%3E%3Crect x='.5' y='1.4' width='.6' height='1.2' fill='%23fdf3e4'/%3E%3Crect x='1.5' y='.9' width='.6' height='1.7' fill='%23fdf3e4'/%3E%3Crect x='2.5' y='.4' width='.6' height='2.2' fill='%23fdf3e4'/%3E%3C/svg%3E",
+          "kind": "Chart"
+        },
+        {
+          "id": "ds_4",
+          "title": "Team offsite",
+          "kind": "Photo",
+          "notes": "No cover on purpose"
+        },
+        {
+          "id": "ds_5",
+          "title": "Cargo route sketch",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23db2777'/%3E%3Cpath d='M.4 2.6 C1.5.4 2.5 2.8 3.6.6' stroke='%23fdeaea' stroke-width='.22' fill='none'/%3E%3C/svg%3E",
+          "kind": "Sketch"
+        },
+        {
+          "id": "ds_6",
+          "title": "Winter lookbook",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%232563eb'/%3E%3Crect x='.4' y='.4' width='1.4' height='2.2' fill='%23eef1fe' opacity='.85'/%3E%3Crect x='2.2' y='.4' width='1.4' height='2.2' fill='%23eef1fe' opacity='.55'/%3E%3C/svg%3E",
+          "kind": "Photo",
+          "notes": "Draft picks"
+        },
+        {
+          "id": "ds_7",
+          "title": "Untitled scan",
+          "kind": "Chart"
+        },
+        {
+          "id": "ds_8",
+          "title": "Rooftop panorama",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%239333ea'/%3E%3Cpath d='M0 2.2 L1 1.5 L1.8 2 L2.7 1.2 L4 1.9 L4 3 L0 3 Z' fill='%23f3e8ff'/%3E%3C/svg%3E",
+          "kind": "Photo"
+        }
       ]
     },
     {
@@ -855,8 +1412,13 @@
       "hideInNav": true,
       "defaultView": "map",
       "views": [
-        { "type": "table" },
-        { "type": "map", "colorField": "kind" }
+        {
+          "type": "table"
+        },
+        {
+          "type": "map",
+          "colorField": "kind"
+        }
       ],
       "fields": [
         {
@@ -871,9 +1433,18 @@
           "label": "Kind",
           "type": "select",
           "options": [
-            { "value": "Office", "color": "blue" },
-            { "value": "Warehouse", "color": "orange" },
-            { "value": "Partner", "color": "green" }
+            {
+              "value": "Office",
+              "color": "blue"
+            },
+            {
+              "value": "Warehouse",
+              "color": "orange"
+            },
+            {
+              "value": "Partner",
+              "color": "green"
+            }
           ],
           "width": 130
         },
@@ -897,18 +1468,98 @@
         }
       ],
       "sampleRows": [
-        { "id": "pl_1", "name": "Aurora Works Ghent", "kind": "Office", "city": "Ghent", "lat": 51.0543, "lng": 3.7174 },
-        { "id": "pl_2", "name": "Nordwind Depot Antwerp", "kind": "Warehouse", "city": "Antwerp", "lat": 51.2194, "lng": 4.4025 },
-        { "id": "pl_3", "name": "Cargolane Dock Rotterdam", "kind": "Warehouse", "city": "Rotterdam", "lat": 51.9244, "lng": 4.4777 },
-        { "id": "pl_4", "name": "Meridian House Brussels", "kind": "Office", "city": "Brussels", "lat": 50.8503, "lng": 4.3517 },
-        { "id": "pl_5", "name": "GreenCrate Hub Utrecht", "kind": "Warehouse", "city": "Utrecht", "lat": 52.0907, "lng": 5.1214 },
-        { "id": "pl_6", "name": "Tidal Terminal Hamburg", "kind": "Warehouse", "city": "Hamburg", "lat": 53.5511, "lng": 9.9937 },
-        { "id": "pl_7", "name": "Pixelforge Annex Lille", "kind": "Office", "city": "Lille", "lat": 50.6292, "lng": 3.0573 },
-        { "id": "pl_8", "name": "Veldkliniek Campus Leuven", "kind": "Partner", "city": "Leuven", "lat": 50.8798, "lng": 4.7005 },
-        { "id": "pl_9", "name": "Amberline Office Paris", "kind": "Office", "city": "Paris", "lat": 48.8566, "lng": 2.3522 },
-        { "id": "pl_10", "name": "Koppel Partners Amsterdam", "kind": "Partner", "city": "Amsterdam", "lat": 52.3676, "lng": 4.9041 },
-        { "id": "pl_11", "name": "Solstice Annex", "kind": "Office", "city": "Brugge" },
-        { "id": "pl_12", "name": "Harborview Site", "kind": "Warehouse", "city": "Ostend" }
+        {
+          "id": "pl_1",
+          "name": "Aurora Works Ghent",
+          "kind": "Office",
+          "city": "Ghent",
+          "lat": 51.0543,
+          "lng": 3.7174
+        },
+        {
+          "id": "pl_2",
+          "name": "Nordwind Depot Antwerp",
+          "kind": "Warehouse",
+          "city": "Antwerp",
+          "lat": 51.2194,
+          "lng": 4.4025
+        },
+        {
+          "id": "pl_3",
+          "name": "Cargolane Dock Rotterdam",
+          "kind": "Warehouse",
+          "city": "Rotterdam",
+          "lat": 51.9244,
+          "lng": 4.4777
+        },
+        {
+          "id": "pl_4",
+          "name": "Meridian House Brussels",
+          "kind": "Office",
+          "city": "Brussels",
+          "lat": 50.8503,
+          "lng": 4.3517
+        },
+        {
+          "id": "pl_5",
+          "name": "GreenCrate Hub Utrecht",
+          "kind": "Warehouse",
+          "city": "Utrecht",
+          "lat": 52.0907,
+          "lng": 5.1214
+        },
+        {
+          "id": "pl_6",
+          "name": "Tidal Terminal Hamburg",
+          "kind": "Warehouse",
+          "city": "Hamburg",
+          "lat": 53.5511,
+          "lng": 9.9937
+        },
+        {
+          "id": "pl_7",
+          "name": "Pixelforge Annex Lille",
+          "kind": "Office",
+          "city": "Lille",
+          "lat": 50.6292,
+          "lng": 3.0573
+        },
+        {
+          "id": "pl_8",
+          "name": "Veldkliniek Campus Leuven",
+          "kind": "Partner",
+          "city": "Leuven",
+          "lat": 50.8798,
+          "lng": 4.7005
+        },
+        {
+          "id": "pl_9",
+          "name": "Amberline Office Paris",
+          "kind": "Office",
+          "city": "Paris",
+          "lat": 48.8566,
+          "lng": 2.3522
+        },
+        {
+          "id": "pl_10",
+          "name": "Koppel Partners Amsterdam",
+          "kind": "Partner",
+          "city": "Amsterdam",
+          "lat": 52.3676,
+          "lng": 4.9041
+        },
+        {
+          "id": "pl_11",
+          "name": "Solstice Annex",
+          "kind": "Office",
+          "city": "Brugge"
+        },
+        {
+          "id": "pl_12",
+          "name": "Harborview Site",
+          "kind": "Warehouse",
+          "city": "Ostend"
+        }
       ]
     },
     {
@@ -917,35 +1568,125 @@
       "labelOne": "Session",
       "icon": "calendar-clock",
       "defaultView": "calendar",
-      "hideInNav": true,
+      "hideInNav": false,
       "views": [
-        { "type": "calendar", "startDateField": "start", "endDateField": "end", "titleField": "title", "colorField": "track", "recurrenceField": "repeat", "enabledViews": ["month", "week", "day", "listWeek", "listMonth", "year"], "defaultView": "week", "weekNumbers": true, "businessHours": true, "nowIndicator": true, "slotDuration": "30m", "firstDay": "Monday" },
-        { "type": "table" }
+        {
+          "type": "calendar",
+          "startDateField": "start",
+          "endDateField": "end",
+          "titleField": "title",
+          "colorField": "track",
+          "recurrenceField": "repeat",
+          "enabledViews": [
+            "month",
+            "week",
+            "day",
+            "listWeek",
+            "listMonth",
+            "year"
+          ],
+          "defaultView": "week",
+          "weekNumbers": true,
+          "businessHours": true,
+          "nowIndicator": true,
+          "slotDuration": "30m",
+          "firstDay": "Monday"
+        },
+        {
+          "type": "table"
+        }
       ],
       "fields": [
-        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 220 },
-        { "key": "start", "label": "Start", "type": "dateTime", "width": 170 },
-        { "key": "end", "label": "End", "type": "dateTime", "width": 170 },
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "text",
+          "primary": true,
+          "width": 220
+        },
+        {
+          "key": "start",
+          "label": "Start",
+          "type": "dateTime",
+          "width": 170
+        },
+        {
+          "key": "end",
+          "label": "End",
+          "type": "dateTime",
+          "width": 170
+        },
         {
           "key": "track",
           "label": "Track",
           "type": "select",
           "options": [
-            { "value": "Design", "color": "blue" },
-            { "value": "Build", "color": "green" },
-            { "value": "Review", "color": "orange" }
+            {
+              "value": "Design",
+              "color": "blue"
+            },
+            {
+              "value": "Build",
+              "color": "green"
+            },
+            {
+              "value": "Review",
+              "color": "orange"
+            }
           ],
           "width": 120
         },
-        { "key": "repeat", "label": "Repeat (RRULE)", "type": "text", "width": 200 }
+        {
+          "key": "repeat",
+          "label": "Repeat (RRULE)",
+          "type": "text",
+          "width": 200
+        }
       ],
       "sampleRows": [
-        { "id": "se_1", "title": "Daily standup", "start": "2026-08-03T09:00:00.000Z", "end": "2026-08-03T09:15:00.000Z", "track": "Build", "repeat": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR" },
-        { "id": "se_2", "title": "Design review", "start": "2026-08-04T13:00:00.000Z", "end": "2026-08-04T14:00:00.000Z", "track": "Design" },
-        { "id": "se_3", "title": "Build session", "start": "2026-08-05T10:30:00.000Z", "end": "2026-08-05T12:00:00.000Z", "track": "Build" },
-        { "id": "se_4", "title": "Sprint review", "start": "2026-08-06T15:00:00.000Z", "end": "2026-08-06T16:00:00.000Z", "track": "Review" },
-        { "id": "se_5", "title": "Team offsite", "start": "2026-08-11", "end": "2026-08-13", "track": "Design" },
-        { "id": "se_6", "title": "Retro", "start": "2026-08-14T16:00:00.000Z", "end": "2026-08-14T17:00:00.000Z", "track": "Review" }
+        {
+          "id": "se_1",
+          "title": "Daily standup",
+          "start": "2026-08-03T09:00:00.000Z",
+          "end": "2026-08-03T09:15:00.000Z",
+          "track": "Build",
+          "repeat": "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR"
+        },
+        {
+          "id": "se_2",
+          "title": "Design review",
+          "start": "2026-08-04T13:00:00.000Z",
+          "end": "2026-08-04T14:00:00.000Z",
+          "track": "Design"
+        },
+        {
+          "id": "se_3",
+          "title": "Build session",
+          "start": "2026-08-05T10:30:00.000Z",
+          "end": "2026-08-05T12:00:00.000Z",
+          "track": "Build"
+        },
+        {
+          "id": "se_4",
+          "title": "Sprint review",
+          "start": "2026-08-06T15:00:00.000Z",
+          "end": "2026-08-06T16:00:00.000Z",
+          "track": "Review"
+        },
+        {
+          "id": "se_5",
+          "title": "Team offsite",
+          "start": "2026-08-11",
+          "end": "2026-08-13",
+          "track": "Design"
+        },
+        {
+          "id": "se_6",
+          "title": "Retro",
+          "start": "2026-08-14T16:00:00.000Z",
+          "end": "2026-08-14T17:00:00.000Z",
+          "track": "Review"
+        }
       ]
     }
   ]
