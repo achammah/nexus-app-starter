@@ -16,6 +16,16 @@ const PERF_PORT = 5871;  // 10k-row fixture
 const WH_PORT = 5872;    // WAREHOUSE=local variant
 const BASE = (port) => `http://localhost:${port}`;
 
+/* Load-tolerant budgets. Excalidraw is a heavy lazy chunk (editor + font machinery)
+   and the draw→debounce(700ms)→store-write→chip chain is compute-heavy; under a
+   busy machine (many parallel agents) fixed short timeouts starve and flake. These
+   budgets are generous CEILINGS, not expected durations — a green run still resolves
+   in well under a second; the ceiling only absorbs contention. Persistence is proven
+   on the DETERMINISTIC signal (the saved field value, polled) rather than a fixed
+   selector timeout, so the assertion cannot race the save chain. */
+const MOUNT_TIMEOUT = 60000;  // excalidraw editor mount
+const SAVE_BUDGET = 30000;    // scene-commit + store persist
+
 async function bootFixture(ROOT, { port = PORT, config = "journeys/fixtures/whiteboard.config.json", env = {} } = {}) {
   const proc = spawn("node", [path.join(ROOT, "server", "server.mjs")], {
     stdio: "ignore",
@@ -50,7 +60,7 @@ async function pickTool(p, key) {
 
 async function canvasBox(p, fieldKey) {
   const host = p.locator(`[data-testid="field-${fieldKey}"] .nxWbCanvas`);
-  await host.waitFor({ timeout: 30000 });
+  await host.waitFor({ timeout: MOUNT_TIMEOUT });
   await host.scrollIntoViewIfNeeded(); // mouse coords are viewport-relative
   await p.waitForTimeout(150);
   const box = await host.boundingBox();
@@ -75,6 +85,21 @@ const sketchCount = async (port, obj, id, field) => {
   return Array.isArray(v?.elements) ? v.elements.length : v === null || v === undefined ? null : -1;
 };
 
+/* Deterministic persist gate: poll the SAVED field value until its element count
+   matches, instead of racing a fixed chip timeout. Returns true on match, false if
+   the budget expires (the caller asserts on it). This is the load-tolerant proof of
+   persistence — the stored value is the ground truth, not a transient UI state. */
+const waitForCount = async (port, obj, id, field, expected, budgetMs = SAVE_BUDGET) => {
+  const deadline = Date.now() + budgetMs;
+  let last;
+  do {
+    last = await sketchCount(port, obj, id, field);
+    if (last === expected) return true;
+    await new Promise((r) => setTimeout(r, 400));
+  } while (Date.now() < deadline);
+  return false;
+};
+
 export default [
   {
     name: "whiteboard-canvas-mounts", feature: "Whiteboard field (canvas on records)",
@@ -85,7 +110,7 @@ export default [
         const { ctx, p } = await openPage(page, `${BASE(PORT)}/#/o/sketches/r/sk_1`);
         await p.waitForSelector('[data-testid="record-name"]', { timeout: 10000 });
         await p.waitForSelector('[data-testid="fieldblock-sketch"]', { timeout: 10000 });
-        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: 30000 });
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
         assert(true, "document layout: excalidraw mounts inside the sketch field block");
         const blockBox = await p.locator('[data-testid="fieldblock-sketch"]').boundingBox();
         assert(!!blockBox && blockBox.width > 500, `the canvas block is full-width (${Math.round(blockBox?.width ?? 0)}px)`);
@@ -103,7 +128,7 @@ export default [
         await p.waitForSelector('[data-testid="kanban-boards"]');
         await p.click('[data-testid="card-bd_1"]');
         await p.waitForSelector('[data-testid="peek-panel"] [data-testid="fieldblock-diagram"]', { timeout: 10000 });
-        await p.waitForSelector('[data-testid="peek-panel"] [data-testid="field-diagram"] .excalidraw', { timeout: 30000 });
+        await p.waitForSelector('[data-testid="peek-panel"] [data-testid="field-diagram"] .excalidraw', { timeout: MOUNT_TIMEOUT });
         assert(true, "standard layout: the whiteboard block mounts inside the side peek");
         await p.screenshot({ path: path.join(ROOT, "_shots", "wb-standard-peek.png"), fullPage: true });
         await ctx.close();
@@ -121,18 +146,21 @@ export default [
       const proc = await bootFixture(ROOT, { port: WH_PORT, env: { WAREHOUSE: "local", WAREHOUSE_LOCAL_PATH: whFile } });
       try {
         const { ctx, p } = await openPage(page, `${BASE(WH_PORT)}/#/o/sketches/r/sk_2`);
-        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: 30000 });
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
         await p.waitForTimeout(600);
         assert((await sketchCount(WH_PORT, "sketches", "sk_2", "sketch")) === null, "sk_2 starts with no scene");
         const box = await canvasBox(p, "sketch");
         await pickTool(p, "rectangle");
         await drawRect(p, box);
-        await p.waitForSelector('[data-testid="whiteboard-save-sketch"][data-state="saved"]', { timeout: 8000 });
+        // deterministic persist gate (load-tolerant): the stored value is the ground
+        // truth, so the assertion never races the draw→debounce→store-write chain
+        assert(await waitForCount(WH_PORT, "sketches", "sk_2", "sketch", 1), "the drawn element persisted through the store (1 element)");
+        // the Saved chip is the UI echo of that persist (generous budget under load)
+        await p.waitForSelector('[data-testid="whiteboard-save-sketch"][data-state="saved"]', { timeout: SAVE_BUDGET });
         assert(true, "debounced save surfaces the Saved status chip");
-        assert((await sketchCount(WH_PORT, "sketches", "sk_2", "sketch")) === 1, "the drawn element persisted through the store (1 element)");
         await p.reload();
-        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: 30000 });
-        assert((await sketchCount(WH_PORT, "sketches", "sk_2", "sketch")) === 1, "the scene survives a reload on the warehouse-backed store");
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
+        assert(await waitForCount(WH_PORT, "sketches", "sk_2", "sketch", 1), "the scene survives a reload on the warehouse-backed store");
         await ctx.close();
       } finally {
         proc.kill();
@@ -177,14 +205,13 @@ export default [
       const proc = await bootFixture(ROOT);
       try {
         const { ctx, p } = await openPage(page, `${BASE(PORT)}/#/o/sketches/r/sk_1`);
-        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: 30000 });
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
         await p.waitForTimeout(600);
         const box = await canvasBox(p, "sketch");
         await pickTool(p, "rectangle");
         await drawRect(p, box, 0.44, 0.55, 0.56, 0.7);
-        await p.waitForSelector('[data-testid="whiteboard-save-sketch"][data-state="saved"]', { timeout: 8000 });
-        const afterLocal = await sketchCount(PORT, "sketches", "sk_1", "sketch");
-        assert(afterLocal === 5, `local draw saved (4 seeded + 1 = ${afterLocal})`);
+        await p.waitForSelector('[data-testid="whiteboard-save-sketch"][data-state="saved"]', { timeout: SAVE_BUDGET });
+        assert(await waitForCount(PORT, "sketches", "sk_1", "sketch", 5), "local draw saved (4 seeded + 1 = 5)");
         // an external writer REPLACES the scene and renames the record (bumps rev)
         await p.request.patch(`${BASE(PORT)}/api/objects/sketches/sk_1`, {
           data: { title: "Externally Renamed", sketch: { elements: [] } },
@@ -198,9 +225,8 @@ export default [
         // not the externally-emptied scene+1
         await pickTool(p, "ellipse");
         await drawRect(p, box, 0.66, 0.55, 0.8, 0.7);
-        await p.waitForSelector('[data-testid="whiteboard-save-sketch"][data-state="saved"]', { timeout: 8000 });
-        const afterPoll = await sketchCount(PORT, "sketches", "sk_1", "sketch");
-        assert(afterPoll === 6, `the polled overwrite did not clobber the live canvas (${afterPoll} = 5 local + 1)`);
+        await p.waitForSelector('[data-testid="whiteboard-save-sketch"][data-state="saved"]', { timeout: SAVE_BUDGET });
+        assert(await waitForCount(PORT, "sketches", "sk_1", "sketch", 6), "the polled overwrite did not clobber the live canvas (6 = 5 local + 1)");
         await ctx.close();
       } finally {
         proc.kill();
@@ -224,15 +250,15 @@ export default [
         await p.screenshot({ path: path.join(ROOT, "_shots", "wb-mobile-rest.png"), fullPage: true });
         // tap opens the fullscreen editor overlay
         await p.locator('[data-testid="wb-edit-sketch"]').tap();
-        await p.waitForSelector('[data-testid="wb-overlay-sketch"] .excalidraw', { timeout: 30000 });
+        await p.waitForSelector('[data-testid="wb-overlay-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
         assert(true, "tapping Edit opens the fullscreen canvas overlay");
         await p.waitForTimeout(600);
         // draw inside the overlay (pointer pipeline; touch drag is excalidraw-native)
         const box = await p.locator('[data-testid="wb-overlay-sketch"] .nxWbOverlayBody').boundingBox();
         await pickTool(p, "rectangle");
         await drawRect(p, box, 0.5, 0.35, 0.75, 0.55);
-        await p.waitForSelector('[data-testid="whiteboard-save-sketch"][data-state="saved"]', { timeout: 8000 });
-        assert((await sketchCount(PORT, "sketches", "sk_1", "sketch")) === 5, "the shape drawn in the overlay saved (4 seeded + 1)");
+        await p.waitForSelector('[data-testid="whiteboard-save-sketch"][data-state="saved"]', { timeout: SAVE_BUDGET });
+        assert(await waitForCount(PORT, "sketches", "sk_1", "sketch", 5), "the shape drawn in the overlay saved (4 seeded + 1)");
         await p.screenshot({ path: path.join(ROOT, "_shots", "wb-mobile-overlay.png"), fullPage: false });
         // Done closes the overlay and returns to the preview
         await p.locator('[data-testid="wb-done-sketch"]').tap();
@@ -251,7 +277,7 @@ export default [
       const proc = await bootFixture(ROOT);
       try {
         const { ctx, p } = await openPage(page, `${BASE(PORT)}/#/o/sketches/r/sk_1`);
-        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: 30000 });
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
         // the block is a labeled group
         const role = await p.getAttribute('[data-testid="field-sketch"]', "role");
         const label = await p.getAttribute('[data-testid="field-sketch"]', "aria-label");
@@ -268,7 +294,7 @@ export default [
         const box = await canvasBox(p, "sketch");
         await pickTool(p, "rectangle");
         await drawRect(p, box, 0.44, 0.55, 0.56, 0.68);
-        await p.waitForSelector('[data-testid="whiteboard-save-sketch"]', { timeout: 8000 });
+        await p.waitForSelector('[data-testid="whiteboard-save-sketch"]', { timeout: SAVE_BUDGET });
         const chipRole = await p.getAttribute('[data-testid="whiteboard-save-sketch"]', "role");
         assert(chipRole === "status", "the Saving/Saved chip announces as role=status");
         await ctx.close();
@@ -327,8 +353,8 @@ export default [
         assert((await p.locator(".excalidraw").count()) === 0, "no editor mounts over an unreadable value");
         // the reset is an explicit, labeled action — and only then does the canvas appear
         await p.click('[data-testid="wb-reset-sketch"]');
-        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: 30000 });
-        assert((await sketchCount(PORT, "sketches", "sk_3", "sketch")) === 0, "reset wrote an empty scene through the store");
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
+        assert(await waitForCount(PORT, "sketches", "sk_3", "sketch", 0), "reset wrote an empty scene through the store");
         // the table cell for the corrupt sibling never crashed either
         await p.goto(`${BASE(PORT)}/#/o/sketches`);
         await p.waitForSelector('[data-testid="table-sketches"] tbody tr');
