@@ -144,14 +144,31 @@ export default [
         assert(true, "an API-created record appears as a node via the rev poll, no interaction");
         const edges = await p.locator(".react-flow__edge").count();
         assert(edges === 8, `its dependsOn edge arrives with it (${edges} of 8)`);
-        // relation picker: switch edges to the cross-object Owner relation → hubs
-        await p.click('[data-testid="flow-relation-menu"]');
-        await p.click('[data-testid="flow-relation-owner_ref"]');
+        // relation picker: switch edges to the cross-object Owner relation → hubs.
+        // Drive the Radix menu by KEYBOARD end-to-end: a keyboard-open focuses the
+        // first item deterministically (a pointer-open leaves roving focus racy),
+        // then ArrowDown until the target is highlighted, then Enter — the
+        // RECIPES "Add a journey" pattern.
+        await p.focus('[data-testid="flow-relation-menu"]');
+        await p.keyboard.press("Enter");
+        await p.waitForSelector('[data-testid="flow-relation-owner_ref"]');
+        for (let i = 0; i < 6; i++) {
+          if (await p.locator('[data-testid="flow-relation-owner_ref"][data-highlighted]').count()) break;
+          await p.keyboard.press("ArrowDown");
+        }
+        await p.waitForSelector('[data-testid="flow-relation-owner_ref"][data-highlighted]');
+        await p.keyboard.press("Enter");
         await p.waitForSelector('[data-testid="flow-hub-flow_people-fp_1"]');
         const hubText = await p.textContent('[data-testid="flow-hub-flow_people-fp_1"]');
         assert(hubText?.includes("Ada Cheng"), `a cross-object target renders as a labeled hub ("${hubText}")`);
-        const hubs = await p.locator('[data-testid^="flow-hub-flow_people-"]').count();
-        assert(hubs === 3, `one hub per distinct target (${hubs} of 3)`);
+        // the graph refits to the new layout (animated); the DOM is viewport-
+        // windowed, so count hubs only once the fit settles and shows all three
+        await p.waitForFunction(
+          () => document.querySelectorAll('[data-testid^="flow-hub-flow_people-"]').length === 3,
+          undefined,
+          { timeout: 5000 },
+        );
+        assert(true, "one hub per distinct target (3 of 3 once the refit settles)");
         await shot(p, ROOT, "flow-hubs");
         await ctx.close();
       } finally { proc.kill(); }
@@ -247,9 +264,20 @@ export default [
         await p.waitForSelector('[data-testid^="flow-node-fx_"]', { timeout: 30000 });
         const renderMs = Date.now() - t0;
         assert(renderMs < 30000, `10k-row graph reaches first painted nodes in ${renderMs}ms (< 30s)`);
-        // windowing proof: the DOM holds a viewport WINDOW, not 10k node elements
-        const domNodes = await p.locator(".react-flow__node").count();
-        assert(domNodes > 0 && domNodes < 1500, `onlyRenderVisibleElements windows the DOM (${domNodes} of 10000 in the DOM)`);
+        const atFit = await p.locator(".react-flow__node").count();
+        // windowing proof: zoom IN to a working zoom (wheel zoom, the real UI
+        // path) — the DOM must collapse to the viewport WINDOW, not 10k elements
+        // (at fit-all zoom everything is visible, so culling correctly keeps more)
+        const box = await p.locator('[data-testid="flow-flow_perf"]').boundingBox();
+        await p.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        for (let i = 0; i < 10; i++) await p.mouse.wheel(0, -600);
+        await p.waitForFunction(
+          (prev) => document.querySelectorAll(".react-flow__node").length < Math.min(prev, 800),
+          atFit,
+          { timeout: 10000 },
+        );
+        const windowed = await p.locator(".react-flow__node").count();
+        assert(windowed > 0 && windowed < 800, `onlyRenderVisibleElements windows the DOM at working zoom (${windowed} in the DOM, ${atFit} at fit-all, 10000 rows)`);
         const t1 = Date.now();
         const first = p.locator('[data-testid^="flow-node-fx_"]').first();
         await first.click();

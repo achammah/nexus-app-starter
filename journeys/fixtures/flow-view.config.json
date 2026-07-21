@@ -79,6 +79,7 @@
       "label": "Fixture ideas",
       "labelOne": "Fixture idea",
       "icon": "file-text",
+      "seedCount": 0,
       "defaultView": "flow",
       "views": [
         { "type": "table" },
