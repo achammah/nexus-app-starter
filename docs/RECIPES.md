@@ -1,0 +1,305 @@
+# RECIPES — exact files, exact order
+
+Task cookbook. Each recipe names the files touched and the order of operations. If a recipe and the code disagree, the code won; fix the recipe in the same commit.
+
+## Add an entity
+Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:currency,stage:select:Draft|Sent|Paid,owner:user"` — writes the config entry (board on the first select, seeded rows, `npm run model` refresh). By hand:
+1. `starter.config.json` → append to `objects[]`: `key/label/labelOne/icon`, `fields[]`, optional `stageField` (a select field's key → enables the board), `defaultView`, and demo data (`sampleRows` with stable ids, or `seedCount`). Relation targets must be listed BEFORE the objects that point at them.
+2. Nothing else — tables/board/chart/record page/pickers/filters/nav derive from config.
+3. `docs/feature-manifest.md` → one row. A journey asserting a VISIBLE outcome (`npm run generate journey <name> -- --feature "<row>"` scaffolds one under `journeys/extra/`).
+4. `npm run journeys`.
+
+## Scaffold a page or journey
+- `npm run generate page Reports` → `src/app/pages/Reports.tsx` from `scripts/templates/page.tsx.tpl` (edit the template once — every later generate uses your version) + auto-registered at the `// generate:pages` marker.
+- `npm run generate journey invoice-flow -- --feature "Invoices board"` → `journeys/extra/invoice-flow.mjs` skeleton, auto-loaded by the runner.
+- All subcommands are flag-driven (no prompts) so an agent can run them headlessly; `--dry` on `object` prints the JSON without writing.
+
+## Add a field to an existing entity
+1. `starter.config.json` → append to that object's `fields[]`. Types: `text · longText · number · boolean · rating · select · multiselect · array · date · dateTime · currency · email · url · json · relation · user · money · emails · phones · links · address · fullName`. Select/multiselect options may be strings or `{value, label, color}` (colored chips everywhere). Field flags: `unique: true` (duplicates 409), `isActive: false` (hidden + write-protected, data preserved), `scale` for ratings.
+2. `email/url/number/date/select` values are validated server-side FROM the type — no separate validation block (`server/store.mjs` `validate()`). Shaped types validate too: `money` wants `{ "amount": 12500, "code": "EUR" }`, `emails`/`links` check every entry, `phones` is lenient (digits/+/spaces).
+3. `user` fields read the top-level `users[]` directory; `multiselect` needs `options`.
+4. Shaped values: `money {amount, code}` (renders “€12,500”, sums by `amount` in rollups/charts) · `emails/phones/links` are `string[]` (chips in cells, list editor on the record page; links anchor with the bare host) · `address {street, city, postcode, country}` (cells show “street, city”) · `fullName {first, last}` (cells show “First Last”; may be `primary` — the row link and record title render the joined name). CSV export flattens them (`12500 EUR` · `a; b` · joined).
+
+## Edit the schema at runtime (config-as-data)
+
+`starter.config.json` is the immutable SEED; the Schema page (`#/p/schema`, gated by `FEATURE_SCHEMA`, owner/admin — the server 403s everyone else) edits the LIVE schema through three command-logged store ops: add an object (born with its primary text field), add a field (any supported type, select options with colors, `unique`), edit a field (label · options · isActive · unique). Changes persist through the command log and replay on boot in strict order with the data writes that depend on them; the config FILE is never written. A successful commit reloads the app so `/api/config` re-serves the merged schema to every surface (tables, record pages, pickers, import mapping, relations). Retire (`isActive: false`) is the lifecycle lever — data stays, re-activation restores it. Guard rails, each a 400 naming its reason: field/object keys are immutable and unique; a field's type cannot change while rows hold values; the primary field cannot be retired; `unique` is refused while duplicate values exist (they are named); removing a select option still in use is refused (a rename is remove+add, so it inherits the rule); object delete and field hard-delete do not exist in v1. Seed evolution: if the seed later gains a key an old log also added, the seed wins (the replayed delta is skipped with a warning).
+
+## Relations (identity model: store ids, read labels)
+
+Relation fields persist target row IDS — single: `"co_1"` · many (`multiple: true`): `["ce_1", …]` · polymorphic (`relationTargets: ["a","b"]` instead of `relation`): `{ "object": "a", "id": "a_1" }`. Every read projects the target's PRIMARY label into the field itself (the API returns label strings, exactly as before) and adds `_refs` — the raw ids per relation field — for identity-aware UI. Writes accept an id, an `{object?, id}` ref, or a primary-label string: a label resolving to ONE live target normalizes to its id; two candidates → 400 naming them; no match → the string stays verbatim (a dangling label). Because links are ids: renaming a target updates every inbound cell with no sweep; merging re-points losers' ids to the winner; a TRASHED target keeps projecting (restore heals); DESTROYING a target severs its inbound links. `inverseLabel` on a relation field names the reverse related-list section on the target object. Seed rows may use labels — they normalize to ids once at boot. The create dialog authors single relations by id (poly selects grouped per type); `multiple` relations attach on the record page via the checkbox picker, which commits ONE write when it closes.
+
+## Make a field AI-enrichable
+1. On the field: `"primitive": { "kind": "task", "taskId": "<AI task id>", "label": "Company research" }`.
+2. The record page shows a sparkle Run button → `POST /api/objects/:o/:id/enrich`; while it runs the button becomes a ThinkingDots indicator.
+3. Ship real: set `NEXUS_API_KEY` (+ `NEXUS_BASE_URL`). With a `taskId` on the field the route runs the AI task via `runAiTask` (`server/aiTaskRunner.mjs`) and writes the result — the UI and config don't change. Without a `taskId` (or without the key) it returns the labeled mock value, byte-unchanged.
+
+## Add AI inline suggestions (tracked changes) to a richText field
+1. On a `richText` field: `"suggestTaskId": "<AI task id>"`. Optional on the object: `"pipelineField": "<select field key>"` renders a generic state Pipeline over that field's options above the editor.
+2. The record page mounts the review surface for that field — the editor with a "Request suggestions" button. Clicking it calls `POST /api/objects/:o/:id/suggest/:field`, which stores tracked changes on the derived sibling key `<field>__suggestions`. Each change is an inline widget in the text (del original → ins replacement) plus a card in the right-rail panel.
+3. Accept folds a change's `original → replacement` into the document (through the editor's debounced save); reject/undo revert it. Resolved statuses persist via `PATCH /api/objects/:o/:id/suggest/:field` (`{changes}`) — the content and the review state persist on their own channels.
+4. Ship real: set `NEXUS_API_KEY`. With a `suggestTaskId` on the field the route runs the AI task via `runAiTask` and normalizes its output (`{changes:[{original,replacement,reason?,kind?}]}` or a bare array) into tracked changes. Without a `suggestTaskId` (or without the key) it serves a labeled mock derived from the document — the UI and config don't change.
+5. Library pieces (nexus-ui): `useSuggestions(blocks, onBlocksChange, changes, onChangesChange)` (the accept/reject/undo engine), `SuggestionPanel` (the rail), `Pipeline`/`Chip` (the state indicator) — all entity-agnostic.
+
+## Add a whiteboard (canvas) field to an object
+
+1. `starter.config.json` → append to the object's `fields[]`:
+```jsonc
+{ "key": "sketch", "label": "Sketch", "type": "whiteboard", "width": 150 }
+```
+2. The record page mounts an excalidraw canvas as a full-width block — after the hero in the `document` layout, below the details in `standard` (side peek included). The editor lazy-loads only when a record with the field is open; list pages stay light.
+3. The value is plain scene JSON through the normal patch path: `{ "elements": [...] }` (elements only — every mount scrolls to content; a stored `appState` key is tolerated and ignored). Saves debounce behind a Saving…/Saved chip and only fire when ELEMENTS change — pans, zooms and selections never write. The server validates the shape (`elements` must be an array) and the timeline logs `canvas · N elements`, never raw JSON.
+4. Cells (table + kanban card) render a memoized SVG thumbnail from the stored scene (cached by content + theme, re-derived on a live dark-flip); an empty scene shows a subtle canvas glyph and loads nothing. Free-text search skips whiteboard values (geometry is not prose), and the field is excluded from the FilterBar.
+5. Mobile (≤768px): the field rests as a static preview + an "Edit canvas" button; the tap opens a fullscreen overlay editor with native touch draw/pan/pinch. Inline drag-draw is a desktop interaction by design — the page never traps touch scroll.
+6. v1 boundary: the image tool is disabled (scenes stay lean JSON — no base64 blobs in the command log) and file-system canvas actions (open/save-file) are hidden. Seed demo scenes by drawing in the editor and copying the saved value from the API, never by hand-writing element objects.
+
+**Wiring to Nexus.** The scene is an ordinary JSON field on the records API (`PATCH /api/objects/:key/:id` with `{ "<field>": { "elements": [...] } }`), so a workflow or agent can read or write canvases like any other field — e.g. an AI task that generates a diagram writes its scene into the field and the thumbnail + canvas render it on the next poll. Elements follow excalidraw's serialized-element shape.
+
+## Async Nexus building blocks (server)
+- **`runAiTask(store, emitEvent, {taskId, objectKey, recordId, buildInput, applyOutput, onFail?})`** (`server/aiTaskRunner.mjs`) — run one AI task against a record in the background, write the result, revert on failure. Powers `/enrich`.
+- **`fireAsyncGeneration(store, {objectKey, placeholder, webhookUrl, payload, emitEvent?})`** (`server/asyncGeneration.mjs`) — create a placeholder record now, make it durable, fire an off-machine generation webhook; the finished record lands back via the warehouse.
+- **`emulatorChat(deploymentId, {message, sessionId?, context?, contextLabel?})`** (`src/lib/nexusClient.mjs`) — one turn of native agent chat through the emulator session API.
+- **`RemoteStore.sync()` → `POST /api/sync`** pulls an external writer's warehouse events into the running app (no restart); `api.syncStore()` on the client. Pointer env vars follow the `<FEATURE>_TASK_ID`/`_DEPLOYMENT_ID`/`_WEBHOOK_URL` convention — optional, no live defaults (see `.env.example`).
+- **`WAREHOUSE=local` (`server/warehouse-local.mjs`)** — a file-backed command-log warehouse (node `fs` only, zero-dep, `WAREHOUSE_LOCAL_PATH` for the file) so `sync()` + the async-generation writeback run with NO platform creds. The demo + journeys set `WAREHOUSE=local`; the default app (no `WAREHOUSE`) stays in-memory and the Sync button reads "up to date".
+- **Live-sync affordance (topbar)** — a Sync button (`api.syncStore()`, ThinkingDots while working, then "synced N" / "up to date"). App-level, always present; on the in-memory app there is nothing external to pull.
+- **Rich-text save-state** — the `richText` field editor coalesces keystrokes through nexus-ui's `useDebouncedSave` and shows a "Saving… / Saved" chip. Automatic on every `richText` field; no config.
+
+## Add an async-generation action to an object
+1. `starter.config.json` → on the object add `generate` (see DATA-MODEL "App-object options"): name the `statusField` (a `select` with a generating value + a ready value) and optionally a `resultField` (the `richText`/text field the finished record fills). Demo: the `reports` object.
+2. Boot with a warehouse so the external-writer catch-up is live: `WAREHOUSE=local` (offline, file-backed) or `WAREHOUSE=bigquery`.
+3. The list gains a "Generate" button: it drops a placeholder row (status = the generating value) with an in-flight indicator, fires `/api/_mock/generate`, and the finished record lands via the warehouse + the poll's `syncStore()` — the SAME row settles to the ready value (a stall hint shows past `stallAfterMs`).
+4. Swap the labeled `/api/_mock/generate` writeback in `server/server.mjs` for a real generation workflow — a `fireAsyncGeneration` `webhookUrl` pointing at a Nexus workflow that writes the finished record back to the warehouse.
+5. Journey + manifest row.
+
+## Add a custom page (non-record surface)
+1. Component under `src/app/pages/YourPage.tsx`.
+2. Register in `src/app/pages.tsx` (`key/label/icon/component`) → nav + `#/p/<key>` route appear.
+3. Journey + manifest row.
+
+## Add an activity kind (beyond call/email/meeting)
+1. `server/server.mjs` → extend the allowed-kind list in the `/activities` route.
+2. `src/ui/record-core/RecordPage.tsx` is the library copy — add the kind + icon in nexus-ui (`ACTIVITY_KINDS` + `evIcon`), then `npm run sync-ui`. Never edit `src/ui/` directly.
+
+## Track work with tasks
+
+Tasks are cross-record to-dos — title, status (`todo`/`doing`/`done`), optional due date and assignee (a users-directory name), and links to any number of records. They are a system entity like teams or webhooks: no config object, on by default, disabled entirely (nav + page + API) with `FEATURE_TASKS=0`.
+
+- **Tasks page** (`/#/p/tasks`): create inline, filter by status/assignee/overdue, grouped into Overdue / Today / This week / Later / Done buckets; your own tasks sort first when you're signed in.
+- **On a record**: the Tasks card lists the record's linked tasks; adding one there links it automatically. Completing a task stamps `Task done: …` on every linked record's timeline (creating a linked one stamps `Task added: …`). Unlinking removes it from the record but keeps the task.
+- **Assignment mail**: with accounts on, assigning a task to a signed-up user drops a `task-assigned` mail in the outbox (real mail once SMTP is wired) — self-assignment stays silent.
+- **API**: `GET/POST /api/tasks`, `PATCH/DELETE /api/tasks/:id` (filters: `status`, `assignee`, `record=<obj>:<id>`, `due=overdue|today|week`). Viewers read; every other role manages.
+- Destroying a record leaves its tasks intact: the dead link renders as an inert "(deleted)" chip and stops navigating.
+
+## Boot as a different product
+`CONFIG_PATH=path/to/other.config.json npm run serve` — the config IS the app. Fullest reference shape: `journeys/fixtures/coverage.config.json` (a test fixture, not a template).
+
+## Preview your brand against the kit
+
+`/p/gallery` (hide with `FEATURE_GALLERY=0`) shows the whole component surface on one page — primitives, a live vendored subset, the full library inventory, record-core in miniature, and every field type's read + edit states — with a skin bar that repaints it all instantly. Previews persist NOTHING: they compile through `skinToCss()` into a separate `#nx-skin-preview` style tag, so the app's own skin, the Theme page's saved state, and the `nx-skin-css` boot cache are never touched; reset (or just leaving the page) restores everything. Section headers carry copyable `src/ui/...` import paths, and the inventory footer compares its snapshot stamp against `src/ui/.ui-version` — it turns into a visible warning when someone runs `sync-ui` without refreshing `src/app/gallery.catalog.json`. The record-core minis run on local fictional rows, so the page works even on an empty app.
+
+## Re-brand for an organisation (skins)
+1. `starter.config.json` → `theme.skin` = the org's brand as JSON (or `theme.skinPreset` for a built-in; `theme.accent` for the one-knob shortcut). Full knob set → `src/ui/docs/THEMING.md`: brand ramp, dark/brand chrome shell, radius personality (0 = squared, reaches the vendored shadcn kit), fonts, labels, semantic palette, logo mark/wordmark, raw token overrides.
+2. Reload — the whole app re-brands, dark mode derives from the same brand. Reference example: the `ember` preset (dark chrome + sharp corners + own palette).
+
+## Put the nav on top
+
+`starter.config.json` → `"app": { …, "nav": "top" }` — the left sidebar is replaced by one horizontal bar: brand, object/page items (with live counts), and search/theme/sign-out on the right; favorites and the team switcher become compact controls in the bar. Omit the field (or set `"side"`) for the default sidebar. Both modes are mobile-responsive out of the box: at ≤768px the nav collapses to a burger that opens a drawer (objects, pages, favorites, team switcher, search, sign-out), and the side peek becomes a full-screen sheet.
+
+## Mobile: the bottom tab bar, shortcuts, and go-to chords
+At ≤768px a bottom tab bar renders one tab per `config.objects` — plus a Copilot tab when `copilot` is set — for one-tap navigation; a bounded bar beats a crowded one, so custom/utility pages stay in the burger/drawer (which also keeps favorites, the team switcher, and sign-out). Flag an object `"hideInNav": true` to keep it fully routable (deep links, search, relations) while omitting it from every nav surface (sidebar, drawer, tab bar). `app.goChords` is a config-driven go-to map — `{ "c": "#/o/companies" }` means `g` then `c` jumps there; `?` opens a shortcuts overlay that lists the shell's Core keys beside these App chords (and `n` starts a new record). The reusable overlay + review banner live in nexus-ui (`src/ui/blocks/mobile`); the tab bar is app-shell chrome in `src/app`. The mobile peek gains a bottom review banner that steps the record set you opened (the phone twin of the desktop N-of-M pager).
+
+## Change the base theme
+`src/ui/tokens/tokens.css` holds the `--nx-*` canvas (light + dark) — the static layer skins write over. Fix tokens in nexus-ui, re-sync.
+
+## Give an object multiple views
+1. `starter.config.json` → on the object, declare the view tabs in order:
+```jsonc
+"views": [
+  { "type": "table" },
+  { "type": "kanban", "groupField": "stage" },
+  { "type": "chart", "groupField": "stage", "measure": "amount" }
+]
+```
+2. `type` names an installed view definition (`table` | `kanban` | `chart` built in; new types register themselves via a dropped folder, see CONTRIBUTING-AGENTS "Adding a view type"). The other keys are that type's config: `groupField` (kanban/chart) is a select/user field key, `measure` (chart) is `"count"` or a number/currency/money field key. `defaultView` still names the initially-active tab.
+3. Omit `views` and the object derives the pre-registry set: the table, plus Board + Chart when a select/user field exists. Runtime precedence: a user's pick in the Columns/group-by/measure/rollup menus (persisted per object, captured by saved views) wins over the `views` entry, which wins over the definition's defaults.
+4. A `type` with no installed definition, or a config its definition rejects (a `groupField` that is not a select/user field), renders an inline "not installed" chip in place of the view; the other tabs keep working.
+
+## Give an object a Sheet view (spreadsheet bulk editing)
+1. `starter.config.json` → add `{ "type": "grid" }` to the object's `views`:
+```jsonc
+"views": [
+  { "type": "table" },
+  { "type": "grid" }
+]
+```
+2. The Sheet tab renders an Excel-grade grid over the object's records: fill-handle drag, range selection, TSV copy/paste that round-trips with Excel/Sheets, full keyboard cell navigation, a frozen primary column, and row markers wired to the same bulk bar the table uses. The grid loads as its own lazy chunk on first switch.
+3. What edits in place: text, longText, url, email, number, currency, boolean, select, multiselect and user fields. Everything else renders formatted read-only (dates edit on the record page, relation identity in the picker, rich and shaped values in their own editors). A pasted or filled value the target field cannot hold (an unknown select option, a non-number) is SKIPPED, never written; paste clips to existing rows and never creates records.
+4. Table or Sheet: the table is the browse-and-manage surface (side peek, relation links, per-row navigation, the Columns menu); the Sheet is the bulk data-entry and cleanup surface (fill series of cells, move blocks of values, paste from a spreadsheet). Objects that need both declare both, as `demo_sheet` does (hidden from the nav, linked from the Kit demo page).
+5. Wiring to Nexus: every grid commit goes through the SAME record patch path as the table (one merged PATCH per touched row), so warehouse logging, live rev-poll sync and permissions all apply unchanged; a record generated or updated by an external writer lands in the open grid on the next sync like any other view.
+
+## Add a flow (node-graph) view to an object
+
+Records render as draggable cards on a pan/zoom canvas (minimap + zoom controls), connected by ONE relation field's links. Two graph shapes, decided by where the relation points:
+
+- **Self-relation** (`relation` = the object's own key) → record→child edges: org charts (`manager`), dependency maps (`dependsOn` with `multiple: true`).
+- **Cross-object relation** (demo: People's `company`) → each distinct target renders as a compact labeled hub with edges to its records: account webs, ownership maps. Hubs come from the relation's identity refs, so they work without the target object being on screen; clicking a hub selects it (records open the peek, hubs don't).
+
+```jsonc
+// self-relation dependency map
+{ "key": "tasks", "label": "Tasks", "labelOne": "Task", "defaultView": "flow",
+  "views": [ { "type": "table" }, { "type": "flow", "relationField": "dependsOn" } ],
+  "fields": [
+    { "key": "name", "label": "Name", "type": "text", "primary": true },
+    { "key": "status", "label": "Status", "type": "select", "options": ["Planned", "Active", "Done"] },
+    { "key": "dependsOn", "label": "Depends on", "type": "relation", "relation": "tasks", "multiple": true }
+  ] }
+```
+
+Config keys on the `views` entry: `relationField` (which relation draws the edges; default = the object's first relation field) · `labelField` (the card title; default = the primary field). A missing/invalid relation renders a plain-language chip in place of the view. The card's meta line shows the first 2 non-primary fields (selects as colored chips), excluding the active relation.
+
+Runtime behavior: with 2+ relation fields a "via" picker appears beside the view switcher and re-draws the graph per relation (persisted per object, captured by saved views). Dragging arranges nodes; only dragged positions persist (per relation), un-dragged nodes re-run the auto layout — dagre ranks up to 2,000 nodes, an O(V+E) BFS-rank grid beyond that, and the canvas windows its DOM (`onlyRenderVisibleElements`), so 10k-row objects stay usable. Rows arriving from filters, searches, or external writers re-derive the graph live.
+
+Scope note: the flow view is records-as-graph. A workflow-builder canvas (node palettes, per-node config drawers, executable runs, edge drawing) is future work and deliberately out of this view's scope — the canvas never mutates records, draws connections, or deletes nodes.
+
+## Add a calendar to an object
+1. `starter.config.json`, on the object, add a `calendar` entry to its `views` (the demo `deals` object carries one):
+```jsonc
+"views": [
+  { "type": "table" },
+  { "type": "calendar", "startDateField": "closeDate", "colorField": "stage" }
+]
+```
+2. Keys: `startDateField` (required, a `date` or `dateTime` field key; `defaultConfig` picks the first one) drives placement. A `date` field renders all-day events; a `dateTime` field renders timed events. `endDateField` (optional, same types) turns events into resizable spans; the stored end date is INCLUSIVE, the view converts to the calendar's exclusive convention internally, so records never leak calendar conventions. `titleField` defaults to the primary field. `colorField` names a select field: events then take that field's own option palette, the same colors as table chips and kanban columns (give options the `{ "value": "New", "color": "blue" }` form).
+3. Interactions: click an event to open its record in the peek. Drag an event to another day (or resize a span when `endDateField` is set) to PATCH the date field(s), with the standard "Saved" toast and revert on failure. Click an empty day to open the create dialog prefilled with that date (rendered only for callers with create rights). Month and week persist per object in the view-state bag (`calMode`, plus `calDate`, the anchor you were on, so a reload lands where you left). Week mode picks its grid from the start field: `date` objects get the one-row day grid, `dateTime` objects the hourly time grid.
+4. Mobile (≤768px) replaces the grid with a virtualized agenda list: every day of the anchor month is a row, tapping a day creates on that day, tapping an event opens the peek. Drag-to-reschedule stays desktop-only; on mobile, reschedule via the record's date field in the peek.
+5. An object with no date field, or a `startDateField` naming a non-date field, degrades to the standard explanatory chip in place of the view; the other tabs keep working.
+6. Wiring to Nexus: the calendar has no write path of its own. Every change goes through the record PATCH route, so dates written by a workflow or an agent (through the warehouse and `/api/sync`, or the API directly) land on the calendar via the normal rev poll with no extra wiring.
+
+## Save + share list views
+Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.
+
+## Add a journey
+1. Append to the array in `journeys/run.mjs`: `{ name, feature, async run(page) }` — `feature` must EXACTLY match a manifest row's Feature column (the runner stamps `Last verified` by that string).
+2. Assert VISIBLE outcomes (a value changed, a card moved, a toast) — never a bare 200.
+3. Radix menu items are reachable by POINTER (click the item) and by KEYBOARD (press ArrowDown UNTIL the target has `data-highlighted`, then Enter — blind arrow counts race the focus transfer). Keyboard is geometry-free; a pointer-click also asserts the popper is positioned on-screen (`journeys/extra/popper-positioning.mjs`).
+4. If the journey changes persisted view state (saved views, group-by), RESTORE defaults at the end — journeys share one browser context.
+
+## Wire real auth
+Set `AUTH_USERS` (`user:pass,user2:pass2`) + `APP_SECRET` (32+ chars) → the login gate arms. See `.env.example`. Swap the seam for SSO/OAuth in `server/auth.mjs` — the gate call-sites don't change.
+
+## Turn on accounts, teams, permissions
+1. `.env`: `AUTH_MODE=accounts` + `APP_SECRET` (32+ chars). Signup/verification/reset/deletion flows arm; mail lands in the dev outbox (`GET /api/outbox`) until `SMTP_URL` + a real transport are wired in `server/email.mjs`.
+2. Teams live at `/p/team`: create, invite by mail, or share the join code. Roles: owner > admin > member.
+3. Per-object permissions in the config: `"permissions": { "admin": [...], "member": ["view","create","editOwn"], "viewer": ["view"] }` — omit the block and everything stays open. Roles: owner > admin > member > viewer. `editOwn`/`deleteOwn` grant the action only on rows the caller created (`_createdBy`). The server 403s uncovered actions; the UI hides their affordances (`src/app/permissions.ts` mirrors `server/permissions.mjs` — keep them in sync).
+4. Team-scoped data: `"teamScoped": true` on an object → rows belong to the creator's ACTIVE team (the sidebar switcher; `x-nx-team` header), other teams can't see or reach them, and the caller's PER-TEAM role governs. The team page also carries the audit trail (invites, joins, role changes, revocations); removing a pending member kills their invite token.
+
+## Go persistent (native warehouse spine)
+1. `.env`: `WAREHOUSE=bigquery` + `NEXUS_API_KEY` + `WAREHOUSE_CREDENTIAL_ID` (from `nexus tool credentials <toolId>` — tool-scoped, not the org-wide id). Optional: `BQ_DATASET`/`BQ_LOCATION` (location must match the dataset's region) / `BQ_PROJECT`.
+2. Boot — the server creates the dataset + `events` table, then REPLAYS the append-only command log over the deterministic seed: same ids, true timestamps, nothing lost across restarts. Unset `WAREHOUSE` and the in-memory mock serves the identical API.
+3. Semantics: single writer; the job queue + webhook delivery logs are operational state and stay in memory (a restart drops pending jobs). Files ride the log as base64 — move heavy attachment volumes to object storage before they matter.
+
+## Point an AI assistant at the app (MCP)
+`claude mcp add my-app -- node scripts/mcp-server.mjs` (the app must be running; `NX_APP_URL` overrides the target). Read-only tools: `list_entities · describe_entity · query_records · get_record · get_timeline`. Claude Desktop config lives in the header of `scripts/mcp-server.mjs`.
+
+## Notify another system on record changes (webhooks)
+`/p/webhooks` → endpoint URL + events from the typed catalog (`<object>.created/updated/deleted`, `*`). Deliveries are HMAC-SHA256 signed (`x-nx-signature`, secret shown once) and logged per endpoint; failures retry via the job queue.
+
+## Run something on a schedule (jobs)
+One handler per type in `server/jobs.mjs` + `enqueue(store, "<type>", payload)`. The shipped `digest` job (arm with `DIGEST_EVERY_MS`, optional `DIGEST_TO`) is the reference: rollups into `app_state`, runs visible at `/api/jobs`.
+
+## Work the list without a mouse
+
+Tables carry a three-level focus model: ↑↓ (or j/k) move a row focus; `x` selects (Shift+x extends, Cmd/Ctrl+A selects all); Enter drops into cells; arrows move spreadsheet-style; typing on a cell opens its editor seeded with the keystroke; Enter saves and steps down, Tab saves and steps sideways; Escape climbs back out one level at a time. Cmd/Ctrl+Enter opens the focused record in the side peek.
+
+## The side peek
+
+Rows open in a right-edge panel over the list (set `"openIn": "page"` on an object to navigate instead). Related records stack onto the same panel — Escape steps back, then closes; the panel root rides the URL (`?peek=<id>`), so reload and share restore it; cmd/ctrl-click a row link for a real new tab. The header pages through the set you opened from (N of M, wrapping). In a relation picker, a search with no match offers "Create …" — the record is born with just a title, attached, and opened for progressive completion.
+
+## Pick a record-page layout
+
+`recordLayout` on an object chooses how its record page is shaped (default `"standard"`):
+
+- **`"standard"`** — the fields panel (inline-edit rows) beside the timeline/notes/files tabs. A `richText` field spans the FULL details column (label above, editor below) and stays readable at any width, including inside the narrow side-peek, so a rich document is never crammed into the value half-column.
+- **`"document"`** — a Notion-style full page: the object's first `richText` field becomes a WIDE hero editor as the main column, and everything else (the other fields, related lists, timeline/notes/files) moves into a compact sidebar. A `"document"` object opens in FULL PAGE by default (set `"openIn": "peek"` to override). With no `richText` field it falls back to standard.
+
+Both layouts render the same editor + the AI-suggestions review surface (`suggestTaskId`), and both degrade gracefully in a narrow container: the editor+rail grid stacks the rail under the editor rather than crushing the document column.
+
+```jsonc
+{ "key": "docs", "label": "Docs", "labelOne": "Doc",
+  "recordLayout": "document", "pipelineField": "status",
+  "fields": [
+    { "key": "title", "type": "text", "primary": true },
+    { "key": "status", "type": "select", "options": ["Draft", "In review", "Approved", "Published"] },
+    { "key": "body", "type": "richText", "suggestTaskId": "doc-suggest" }
+  ] }
+```
+
+## The panel: peek, search, actions
+
+The side panel is a page STACK, not just a record preview — record pages, a search page, and an actions page all push onto one navigation history with shared crumbs, back, and the layered Escape (clear text → step back → close; Backspace on an empty search also steps back). `/` (outside inputs, dialogs, and focused table cells) opens the search page: always-focused input, live results across every object (type labels when they span objects), ↑↓ + Enter pushes the hit onto the same panel so the list behind never navigates. The ⚡ button on a record peek — or Cmd/Ctrl+K while the panel is open — stacks the actions page: the same context actions the ⌘K palette shows (favorite, promote, new, trash…), plus "Search records". Search/actions pages are ephemeral: only a record root rides the URL, so reload lands on the record or closed.
+
+## Recover deleted records (trash)
+
+Deleting is recoverable: rows get a `_deletedAt` stamp and move to the per-object Trash (toolbar icon next to New). Restore brings a row back intact; **Delete forever** is permanent and is its own permission — grant `destroy` (and optionally `destroyOwn`) in the object's `permissions` table; `restore` rides the `delete` grant. Owners always hold both. Set `TRASH_RETENTION_DAYS` to auto-destroy expired trash (a `trash-sweep` job runs on an interval; unset/0 keeps trash forever).
+
+Creating a record whose unique field matches a TRASHED row restores that row and applies the incoming data (the response is `200` with `_resurrected: true` and the original id) — imports and re-syncs converge instead of colliding. A collision with a live row still 400s.
+
+## Find duplicates
+
+Every object gets deterministic duplicate detection — no scoring, no AI, each match explainable in one sentence: same normalized primary (case, accents, spacing and punctuation ignored); one normalized primary beginning the other at a word boundary when the shorter is ≥ 8 characters; the same email-field value; the same url-field domain. Unique fields are skipped — the server already makes live collisions impossible, so a unique match can't exist. Trashed rows never match.
+
+Two surfaces: a record with suspected twins shows a **Possible duplicates** section (each candidate names its matched rule; one click opens the merge dialog preselected — Cancel moves nothing and leaves the pair selected on the list), and any list's **Find duplicates** action sweeps the whole object into groups with a per-group Review merge. Read-only API: `GET /api/objects/:key/duplicates` (groups) and `GET /api/objects/:key/:id/duplicates` (one record's candidates) — both ride the `view` permission; merging stays behind `edit`+`delete`.
+
+## Merge duplicates
+
+Select 2–10 rows → **Merge** → pick the survivor. The preview shows the final value per field and where inherited values come from: the winner keeps its values on conflict and absorbs the losers' non-empty fields into its own empties. Relation fields elsewhere that pointed at a loser re-point to the winner; timelines and watchers travel; losers land in the trash. `POST /api/objects/:key/merge {ids, winnerId, preview?}`.
+
+## Import records from CSV
+
+Any object list → **Import** (toolbar) → paste CSV text or pick a `.csv` file → map columns to fields (auto-matched on name/label; the primary field must be mapped) → preview the first rows against the server's validators → run. Rows import in chunks with live progress and a cancel between chunks; the summary counts created / restored / skipped / failed, and failed rows download as a CSV with the reason per row. A unique value matching a TRASHED row restores it (original id, new data); a collision with a live row is skipped as a duplicate. Another system can call it directly: `POST /api/objects/:key/import {rows: [{field: value}], preview?}` — rows keyed by field key, at most 2000 per call, gated by the `create` permission.
+
+## Let another system call the app (API keys)
+
+`/p/apikeys` (owners/admins; `FEATURE_APIKEYS=0` hides page + API together) → name + role → **Create** → copy the `nak_…` key: it is shown exactly once, only its sha256 hash is stored. A request carrying the key authenticates as the key's role through the same permission tables as a signed-in member, with or without account auth:
+
+```
+curl -H "x-api-key: nak_…" https://your-app/api/objects/companies
+```
+
+`Authorization: Bearer nak_…` works too. Scoping: a `viewer` key reads whatever viewers can view and nothing more; `member`/`admin` keys follow each object's `permissions` table; revoking a key kills it immediately (every call answers 401). Team-scoped objects stay session-only — keys carry no team membership.
+
+## Pin favorites
+
+The star on any record header pins it to a Favorites section in the sidebar. Pins are personal and device-local (localStorage), so they work with or without accounts.
+
+## Add an AI copilot side-panel
+
+A docked right-column panel that chats with a native agent about whatever the user is looking at. Add a `copilot` block to `starter.config.json`; omit it and nothing renders (the iframe `chat.embedUrl` dock is the fallback).
+
+```jsonc
+"copilot": {
+  "title": "Copilot",            // header + toggle label
+  "mark": "C",                    // 1–2 char brand glyph (falls back to a sparkle)
+  "emptyStateCopy": "Your in-app assistant. It sees the record or list you're on.",
+  "suggestions": ["Summarize what I'm looking at", "Draft a follow-up for this record"]
+}
+```
+
+Point it at the agent with the `COPILOT_DEPLOYMENT_ID` env var (the deployment id is a secret — it never lands in the browser-visible config). Set `NEXUS_API_KEY` too; without both, `/api/copilot` returns 400 and the panel shows the error inline.
+
+**Per-object context (no hardcoding).** Each object's `contextFields: ["name", "status", …]` names the fields sent to the agent when a record of that object is open (omitted → the primary field only). Lists and pages send their label; the home sends the app name. So the copilot always knows what the user is looking at without any per-object code.
+
+Open it with the toggle in the chrome, `⌘/Ctrl+I`, or `c`; `Escape` closes it. The reply renders as Markdown and shows the agent's invoked tools as chips.
+
+## Add a guided create flow
+Give an object a `createWizard` in `starter.config.json` and its "New <object>" opens the library **Wizard** (a guided-vs-blank landing) instead of the plain create dialog:
+```json
+"createWizard": { "questions": [
+  { "key": "title",  "label": "Title",  "kind": "text",   "required": true },
+  { "key": "status", "label": "Status", "kind": "select", "options": ["Draft","In review"], "required": true },
+  { "key": "body",   "label": "First paragraph", "kind": "long" }
+] }
+```
+Each question's `key` names the field it fills. A `text`/`long` answer written to a `richText` field becomes a one-paragraph block value (via `textToBlocks`). Question `kind`s: `text` · `long` · `select` (auto-advances on pick) · `list` · `sources`; `required` (on text/select/long) gates **Next**. Omit `createWizard` and the plain dialog is used, unchanged.
+
+## Ship
+`npm run precheck` (tsc + build + journey-stamp freshness) → `docs/PRODUCTION_CHECKLIST.md` → push. CI runs the full journey suite; the deploy gate reads `journeys/.last-pass` + the manifest stamps.

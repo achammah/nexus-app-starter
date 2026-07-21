@@ -7,3 +7,4 @@ journeys/.last-pass
 journeys/shots/
 .warehouse-local.jsonl
 *.tsbuildinfo
+LEDGER.md
