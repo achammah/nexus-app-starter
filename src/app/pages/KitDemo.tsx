@@ -13,6 +13,7 @@ import { Progress } from "../../ui/components/ui/progress";
 import { Button } from "../../ui/primitives/Button";
 import { Micro } from "../../ui/primitives/fields";
 import { useToast } from "../App";
+import { t } from "../i18n";
 
 /* Kit demo — documentation by example: a LIVE page proving the pages registry and
    exercising the deeper vendored families (form+zod · chart · sheet · accordion ·
@@ -127,6 +128,17 @@ export function KitDemo() {
               </AccordionContent>
             </AccordionItem>
           </Accordion>
+        </div>
+        <div>
+          <Micro>{t("kit.sheetTitle")}</Micro>
+          <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+            <span style={{ font: "var(--nx-text-meta)", color: "var(--nx-fg-muted)" }}>
+              {t("kit.sheetBlurb")}
+            </span>
+            <Button data-testid="kit-sheet-open" onClick={() => (window.location.hash = "#/o/demo_sheet")}>
+              {t("kit.sheetOpen")}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

@@ -30,6 +30,9 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | zod | ^3.23.0 → 3.25.76 | MIT | form validation schemas (KitDemo, vendored form) | 5136 | main chunk |
 | react-resizable-panels | ^4.0.0 → 4.12.2 | MIT | vendored split panes | 556 | main chunk |
 | recharts | 3.8.0 (pinned) → 3.8.0 | MIT | the vendored chart.tsx wrapper (token-bound `--chart-1..5`); record-core ChartView itself is dependency-free flex bars | 8636 | main chunk |
+| @glideapps/glide-data-grid | 6.0.3 (pinned) → 6.0.3 | MIT | the Sheet view's canvas grid engine (fill-handle, range selection, TSV clipboard, frozen columns, keyboard nav) | 5308 | LAZY chunk (React.lazy view; only the definition metadata is eager) |
+| @linaria/react + canvas-hypertxt + react-number-format | → 4.5.4 / 1.0.3 / 5.4.5 | MIT | glide-data-grid's own dependencies (build-time CSS-in-JS runtime, canvas text measuring, number formatting) | 132 / 72 / 268 | ride the grid's lazy chunk |
+| lodash + marked + react-responsive-carousel | → 4.18.1 / 4.3.0 / 3.2.23 | MIT | glide-data-grid peer dependencies (npm auto-installs); marked and the carousel serve its markdown/image cell kinds, which the Sheet view does not use and the bundler tree-shakes OUT of the chunk | 4972 / 460 / 320 | not bundled (verified by chunk size) |
 
 ## Dev
 
@@ -50,8 +53,15 @@ The app builds as ONE main chunk today. Measured eager-bundle checkpoints (`vite
 |---|---|---|---|
 | pre view-registry (49292a9) | 1,268.07 kB | 374.81 kB | 158.79 kB |
 | with the view registry | 1,274.53 kB | 376.92 kB | 158.79 kB |
+| with the Sheet view (eager) | 1,279.42 kB | 378.63 kB | 158.82 kB |
 
-Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip. The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
+Lazy view chunks (each loads on first switch to that view):
+
+| Chunk | JS min | JS gzip | CSS |
+|---|---|---|---|
+| SpreadsheetView (the Sheet view + glide) | 310.39 kB | 103.55 kB | 12.92 kB |
+
+Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager — the definition metadata plus the Kit-demo section). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
 
 ## Adapted-source provenance
 

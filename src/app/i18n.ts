@@ -67,6 +67,9 @@ const dicts = {
     "panel.searchPlaceholder": "Search records…",
     "panel.empty": "No matches.",
     "views.notInstalled": "view type “{type}” is not installed",
+    "kit.sheetTitle": "sheet view (spreadsheet grid)",
+    "kit.sheetBlurb": "Excel-grade bulk editing over any object: fill-handle, range select, copy/paste, frozen first column. Give an object a grid view entry and the switcher grows a Sheet tab.",
+    "kit.sheetOpen": "Open the Sheet demo",
   },
 } as const;
 
