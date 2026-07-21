@@ -1,5 +1,5 @@
 {
-  "uiVersion": "nexus-ui @ fc24365 (2026-07-21T19:57:42.935Z)",
+  "uiVersion": "nexus-ui @ 549a86f (2026-07-21T21:01:32.049Z)",
   "count": 122,
   "vendoredAt": "2026-07-19T15:24:27.759Z",
   "items": [
@@ -8,367 +8,367 @@
       "kind": "vendored",
       "import": "src/components/ui/accordion.tsx",
       "when": "collapsible Q&A / grouped detail sections; one or many open",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "alert",
       "kind": "vendored",
       "import": "src/components/ui/alert.tsx",
-      "when": "inline callout (info/destructive) inside a page \u2014 not a toast, not a dialog",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "when": "inline callout (info/destructive) inside a page — not a toast, not a dialog",
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "alert-dialog",
       "kind": "vendored",
       "import": "src/components/ui/alert-dialog.tsx",
-      "when": "REVIEW SURFACE before an irreversible action (delete/send) \u2014 names the target, confirm/cancel; required before any bulk mutation",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "when": "REVIEW SURFACE before an irreversible action (delete/send) — names the target, confirm/cancel; required before any bulk mutation",
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "aspect-ratio",
       "kind": "vendored",
       "import": "src/components/ui/aspect-ratio.tsx",
       "when": "media/embed boxes that must keep a ratio while resizing",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "avatar",
       "kind": "vendored",
       "import": "src/components/ui/avatar.tsx",
       "when": "person/org identity dot with image + initials fallback",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "badge",
       "kind": "vendored",
       "import": "src/components/ui/badge.tsx",
       "when": "status chip; prefer the primitives Badge wrapper for Nexus tones (ok/warn/danger/accent)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "breadcrumb",
       "kind": "vendored",
       "import": "src/components/ui/breadcrumb.tsx",
       "when": "hierarchical location trail (Settings / Team / Member)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "button",
       "kind": "vendored",
       "import": "src/components/ui/button.tsx",
       "when": "every action; prefer the primitives Button wrapper (variant/size/busy/icon API)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "calendar",
       "kind": "vendored",
       "import": "src/components/ui/calendar.tsx",
       "when": "date picking (react-day-picker); pairs with popover for a date-picker field",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "card",
       "kind": "vendored",
       "import": "src/components/ui/card.tsx",
       "when": "raised content container with header/footer slots; .nxCard is the lighter token twin",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "carousel",
       "kind": "vendored",
       "import": "src/components/ui/carousel.tsx",
       "when": "horizontally swiped media/item strip (embla)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "chart",
       "kind": "vendored",
       "import": "src/components/ui/chart.tsx",
       "when": "recharts wrapper bound to the token palette (--chart-1..5); dashboards + trend blocks",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "checkbox",
       "kind": "vendored",
       "import": "src/components/ui/checkbox.tsx",
       "when": "boolean field / row selection; wrapper Checkbox gives the simple checked/onChange API",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "collapsible",
       "kind": "vendored",
       "import": "src/components/ui/collapsible.tsx",
       "when": "show-more region without accordion semantics",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "command",
       "kind": "vendored",
       "import": "src/components/ui/command.tsx",
-      "when": "typeahead lists + the \u2318K palette (cmdk); the starter wires CommandPalette on it",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "when": "typeahead lists + the ⌘K palette (cmdk); the starter wires CommandPalette on it",
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "context-menu",
       "kind": "vendored",
       "import": "src/components/ui/context-menu.tsx",
       "when": "right-click menus on rows/cards",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "dialog",
       "kind": "vendored",
       "import": "src/components/ui/dialog.tsx",
       "when": "modal for a focused task (create/edit form); wrapper Dialog gives title/footer API",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "drawer",
       "kind": "vendored",
       "import": "src/components/ui/drawer.tsx",
       "when": "bottom sheet on mobile-ish flows (vaul)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "dropdown-menu",
       "kind": "vendored",
       "import": "src/components/ui/dropdown-menu.tsx",
       "when": "kebab/row action menus; wrapper Menu gives trigger+items API",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "field",
       "kind": "vendored",
       "import": "src/components/ui/field.tsx",
-      "when": "labeled field scaffolding (Field/FieldGroup/FieldLabel\u2026) used by newer blocks; form.tsx remains the react-hook-form wiring",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "when": "labeled field scaffolding (Field/FieldGroup/FieldLabel…) used by newer blocks; form.tsx remains the react-hook-form wiring",
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "form",
       "kind": "vendored",
       "import": "src/components/ui/form.tsx",
       "when": "react-hook-form + zod field wiring (FormField/FormItem/FormMessage) for validated forms",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "hover-card",
       "kind": "vendored",
       "import": "src/components/ui/hover-card.tsx",
       "when": "rich preview on hover (person card over a mention)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "input",
       "kind": "vendored",
       "import": "src/components/ui/input.tsx",
-      "when": "single-line text entry; wrapper Input adds invalid\u2192aria-invalid",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "when": "single-line text entry; wrapper Input adds invalid→aria-invalid",
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "input-otp",
       "kind": "vendored",
       "import": "src/components/ui/input-otp.tsx",
       "when": "segmented one-time-code entry",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "label",
       "kind": "vendored",
       "import": "src/components/ui/label.tsx",
       "when": "accessible field labels tied to inputs",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "menubar",
       "kind": "vendored",
       "import": "src/components/ui/menubar.tsx",
       "when": "app-level horizontal menu (File/Edit style)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "navigation-menu",
       "kind": "vendored",
       "import": "src/components/ui/navigation-menu.tsx",
       "when": "marketing/site-style top navigation with panels",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "pagination",
       "kind": "vendored",
       "import": "src/components/ui/pagination.tsx",
       "when": "page-by-page navigation for long lists (record-core tables usually filter instead)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "popover",
       "kind": "vendored",
       "import": "src/components/ui/popover.tsx",
       "when": "small anchored panel (filter builder, emoji picker); not a menu, not a dialog",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "progress",
       "kind": "vendored",
       "import": "src/components/ui/progress.tsx",
       "when": "determinate progress bar; pair with async-run surfaces",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "radio-group",
       "kind": "vendored",
       "import": "src/components/ui/radio-group.tsx",
       "when": "single choice among few visible options",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "resizable",
       "kind": "vendored",
       "import": "src/components/ui/resizable.tsx",
       "when": "split panes with draggable handles (react-resizable-panels)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "scroll-area",
       "kind": "vendored",
       "import": "src/components/ui/scroll-area.tsx",
       "when": "styled scroll container for bounded internal scroll",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "select",
       "kind": "vendored",
       "import": "src/components/ui/select.tsx",
       "when": "single choice among many options (composed listbox); raw <select class=nxInput> stays fine for tiny enum cells",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "separator",
       "kind": "vendored",
       "import": "src/components/ui/separator.tsx",
       "when": "hairline divider",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "sheet",
       "kind": "vendored",
       "import": "src/components/ui/sheet.tsx",
-      "when": "side panel over content (record peek, filters) \u2014 the ZOOM step without leaving the list",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "when": "side panel over content (record peek, filters) — the ZOOM step without leaving the list",
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "sidebar",
       "kind": "vendored",
       "import": "src/components/ui/sidebar.tsx",
-      "when": "full app-shell sidebar system (collapsible groups, mobile behavior); the starter shell is a lighter hand-rolled twin \u2014 adopt this when an app outgrows it",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "when": "full app-shell sidebar system (collapsible groups, mobile behavior); the starter shell is a lighter hand-rolled twin — adopt this when an app outgrows it",
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "skeleton",
       "kind": "vendored",
       "import": "src/components/ui/skeleton.tsx",
       "when": "loading placeholders shaped like the content",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "slider",
       "kind": "vendored",
       "import": "src/components/ui/slider.tsx",
       "when": "numeric range input",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "sonner",
       "kind": "vendored",
       "import": "src/components/ui/sonner.tsx",
-      "when": "toast system (Toaster + toast()); the starter ships its own minimal toast \u2014 pick ONE per app",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "when": "toast system (Toaster + toast()); the starter ships its own minimal toast — pick ONE per app",
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "switch",
       "kind": "vendored",
       "import": "src/components/ui/switch.tsx",
       "when": "on/off setting with immediate effect",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "table",
       "kind": "vendored",
       "import": "src/components/ui/table.tsx",
       "when": "styled table primitives; record-core DataTable is the batteries-included grid on top",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "tabs",
       "kind": "vendored",
       "import": "src/components/ui/tabs.tsx",
       "when": "in-page view switching; wrapper Tabs gives the {tabs,value,onValueChange} API",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "textarea",
       "kind": "vendored",
       "import": "src/components/ui/textarea.tsx",
       "when": "multi-line text entry",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "toggle",
       "kind": "vendored",
       "import": "src/components/ui/toggle.tsx",
       "when": "pressed/unpressed tool button",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "toggle-group",
       "kind": "vendored",
       "import": "src/components/ui/toggle-group.tsx",
       "when": "exclusive or multi toggle row (view switches)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "tooltip",
       "kind": "vendored",
       "import": "src/components/ui/tooltip.tsx",
       "when": "hover hint; wrapper Tip gives label+child API",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "use-mobile",
       "kind": "vendored-hook",
       "import": "src/hooks/use-mobile.ts",
       "when": "hook: viewport-below-768 boolean (sidebar dependency)",
-      "source": "shadcn/ui new-york-v4 (MIT \u2014 NOTICE.md)"
+      "source": "shadcn/ui new-york-v4 (MIT — NOTICE.md)"
     },
     {
       "name": "login-03",
       "kind": "block",
-      "import": "src/blocks/login-03/page.tsx \u00b7 src/blocks/login-03/login-form.tsx",
-      "when": "copy-out starting screen: card login with provider slots \u2014 richer than the starter's built-in gate",
-      "source": "shadcn/ui new-york-v4 block (MIT \u2014 NOTICE.md); copy-out example tissue, not a runtime import"
+      "import": "src/blocks/login-03/page.tsx · src/blocks/login-03/login-form.tsx",
+      "when": "copy-out starting screen: card login with provider slots — richer than the starter's built-in gate",
+      "source": "shadcn/ui new-york-v4 block (MIT — NOTICE.md); copy-out example tissue, not a runtime import"
     },
     {
       "name": "sidebar-07",
       "kind": "block",
-      "import": "src/blocks/sidebar-07/page.tsx \u00b7 src/blocks/sidebar-07/app-sidebar.tsx \u00b7 src/blocks/sidebar-07/nav-main.tsx \u00b7 src/blocks/sidebar-07/nav-projects.tsx \u00b7 src/blocks/sidebar-07/nav-user.tsx \u00b7 src/blocks/sidebar-07/team-switcher.tsx",
-      "when": "copy-out starting shell: collapsible sidebar app frame (breadcrumb header, icon rail) \u2014 adopt when an app outgrows the starter's hand-rolled shell",
-      "source": "shadcn/ui new-york-v4 block (MIT \u2014 NOTICE.md); copy-out example tissue, not a runtime import"
+      "import": "src/blocks/sidebar-07/page.tsx · src/blocks/sidebar-07/app-sidebar.tsx · src/blocks/sidebar-07/nav-main.tsx · src/blocks/sidebar-07/nav-projects.tsx · src/blocks/sidebar-07/nav-user.tsx · src/blocks/sidebar-07/team-switcher.tsx",
+      "when": "copy-out starting shell: collapsible sidebar app frame (breadcrumb header, icon rail) — adopt when an app outgrows the starter's hand-rolled shell",
+      "source": "shadcn/ui new-york-v4 block (MIT — NOTICE.md); copy-out example tissue, not a runtime import"
     },
     {
       "name": "Button",
       "kind": "wrapper",
       "import": "src/primitives/Button.tsx",
-      "when": "the house button API (variant primary/secondary/ghost/danger \u00b7 size sm/md \u00b7 busy \u00b7 icon) over vendored button",
+      "when": "the house button API (variant primary/secondary/ghost/danger · size sm/md · busy · icon) over vendored button",
       "source": "ours"
     },
     {
-      "name": "Input \u00b7 Badge \u00b7 Micro \u00b7 Tabs/TabPanel \u00b7 Checkbox \u00b7 Tip",
+      "name": "Input · Badge · Micro · Tabs/TabPanel · Checkbox · Tip",
       "kind": "wrapper",
       "import": "src/primitives/fields.tsx",
       "when": "house APIs over vendored input/badge/tabs/checkbox/tooltip + the Micro eyebrow",
       "source": "ours"
     },
     {
-      "name": "Dialog \u00b7 Menu",
+      "name": "Dialog · Menu",
       "kind": "wrapper",
       "import": "src/primitives/overlays.tsx",
       "when": "house APIs over vendored dialog/dropdown-menu (title+footer / trigger+items)",
@@ -378,350 +378,350 @@
       "name": "SettingsTabs",
       "kind": "wrapper",
       "import": "src/primitives/SettingsTabs.tsx",
-      "when": "generic settings shell: sticky tab bar (tabs-as-config: key/label/icon/render) + body, own active-tab state \u2014 page head stays app content",
+      "when": "generic settings shell: sticky tab bar (tabs-as-config: key/label/icon/render) + body, own active-tab state — page head stays app content",
       "source": "ours"
     },
     {
       "name": "EditableRuleList",
       "kind": "wrapper",
       "import": "src/primitives/EditableRuleList.tsx",
-      "when": "config-driven editable rule/policy list: inline add/edit card, optional severity chip (enum+colors as props) and active toggle, over any object \u2014 no fetch inside, onCreate/onPatch/onRemove callback contract like DataTable",
+      "when": "config-driven editable rule/policy list: inline add/edit card, optional severity chip (enum+colors as props) and active toggle, over any object — no fetch inside, onCreate/onPatch/onRemove callback contract like DataTable",
       "source": "ours"
     },
     {
       "name": "ThinkingDots",
       "kind": "wrapper",
       "import": "src/primitives/ThinkingDots.tsx",
-      "when": "the 'AI is working' indicator (three bouncing accent dots); tokenized + reduced-motion aware \u2014 drop in beside any agent/task-run affordance",
+      "when": "the 'AI is working' indicator (three bouncing accent dots); tokenized + reduced-motion aware — drop in beside any agent/task-run affordance",
       "source": "ours"
     },
     {
-      "name": "Markdown \u00b7 renderMarkdown",
+      "name": "Markdown · renderMarkdown",
       "kind": "wrapper",
       "import": "src/primitives/Markdown.tsx",
-      "when": "dependency-free Markdown \u2192 React renderer (inline bold/italic/code + block headings/lists/quotes/fenced code/tables/rules); tokenized in markdown.css \u2014 for agent replies and short rich text",
+      "when": "dependency-free Markdown → React renderer (inline bold/italic/code + block headings/lists/quotes/fenced code/tables/rules); tokenized in markdown.css — for agent replies and short rich text",
       "source": "ours"
     },
     {
       "name": "DataTable",
       "kind": "record-core",
       "import": "src/record-core/DataTable.tsx",
-      "when": "config-driven grid: sort, selection, inline edit, relation link cells, numeric alignment \u2014 see docs/record-core.md",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "config-driven grid: sort, selection, inline edit, relation link cells, numeric alignment — see docs/record-core.md",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "KanbanBoard",
       "kind": "record-core",
       "import": "src/record-core/KanbanBoard.tsx",
       "when": "config-driven board over the object's stageField; drag or stage-select moves cards",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "RecordPage",
       "kind": "record-core",
       "import": "src/record-core/RecordPage.tsx",
       "when": "record anatomy: header + fields panel (inline edit, enrich affordance) + Timeline (activity composer, per-kind icons) / Notes / Files tabs",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "NotionEditor",
       "kind": "record-core",
       "import": "src/record-core/NotionEditor.tsx",
       "when": "Notion-grade block editor for the richText field type: hand-rolled contenteditable blocks (p/h/quote/list/divider/image/table), slash menu, drag-reorder, inline markdown, image-drop; controlled (blocks/onChange) + inline-change props for a suggestions layer",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "useSuggestions \u00b7 Suggestion",
+      "name": "useSuggestions · Suggestion",
       "kind": "record-core",
       "import": "src/record-core/useSuggestions.ts",
       "when": "the accept/reject/undo engine for inline tracked changes over a Block[] document: folds an accepted change's original into replacement in the doc, tracks each change's status; entity-agnostic (no object/api coupling), pairs with SuggestionPanel + NotionEditor's inline-change props",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "SuggestionPanel",
       "kind": "record-core",
       "import": "src/record-core/SuggestionPanel.tsx",
       "when": "the review rail for inline tracked changes: one card per change (del to ins diff + reason), accept/reject on pending + undo on resolved, bulk accept-all/reject-all, progress; pure presentational, wired to the useSuggestions callbacks",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "Pipeline \u00b7 Chip",
+      "name": "Pipeline · Chip",
       "kind": "record-core",
       "import": "src/record-core/Pipeline.tsx",
       "when": "generic horizontal state indicator over a config-declared set of states (done/current/in-progress steps) plus the Chip status pill it is built from; states are plain strings the caller supplies",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "FilterBar \u00b7 FilterChips \u00b7 matchFilters \u00b7 opsFor \u00b7 filterableFields",
+      "name": "FilterBar · FilterChips · matchFilters · opsFor · filterableFields",
       "kind": "record-core",
       "import": "src/record-core/Filters.tsx",
       "when": "advanced filtering: command-style filter builder (any column, type-aware operators) + removable active-filter chips + a pure matchFilters(row,conds) predicate; filterableFields(fields) maps an object's fields to the filterable set",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "ChartView",
       "kind": "record-core",
       "import": "src/record-core/ChartView.tsx",
-      "when": "config-driven chart: one bar per group option, Count or \u03a3 numeric measure \u2014 the third view family beside table/board",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "config-driven chart: one bar per group option, Count or Σ numeric measure — the third view family beside table/board",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "ViewDefinition \u00b7 ViewProps \u00b7 ViewInstanceConfig",
+      "name": "ViewDefinition · ViewProps · ViewInstanceConfig",
       "kind": "record-core",
       "import": "src/record-core/views/types.ts",
       "when": "the view-type contract: what a views/<type>/definition.tsx default-exports (label/icon/component/toolbar/config schema) and the props every view receives from its host",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "viewDefinitions \u00b7 getViewDefinition",
+      "name": "viewDefinitions · getViewDefinition",
       "kind": "record-core",
       "import": "src/record-core/views/registry.ts",
-      "when": "build-time self-registering view registry (import.meta.glob over views/*/definition) \u2014 drop a folder = a new view type in every consumer's switcher, zero switcher edits",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "build-time self-registering view registry (import.meta.glob over views/*/definition) — drop a folder = a new view type in every consumer's switcher, zero switcher edits",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "buildRegistry \u00b7 configuredViewsFor",
+      "name": "buildRegistry · configuredViewsFor",
       "kind": "record-core",
       "import": "src/record-core/views/resolve.ts",
-      "when": "the registry's pure core (no browser, no vite \u2014 node-testable): fold glob modules into the type map; derive an object's view tabs (declared `views` or the legacy table/board/chart set)",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the registry's pure core (no browser, no vite — node-testable): fold glob modules into the type map; derive an object's view tabs (declared `views` or the legacy table/board/chart set)",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "groupableFields \u00b7 measurableFields \u00b7 resolveGroupBy",
+      "name": "groupableFields · measurableFields · resolveGroupBy",
       "kind": "record-core",
       "import": "src/record-core/views/group.ts",
-      "when": "shared grouping derivations for board/chart views and their host: which fields can group, which can measure, and the groupBy fallback chain (runtime pick \u2192 instance config \u2192 stageField \u2192 first groupable)",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "shared grouping derivations for board/chart views and their host: which fields can group, which can measure, and the groupBy fallback chain (runtime pick → instance config → stageField → first groupable)",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "GroupByMenu",
       "kind": "record-core",
       "import": "src/record-core/views/controls.tsx",
-      "when": "the shared group-by picker rendered by both board and chart toolbars (same viewState.groupBy \u2014 regroup one, the other follows)",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the shared group-by picker rendered by both board and chart toolbars (same viewState.groupBy — regroup one, the other follows)",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "table view definition",
       "kind": "record-core",
       "import": "src/record-core/views/table/definition.tsx",
       "when": "the built-in table view: DataTable behind the ViewProps contract + the Columns visibility menu as its toolbar",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "gallery view definition",
       "kind": "record-core",
       "import": "src/record-core/views/gallery/definition.tsx",
-      "when": "the built-in gallery view: cover-card masonry (coverField/titleField/metaFields/cardSize config) \u2014 cards open the peek; lazy component",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the built-in gallery view: cover-card masonry (coverField/titleField/metaFields/cardSize config) — cards open the peek; lazy component",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "packColumns \u00b7 visibleIndices \u00b7 cardHeight \u00b7 columnCountForWidth",
+      "name": "packColumns · visibleIndices · cardHeight · columnCountForWidth",
       "kind": "record-core",
       "import": "src/record-core/views/gallery/pack.ts",
       "when": "the gallery's pure masonry math (node-testable): deterministic shortest-column packing over exact card heights + viewport windowing",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "form view definition",
       "kind": "record-core",
       "import": "src/record-core/views/form/definition.tsx",
       "when": "the built-in form view: config-driven fill-one-record intake (fields/requiredOverrides/submitLabel/successMode) submitting through ViewProps.onCreate; lazy component",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "coerceDraft \u00b7 validateDraft \u00b7 withStageDefault \u00b7 requiredKeys \u00b7 coerceScalar \u00b7 listValidators \u00b7 formSupported",
+      "name": "coerceDraft · validateDraft · withStageDefault · requiredKeys · coerceScalar · listValidators · formSupported",
       "kind": "record-core",
       "import": "src/record-core/fields/draft.ts",
       "when": "the draft pure core every create surface shares (dialog, wizard, form): typed-string coercion, config-implied validation mirroring the server, stage defaulting; registered field types plug their coerce/validate slots into the same pipeline",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "Draft* editors \u00b7 MoneyField \u00b7 ListField \u00b7 AddressField \u00b7 FullNameField \u00b7 MultiSelectField \u00b7 ArrayField \u00b7 DateField",
+      "name": "Draft* editors · MoneyField · ListField · AddressField · FullNameField · MultiSelectField · ArrayField · DateField",
       "kind": "record-core",
       "import": "src/record-core/fields/editors.tsx",
       "when": "the per-type field editors: draft-mode controlled editors for every built-in type plus the shaped record-page editors (moved here from RecordPage, which re-exports them)",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "fieldDraftEditor",
       "kind": "record-core",
       "import": "src/record-core/fields/draft-resolve.ts",
       "when": "host-side draft-editor lookup over the field-type registry, text-editor fallback for unregistered types",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "built-in field-type definitions (22 folders)",
       "kind": "record-core",
       "import": "src/record-core/fields/text/definition.ts",
-      "when": "one fields/<type>/definition.ts per built-in type registering its Draft editor on the field-type registry \u2014 the pattern a NEW field type copies",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "one fields/<type>/definition.ts per built-in type registering its Draft editor on the field-type registry — the pattern a NEW field type copies",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "kanban view definition",
       "kind": "record-core",
       "import": "src/record-core/views/kanban/definition.tsx",
       "when": "the built-in board view: KanbanBoard behind the ViewProps contract + group-by and per-column rollup pickers as its toolbar",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "chart view definition",
       "kind": "record-core",
       "import": "src/record-core/views/chart/definition.tsx",
       "when": "the built-in chart view: ChartView behind the ViewProps contract + measure and group-by pickers as its toolbar",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "grid view definition",
       "kind": "record-core",
       "import": "src/record-core/views/grid/definition.tsx",
-      "when": "the Sheet view: Excel-grade bulk editing over an object's records (glide-data-grid) \u2014 fill-handle, range select, TSV copy/paste, keyboard cell-nav, frozen primary column; the component ships as a lazy chunk",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the Sheet view: Excel-grade bulk editing over an object's records (glide-data-grid) — fill-handle, range select, TSV copy/paste, keyboard cell-nav, frozen primary column; the component ships as a lazy chunk",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "SpreadsheetView",
       "kind": "record-core",
       "import": "src/record-core/views/grid/SpreadsheetView.tsx",
       "when": "the grid view surface: columns from the object's fields, native + custom (select/multiselect/user chip) cells, every commit one merged onPatch per touched row, paste/fill coerced per target field, row markers synced to the host bulk bar",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "cellDescFor \u00b7 isGridEditable \u00b7 coerceFromText \u00b7 textForCopy",
+      "name": "cellDescFor · isGridEditable · coerceFromText · textForCopy",
       "kind": "record-core",
       "import": "src/record-core/views/grid/cells.ts",
-      "when": "the grid's pure cell-mapping core (no glide, no browser \u2014 node-testable): field type \u2192 cell kind, the editable set, paste/fill text coercion that rejects impossible values",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the grid's pure cell-mapping core (no glide, no browser — node-testable): field type → cell kind, the editable set, paste/fill text coercion that rejects impossible values",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "deriveSelectionText \u00b7 relLuminance \u00b7 contrastRatio",
+      "name": "deriveSelectionText · relLuminance · contrastRatio",
       "kind": "record-core",
       "import": "src/record-core/views/grid/contrast.ts",
-      "when": "the grid's pure selection-contrast core (no glide, no browser \u2014 node-testable): when a skin or theme leaves the selection background too close to the base ink, derive the flipped text ramp (WCAG luminance, white/black pole) that SpreadsheetView applies as a per-cell themeOverride on selected cells",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the grid's pure selection-contrast core (no glide, no browser — node-testable): when a skin or theme leaves the selection background too close to the base ink, derive the flipped text ramp (WCAG luminance, white/black pole) that SpreadsheetView applies as a per-cell themeOverride on selected cells",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "useGridTheme \u00b7 deriveGridTheme \u00b7 deriveSelectionText \u00b7 chipColorLiterals \u00b7 resolveCssColor",
+      "name": "useGridTheme · deriveGridTheme · deriveSelectionText · chipColorLiterals · resolveCssColor",
       "kind": "record-core",
       "import": "src/record-core/views/grid/theme.ts",
-      "when": "token \u2192 glide Theme derivation for canvas paint: probe-resolved --nx-* literals, chip colors from the exact chipStyle color-mix formula, and the selected-cell contrast text ramp \u2014 all re-derived on dark-mode flip and skin arrival",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "token → glide Theme derivation for canvas paint: probe-resolved --nx-* literals, chip colors from the exact chipStyle color-mix formula, and the selected-cell contrast text ramp — all re-derived on dark-mode flip and skin arrival",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "selectRenderer \u00b7 multiselectRenderer \u00b7 userRenderer",
+      "name": "selectRenderer · multiselectRenderer · userRenderer",
       "kind": "record-core",
       "import": "src/record-core/views/grid/renderers.tsx",
       "when": "custom canvas cells for select/multiselect/user: chip and avatar drawing from pre-resolved literals + DOM overlay editors sharing the DOM chip styling",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "provideGridEditor",
       "kind": "record-core",
       "import": "src/record-core/views/grid/editors.tsx",
       "when": "replacement overlay editors for glide's built-in text/uri/number cells: commit from local state via onFinishedEditing (the library's own commit chain drops values under React 18 StrictMode), guarded blur-commit for click-away",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "flow view definition",
       "kind": "record-core",
       "import": "src/record-core/views/flow/definition.tsx",
       "when": "the flow (node-graph) view registry entry: records-as-graph config (relationField/labelField), plain-language validation, and the relation-picker toolbar; the canvas loads as a lazy chunk",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "FlowView",
       "kind": "record-core",
       "import": "src/record-core/views/flow/FlowView.tsx",
       "when": "the records-as-graph canvas (lazy): record cards + cross-object hub chips as xyflow nodes, one configured relation as edges, pan/zoom/minimap/drag-arrange with per-relation drag positions persisted in the view-state bag",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "buildGraph \u00b7 resolveRelation \u00b7 resolveLabelField \u00b7 positionsFor \u00b7 positionsPatch",
+      "name": "buildGraph · resolveRelation · resolveLabelField · positionsFor · positionsPatch",
       "kind": "record-core",
       "import": "src/record-core/views/flow/graph.ts",
       "when": "the flow view's pure core (node-testable, JSX-free): relation resolution, node/edge derivation from the _refs id decoration (self-relation record edges, cross-object/polymorphic hubs), drag-position persistence shapes",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "layoutGraph \u00b7 bfsGrid",
+      "name": "layoutGraph · bfsGrid",
       "kind": "record-core",
       "import": "src/record-core/views/flow/layout.ts",
-      "when": "flow auto-layout: dagre TB up to 2,000 nodes, an O(V+E) BFS-rank grid above it \u2014 imported only by the lazy canvas chunk so dagre stays out of the eager bundle",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "flow auto-layout: dagre TB up to 2,000 nodes, an O(V+E) BFS-rank grid above it — imported only by the lazy canvas chunk so dagre stays out of the eager bundle",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "calendar view definition",
       "kind": "record-core",
       "import": "src/record-core/views/calendar/definition.tsx",
       "when": "the calendar view (FullCalendar month/week, lazy chunk): drag-to-reschedule PATCHes the record's date field, empty-day click seeds a prefilled create, event colors come from the colorField's own select-option palette; Month/Week toggle as its toolbar; mobile swaps the grid for a virtualized agenda list",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "rowsToEvents \u00b7 patchForDrop \u00b7 patchForResize \u00b7 firstDateField",
+      "name": "rowsToEvents · patchForDrop · patchForResize · firstDateField",
       "kind": "record-core",
       "import": "src/record-core/views/calendar/events.ts",
-      "when": "pure record\u2192event mapping for the calendar view (node-testable): date vs dateTime semantics, inclusive\u21c4exclusive span-end conversion, malformed-data normalization, agenda day grouping",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "pure record→event mapping for the calendar view (node-testable): date vs dateTime semantics, inclusive⇄exclusive span-end conversion, malformed-data normalization, agenda day grouping",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "map view definition",
       "kind": "record-core",
       "import": "src/record-core/views/map/definition.tsx",
-      "when": "the map view: records with lat/lng as token pins (\u226425) or GL clusters, record-card popups into the peek, a without-location count chip; config latField/lngField/titleField/colorField \u2014 the heavy component is a lazy chunk, maplibre loads only when a map renders",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the map view: records with lat/lng as token pins (≤25) or GL clusters, record-card popups into the peek, a without-location count chip; config latField/lngField/titleField/colorField — the heavy component is a lazy chunk, maplibre loads only when a map renders",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "CLUSTER_THRESHOLD \u00b7 inferCoordFields \u00b7 splitRows \u00b7 toFeatureCollection \u00b7 boundsOf \u00b7 mapDefaultConfig \u00b7 mapValidateConfig",
+      "name": "CLUSTER_THRESHOLD · inferCoordFields · splitRows · toFeatureCollection · boundsOf · mapDefaultConfig · mapValidateConfig",
       "kind": "record-core",
       "import": "src/record-core/views/map/geo.ts",
-      "when": "the map view's pure geo core (no browser \u2014 node-testable): coordinate inference + validity (0 is a valid coordinate), the located/without split, GeoJSON + bounds math, config default/validate",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the map view's pure geo core (no browser — node-testable): coordinate inference + validity (0 is a valid coordinate), the located/without split, GeoJSON + bounds math, config default/validate",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "RecordCard",
       "kind": "record-core",
       "import": "src/record-core/RecordCard.tsx",
-      "when": "shared compact record card (title + meta values over formatCell/OptionChip) for record-as-card surfaces \u2014 map popups, gallery tiles; chrome-less, the host provides the card shell",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "shared compact record card (title + meta values over formatCell/OptionChip) for record-as-card surfaces — map popups, gallery tiles; chrome-less, the host provides the card shell",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "ObjectConfig \u00b7 FieldDef \u00b7 RecordRow \u00b7 ViewDef \u00b7 TimelineEvent \u00b7 FileMeta",
+      "name": "ObjectConfig · FieldDef · RecordRow · ViewDef · TimelineEvent · FileMeta",
       "kind": "record-core",
       "import": "src/record-core/types.ts",
-      "when": "the config-driven object model \u2014 the schema every record surface renders from",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the config-driven object model — the schema every record surface renders from",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "FieldTypeDefinition \u00b7 FieldRenderProps \u00b7 FieldCellProps \u00b7 FieldDraftProps",
+      "name": "FieldTypeDefinition · FieldRenderProps · FieldCellProps · FieldDraftProps",
       "kind": "record-core",
       "import": "src/record-core/fields/types.ts",
-      "when": "the field-type contract: what a fields/<type>/definition.tsx default-exports \u2014 record-page render, list cell, previewText, layout/filterable/keyboard capabilities, plus the Draft/coerce/validate editor slots",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the field-type contract: what a fields/<type>/definition.tsx default-exports — record-page render, list cell, previewText, layout/filterable/keyboard capabilities, plus the Draft/coerce/validate editor slots",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "fieldTypeDefinitions \u00b7 getFieldTypeDefinition \u00b7 fieldPreviewText \u00b7 fieldIsBlock",
+      "name": "fieldTypeDefinitions · getFieldTypeDefinition · fieldPreviewText · fieldIsBlock",
       "kind": "record-core",
       "import": "src/record-core/fields/registry.ts",
-      "when": "build-time self-registering field-type registry (import.meta.glob over fields/*/definition) \u2014 hosts consult it BEFORE their built-in switches, so a new field type is a dropped folder, zero switch edits",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "build-time self-registering field-type registry (import.meta.glob over fields/*/definition) — hosts consult it BEFORE their built-in switches, so a new field type is a dropped folder, zero switch edits",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
-      "name": "buildFieldRegistry \u00b7 registry capability helpers",
+      "name": "buildFieldRegistry · registry capability helpers",
       "kind": "record-core",
       "import": "src/record-core/fields/resolve.ts",
-      "when": "the field registry's pure core (no browser, no vite \u2014 node-testable): fold glob modules into the type map + one-line capability reads that tolerate unregistered types",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "when": "the field registry's pure core (no browser, no vite — node-testable): fold glob modules into the type map + one-line capability reads that tolerate unregistered types",
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "whiteboard field type",
       "kind": "record-core",
       "import": "src/record-core/fields/whiteboard/definition.tsx",
       "when": "a per-record excalidraw canvas as a FIELD: lazy full editor on the record page (debounced one-patch saves, theme-follow, mobile tap-to-edit overlay), memoized theme-aware SVG thumbnails in cells, scene JSON through the normal store path",
-      "source": "ours (rebuilt \u2014 PROVENANCE.md)"
+      "source": "ours (rebuilt — PROVENANCE.md)"
     },
     {
       "name": "Wizard",
       "kind": "wrapper",
       "import": "src/blocks/wizard/Wizard.tsx",
-      "when": "config-driven guided flow: question set (kinds select/text/long/list/sources) \u2192 step engine with progress + slide anim \u2192 onComplete; a guided-vs-blank landing; host supplies questions + callbacks",
+      "when": "config-driven guided flow: question set (kinds select/text/long/list/sources) → step engine with progress + slide anim → onComplete; a guided-vs-blank landing; host supplies questions + callbacks",
       "source": "ours"
     },
     {
@@ -735,18 +735,18 @@
       "name": "ChipListInput",
       "kind": "wrapper",
       "import": "src/blocks/wizard/ChipListInput.tsx",
-      "when": "chip composer: type + enter to add removable tag chips \u2014 the list-kind wizard input, reusable standalone",
+      "when": "chip composer: type + enter to add removable tag chips — the list-kind wizard input, reusable standalone",
       "source": "ours"
     },
     {
       "name": "SourcesInput",
       "kind": "wrapper",
       "import": "src/blocks/wizard/SourcesInput.tsx",
-      "when": "URL list + file-pick source composer (readFile overridable) \u2014 the sources-kind wizard input",
+      "when": "URL list + file-pick source composer (readFile overridable) — the sources-kind wizard input",
       "source": "ours"
     },
     {
-      "name": "CopilotPanel \u00b7 CopilotToggle",
+      "name": "CopilotPanel · CopilotToggle",
       "kind": "wrapper",
       "import": "src/blocks/copilot/CopilotPanel.tsx",
       "when": "docked AI copilot side-panel: conversation state + Markdown replies + tool-use chips (host injects the transport + per-turn context), plus the toggle button; config-driven (title/mark/emptyStateCopy/suggestions)",
@@ -756,46 +756,46 @@
       "name": "ShortcutsOverlay",
       "kind": "wrapper",
       "import": "src/blocks/mobile/ShortcutsOverlay.tsx",
-      "when": "keyboard-shortcuts help modal (host toggles it, typically on `?`): host passes shortcut GROUPS \u2014 a core shell group vs an app/config-driven group \u2014 the overlay renders the reference and claims Escape/? in capture while open; pairs with the starter's keyboard-nav layer",
+      "when": "keyboard-shortcuts help modal (host toggles it, typically on `?`): host passes shortcut GROUPS — a core shell group vs an app/config-driven group — the overlay renders the reference and claims Escape/? in capture while open; pairs with the starter's keyboard-nav layer",
       "source": "ours"
     },
     {
       "name": "MobileReviewBanner",
       "kind": "wrapper",
       "import": "src/blocks/mobile/MobileReviewBanner.tsx",
-      "when": "generic phone bottom step-through: prev / index-of-total / next over a set of N items plus per-item action buttons (accept/reject/default tones); pure presentation, fixed above a bottom tab bar (--nx-mobilenav-h), hidden on desktop \u2014 e.g. stepping a record set or suggestions on mobile",
+      "when": "generic phone bottom step-through: prev / index-of-total / next over a set of N items plus per-item action buttons (accept/reject/default tones); pure presentation, fixed above a bottom tab bar (--nx-mobilenav-h), hidden on desktop — e.g. stepping a record set or suggestions on mobile",
       "source": "ours"
     },
     {
-      "name": "WorkbookSurface \u00b7 LazyWorkbookSurface",
+      "name": "WorkbookSurface · LazyWorkbookSurface",
       "kind": "wrapper",
       "import": "src/blocks/workbook/WorkbookSurface.tsx",
       "when": "full spreadsheet workbook (Univer) as a standalone surface: formula bar + 400+ functions, insert/delete rows & columns, cell formatting, multiple sheets, freeze + merge; token-themed chrome, dark-synced to data-theme, free-surface (host owns the snapshot via value/onChange). The engine loads ONLY behind LazyWorkbookSurface (a ~1.6MB-gz lazy chunk), so importing the block adds nothing to the eager bundle",
       "source": "ours"
     },
     {
-      "name": "workbookStoreKey \u00b7 isWorkbookSnapshot \u00b7 seedWorkbook \u00b7 seedLargeWorkbook",
+      "name": "workbookStoreKey · isWorkbookSnapshot · seedWorkbook · seedLargeWorkbook",
       "kind": "wrapper",
       "import": "src/blocks/workbook/snapshot.ts",
       "when": "the workbook block's pure core (no @univerjs runtime, node-testable): app_state store-key namespacing, snapshot validation for a stored workbook blob, and the demo + 10k scale seed generators",
       "source": "ours"
     },
     {
-      "name": "deriveWorkbookTheme \u00b7 accentScale \u00b7 useThemeNonce",
+      "name": "deriveWorkbookTheme · accentScale · useThemeNonce",
       "kind": "wrapper",
       "import": "src/blocks/workbook/workbook-theme.ts",
-      "when": "token \u2192 Univer theme derivation: the accent primary scale from --nx-accent, resolved to rgb for Univer's canvas color service and re-derived on a data-theme / skin flip; pairs with the --univer-* chrome overrides in workbook.css that theme Univer's own toolbar and menus",
+      "when": "token → Univer theme derivation: the accent primary scale from --nx-accent, resolved to rgb for Univer's canvas color service and re-derived on a data-theme / skin flip; pairs with the --univer-* chrome overrides in workbook.css that theme Univer's own toolbar and menus",
       "source": "ours"
     },
     {
-      "name": "Skin \u00b7 skinToCss() \u00b7 applySkin()",
+      "name": "Skin · skinToCss() · applySkin()",
       "kind": "skins",
       "import": "src/skins/skin.ts",
-      "when": "brand-as-data: a small JSON in, the full --nx-* set out (accent ramp, chrome, radius, fonts, labels, density, shadows, dark derivation, raw overrides) \u2014 see docs/THEMING.md",
+      "when": "brand-as-data: a small JSON in, the full --nx-* set out (accent ramp, chrome, radius, fonts, labels, density, shadows, dark derivation, raw overrides) — see docs/THEMING.md",
       "source": "ours"
     },
     {
-      "name": "skinPresets (nexus \u00b7 ember \u00b7 warm-opt)",
+      "name": "skinPresets (nexus · ember · warm-opt)",
       "kind": "skins",
       "import": "src/skins/presets.ts",
       "when": "built-in skins: the house identity, a full-range org example (dark chrome, sharp corners, own palette/type), and a warm option-chip palette preset (skin-overridable; default palette unchanged)",
@@ -816,10 +816,10 @@
       "source": "ours"
     },
     {
-      "name": "resolveCssColor \u00b7 resolveTokenColor \u00b7 useTokenColors \u00b7 subscribeTokenColors",
+      "name": "resolveCssColor · resolveTokenColor · useTokenColors · subscribeTokenColors",
       "kind": "tokens",
       "import": "src/tokens/resolve.ts",
-      "when": "token \u2192 rgba-literal resolution for GL/canvas consumers that cannot read CSS custom properties (maplibre paint, canvas grids); resolves any color expression incl. color-mix chains, re-resolves live on data-theme / skin-tag / OS-scheme changes",
+      "when": "token → rgba-literal resolution for GL/canvas consumers that cannot read CSS custom properties (maplibre paint, canvas grids); resolves any color expression incl. color-mix chains, re-resolves live on data-theme / skin-tag / OS-scheme changes",
       "source": "ours"
     },
     {
@@ -837,24 +837,24 @@
       "source": "ours"
     },
     {
-      "name": "useAsyncOp \u00b7 computeAsyncOp",
+      "name": "useAsyncOp · computeAsyncOp",
       "kind": "hook",
       "import": "src/hooks/useAsyncOp.ts",
       "when": "drive a long off-machine op with a stall guard: poll while in-flight, onSettle once, stalled past a threshold (injectable clock)",
       "source": "ours"
     },
     {
-      "name": "useDebouncedSave \u00b7 createDebouncer",
+      "name": "useDebouncedSave · createDebouncer",
       "kind": "hook",
       "import": "src/hooks/useDebouncedSave.ts",
-      "when": "debounced autosave: coalesce rapid edits into ONE persist + a saveState (idle\u2192saving\u2192saved)",
+      "when": "debounced autosave: coalesce rapid edits into ONE persist + a saveState (idle→saving→saved)",
       "source": "ours"
     },
     {
       "name": "cn()",
       "kind": "lib",
       "import": "src/lib/utils.ts",
-      "when": "class merge (clsx + tailwind-merge) \u2014 the shadcn contract",
+      "when": "class merge (clsx + tailwind-merge) — the shadcn contract",
       "source": "ours"
     }
   ],

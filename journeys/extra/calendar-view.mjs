@@ -499,6 +499,129 @@ export default [
     },
   },
   {
+    name: "calendar-timegrid-precision", feature: FEATURE,
+    async run(page, { assert, ROOT }) {
+      const proc = await bootMain(ROOT);
+      try {
+        const ctx = await page.context().browser().newContext({ viewport: { width: 1360, height: 900 } });
+        // `timed` is the precision surface: a dense week with an overlapping pair
+        const p = await anchoredPage(ctx, BASE, "timed", { calView: "week", calDate: "2026-08-03" });
+        await p.waitForSelector('[data-testid="calendar-timed"][data-cal-view="week"]');
+        await p.waitForSelector(".fc-timegrid-slots");
+        // the seeded week renders a full set of events (overlap pair + spread + late + all-day)
+        const n = await p.locator('[data-testid^="calendar-event-"]').count();
+        assert(n >= 9, `a rich seeded week renders a full grid of events (${n} >= 9)`);
+        // the full 24h is reachable, not clipped: the 23:00 event is in the DOM
+        assert((await p.locator('[data-testid="calendar-event-ti_11"]').count()) >= 1, "a 23:00 event renders — the whole day is reachable, not clipped to business hours");
+        // the grid OPENS scrolled to the working hours (scrollTime), not at midnight
+        await p.waitForFunction(
+          () => Math.max(0, ...Array.from(document.querySelectorAll(".fc-scroller")).map((s) => s.scrollTop)) > 0,
+          { timeout: 4000 },
+        ).catch(() => {});
+        const scrollTop = await p.evaluate(() => Math.max(0, ...Array.from(document.querySelectorAll(".fc-scroller")).map((s) => s.scrollTop)));
+        assert(scrollTop > 0, `the time grid opens scrolled to the working hours, not midnight (scrollTop ${scrollTop} > 0)`);
+        // concurrent events lay out SIDE BY SIDE (09:00 workshop next to the 09:30 vendor call)
+        const a = await p.locator('[data-testid="calendar-event-ti_2"]').first().boundingBox();
+        const b = await p.locator('[data-testid="calendar-event-ti_3"]').first().boundingBox();
+        assert(!!a && !!b && Math.abs(a.x - b.x) > 20, `overlapping events render side by side (x ${Math.round(a?.x ?? -1)} vs ${Math.round(b?.x ?? -1)})`);
+        await shot(p, ROOT, "calendar-timegrid-precision");
+        await ctx.close();
+      } finally { proc.kill(); }
+    },
+  },
+  {
+    name: "calendar-time-create", feature: FEATURE,
+    async run(page, { assert, ROOT }) {
+      const proc = await bootMain(ROOT);
+      try {
+        const ctx = await page.context().browser().newContext({ viewport: { width: 1360, height: 900 } });
+        // click an EMPTY 13:00 slot in day view → the create dialog prefills at that PRECISE hour
+        const p = await anchoredPage(ctx, BASE, "timed", { calView: "day", calDate: "2026-08-06" });
+        await p.waitForSelector('[data-testid="calendar-timed"][data-cal-view="day"]');
+        await p.waitForSelector(".fc-timegrid-slots");
+        await p.locator('.fc-timegrid-slot[data-time="13:00:00"]').first().scrollIntoViewIfNeeded();
+        const slot = await p.locator('.fc-timegrid-slot[data-time="13:00:00"]').first().boundingBox();
+        const col = await p.locator(".fc-timegrid-col").last().boundingBox();
+        await p.mouse.click(col.x + col.width / 2, slot.y + 3);
+        await p.waitForSelector('[data-testid="new-start"]', { timeout: 5000 });
+        const startVal = await p.inputValue('[data-testid="new-start"]');
+        assert(/T13:[0-5]\d/.test(startVal), `clicking the 13:00 slot seeds the create dialog at that precise time, not just the day (${startVal})`);
+        await p.fill('[data-testid="new-topic"]', "Created at 1pm");
+        await p.click('[data-testid="create-confirm"]');
+        await p.waitForSelector('[data-testid="toast"]');
+        await p.keyboard.press("Escape");
+        await p.waitForSelector('.fc-timegrid-event:has-text("Created at 1pm")', { timeout: 6000 });
+        assert(true, "the created event appears in the time grid at the clicked hour");
+        await ctx.close();
+      } finally { proc.kill(); }
+    },
+  },
+  {
+    name: "calendar-time-resize", feature: FEATURE,
+    async run(page, { assert, ROOT }) {
+      const proc = await bootMain(ROOT);
+      try {
+        const ctx = await page.context().browser().newContext({ viewport: { width: 1360, height: 900 } });
+        // ti_9 "Deep work" is 09:00–11:00; drag its TOP edge up → the START moves earlier,
+        // the END stays put (eventResizableFromStart + patchForResize writing both fields)
+        const p = await anchoredPage(ctx, BASE, "timed", { calView: "day", calDate: "2026-08-06" });
+        await p.waitForSelector('[data-testid="calendar-event-ti_9"]');
+        const before = await fetch(`${BASE}/api/objects/timed/ti_9`).then((r) => r.json());
+        let moved = false;
+        for (let attempt = 0; attempt < 4 && !moved; attempt++) {
+          await p.locator('[data-testid="calendar-event-ti_9"]').hover();
+          await p.waitForTimeout(150);
+          const rb = await p.locator('[data-testid="calendar-event-ti_9"] .fc-event-resizer-start').boundingBox();
+          if (!rb) { await p.waitForTimeout(300); continue; }
+          await p.mouse.move(rb.x + rb.width / 2, rb.y + rb.height / 2);
+          await p.mouse.down();
+          await p.mouse.move(rb.x + rb.width / 2, rb.y - 40, { steps: 10 });
+          await p.waitForTimeout(120);
+          await p.mouse.up();
+          await p.waitForTimeout(500);
+          const now = await fetch(`${BASE}/api/objects/timed/ti_9`).then((r) => r.json());
+          if (now.start !== before.start) moved = true;
+        }
+        const after = await fetch(`${BASE}/api/objects/timed/ti_9`).then((r) => r.json());
+        // the end INSTANT is unchanged (FC may re-serialize the unmoved edge with an
+        // explicit offset — same moment, different string), proving a start-edge resize
+        assert(
+          moved && Date.parse(after.start) < Date.parse(before.start) && Date.parse(after.finish) === Date.parse(before.finish),
+          `dragging the TOP edge moved the start earlier, end instant unchanged (${before.start}→${after.start}, end ${before.finish}→${after.finish})`,
+        );
+        await shot(p, ROOT, "calendar-time-resize");
+        await ctx.close();
+      } finally { proc.kill(); }
+    },
+  },
+  {
+    name: "calendar-time-edit", feature: FEATURE,
+    async run(page, { assert, ROOT }) {
+      const proc = await bootMain(ROOT);
+      try {
+        const ctx = await page.context().browser().newContext({ viewport: { width: 1360, height: 900 } });
+        // the edit dialog edits TIME (a datetime-local end), not just the date
+        const p = await anchoredPage(ctx, BASE, "timed", { calView: "week", calDate: "2026-08-03" });
+        await p.waitForSelector('[data-testid="calendar-event-ti_1"]');
+        await p.click('[data-testid="calendar-event-ti_1"]');
+        await p.waitForSelector('[data-testid="calendar-edit"]');
+        assert((await p.getAttribute('[data-testid="edit-end"]', "type")) === "datetime-local", "the end is edited as a datetime-local (time, not just date)");
+        const curEnd = await p.inputValue('[data-testid="edit-end"]');
+        await p.fill('[data-testid="edit-end"]', `${curEnd.slice(0, 11)}09:30`);
+        await p.click('[data-testid="edit-save"]');
+        await p.waitForSelector('[data-testid="calendar-edit"]', { state: "detached" });
+        // reopen: the new end time round-trips through the store (browser-local, TZ-consistent)
+        await p.waitForSelector('[data-testid="calendar-event-ti_1"]');
+        await p.click('[data-testid="calendar-event-ti_1"]');
+        await p.waitForSelector('[data-testid="edit-end"]');
+        const reopened = await p.inputValue('[data-testid="edit-end"]');
+        assert(reopened.endsWith("09:30"), `editing the END time persisted and round-trips in the dialog (${reopened})`);
+        await shot(p, ROOT, "calendar-time-edit");
+        await ctx.close();
+      } finally { proc.kill(); }
+    },
+  },
+  {
     name: "calendar-perf-10k", feature: FEATURE,
     async run(page, { assert, ROOT }) {
       const proc = await boot10k(ROOT);

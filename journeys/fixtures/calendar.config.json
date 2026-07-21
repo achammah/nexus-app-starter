@@ -1,5 +1,5 @@
 {
-  "_note": "calendar depth lane — the full-fidelity calendar view over four shapes: `events` (a date field + a colored select → all-day colored events, the full view set + week numbers, drag-select create, click-to-edit, delete; ev_7 is deliberately undated and must stay off the grid), `stays` (from/to span → multi-day events, resizable), `meetings` (a dateTime field + a recurrence text field → timed events, timeGrid week/day, business hours + now indicator + slots, a weekly recurring row), `plain` (no date field → the graceful misconfigured chip). Dates sit in 2026-08; journeys anchor the view there via the persisted calDate + calView. Booted by journeys/extra/calendar-view.mjs on the lane band (5891).",
+  "_note": "calendar depth lane — the full-fidelity calendar view over five shapes: `events` (a date field + a colored select → all-day colored events, the full view set + week numbers, drag-select create, click-to-edit, delete; ev_7 is deliberately undated and must stay off the grid), `stays` (from/to span → multi-day events, resizable), `meetings` (a dateTime field + a recurrence text field → timed events, timeGrid week/day, business hours + now indicator + slots, a weekly recurring row), `timed` (start/finish dateTime span → the time-grid PRECISION surface: an overlapping pair on 2026-08-03 for side-by-side layout, events across the workday, an all-day + a 23:00 late event to prove 24h reachability, resizable-from-either-edge), `plain` (no date field → the graceful misconfigured chip). Dates sit in 2026-08; journeys anchor the view there via the persisted calDate + calView. Booted by journeys/extra/calendar-view.mjs on the lane band (5891).",
   "app": { "name": "Calendar Fixture", "slug": "calendar-fixture" },
   "theme": {},
   "users": ["you"],
@@ -93,6 +93,45 @@
       ],
       "sampleRows": [
         { "id": "pl_1", "note": "No dates anywhere on this object" }
+      ]
+    },
+    {
+      "key": "timed",
+      "label": "Timed",
+      "labelOne": "Slot",
+      "icon": "clock",
+      "defaultView": "calendar",
+      "views": [
+        { "type": "calendar", "startDateField": "start", "endDateField": "finish", "colorField": "track", "enabledViews": ["month", "week", "day", "listWeek"], "defaultView": "week", "businessHours": true, "nowIndicator": true, "slotDuration": "30m", "snapDuration": "15m", "scrollTime": "08:00", "firstDay": "Monday" }
+      ],
+      "fields": [
+        { "key": "topic", "label": "Topic", "type": "text", "primary": true, "width": 240 },
+        { "key": "start", "label": "Start", "type": "dateTime", "width": 170 },
+        { "key": "finish", "label": "Finish", "type": "dateTime", "width": 170 },
+        {
+          "key": "track",
+          "label": "Track",
+          "type": "select",
+          "options": [
+            { "value": "Design", "color": "blue" },
+            { "value": "Build", "color": "green" },
+            { "value": "Review", "color": "orange" }
+          ],
+          "width": 120
+        }
+      ],
+      "sampleRows": [
+        { "id": "ti_1", "topic": "Standup", "start": "2026-08-03T08:00:00", "finish": "2026-08-03T08:30:00", "track": "Build" },
+        { "id": "ti_2", "topic": "Roadmap workshop", "start": "2026-08-03T09:00:00", "finish": "2026-08-03T10:00:00", "track": "Design" },
+        { "id": "ti_3", "topic": "Vendor call", "start": "2026-08-03T09:30:00", "finish": "2026-08-03T10:30:00", "track": "Review" },
+        { "id": "ti_4", "topic": "Lunch & learn", "start": "2026-08-03T12:00:00", "finish": "2026-08-03T13:00:00", "track": "Build" },
+        { "id": "ti_5", "topic": "Design review", "start": "2026-08-03T14:00:00", "finish": "2026-08-03T15:30:00", "track": "Design" },
+        { "id": "ti_6", "topic": "Retro", "start": "2026-08-03T16:00:00", "finish": "2026-08-03T16:30:00", "track": "Review" },
+        { "id": "ti_7", "topic": "Customer call", "start": "2026-08-04T11:00:00", "finish": "2026-08-04T11:45:00", "track": "Review" },
+        { "id": "ti_8", "topic": "Pairing", "start": "2026-08-05T13:00:00", "finish": "2026-08-05T15:00:00", "track": "Build" },
+        { "id": "ti_9", "topic": "Deep work", "start": "2026-08-06T09:00:00", "finish": "2026-08-06T11:00:00", "track": "Build" },
+        { "id": "ti_10", "topic": "Company holiday", "start": "2026-08-05", "track": "Design" },
+        { "id": "ti_11", "topic": "Night deploy", "start": "2026-08-04T23:00:00", "finish": "2026-08-04T23:45:00", "track": "Review" }
       ]
     }
   ]
