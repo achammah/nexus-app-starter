@@ -376,4 +376,49 @@ export default [
       } finally { proc.kill(); }
     },
   },
+  {
+    name: "grid-native-chrome", feature: "Sheet view (spreadsheet grid)",
+    async run(page, { assert, ROOT }) {
+      // native-not-widget: the Sheet reads as a first-class part of the app, not
+      // an embedded grid widget — it sits on the SAME raised card surface as the
+      // DataTable, and glide's own scroller carries our thin token-themed
+      // scrollbar instead of the default OS chrome.
+      const proc = await boot(ROOT, "grid-view.config.json", PORT, BASE);
+      try {
+        const ctx = await page.context().browser().newContext({ viewport: { width: 900, height: 680 } });
+        const p = await ctx.newPage();
+        await p.goto(`${BASE}/#/o/projects`);
+        await gridCanvas(p, "projects");
+        // the grid's card surface + glide's vendor scroller, read from the live DOM
+        const grid = await p.evaluate(() => {
+          const wrap = document.querySelector('[data-testid="grid-projects"]');
+          const scroller = wrap && wrap.querySelector(".dvn-scroller");
+          return {
+            wrapBg: wrap ? getComputedStyle(wrap).backgroundColor : null,
+            scrollbarWidth: scroller ? getComputedStyle(scroller).scrollbarWidth : null,
+          };
+        });
+        assert(
+          grid.scrollbarWidth === "thin",
+          `glide's scroller carries our thin themed scrollbar, not the OS default (scrollbar-width=${grid.scrollbarWidth})`,
+        );
+        // force the horizontal scrollbar into view (900px is narrower than the
+        // column set) and capture the themed chrome
+        await p.mouse.move(560, 420);
+        await p.mouse.wheel(220, 0);
+        await p.waitForTimeout(300);
+        await shot(p, ROOT, "grid-native-chrome");
+        // frame continuity: the Sheet sits on the SAME raised surface as the table
+        const tabs = p.locator('[data-testid="view-switch"] button');
+        await tabs.filter({ hasText: "Table" }).first().click();
+        await p.waitForSelector('[data-testid="table-projects"]');
+        const tableBg = await p.evaluate(() => getComputedStyle(document.querySelector(".nxTableWrap")).backgroundColor);
+        assert(
+          grid.wrapBg === tableBg,
+          `the Sheet card sits on the same raised surface as the DataTable (grid=${grid.wrapBg}, table=${tableBg})`,
+        );
+        await ctx.close();
+      } finally { proc.kill(); }
+    },
+  },
 ];
