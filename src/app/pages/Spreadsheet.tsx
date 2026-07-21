@@ -1,15 +1,19 @@
 import * as React from "react";
-import { RotateCcw, Table2 } from "lucide-react";
+import { Eraser, RotateCcw, Table2 } from "lucide-react";
 import type { IWorkbookData } from "@univerjs/core";
 import { api } from "../api";
 import { t } from "../i18n";
 import { Button } from "../../ui/primitives/Button";
+import { Tip } from "../../ui/primitives/fields";
 import { ThinkingDots } from "../../ui/primitives/ThinkingDots";
 import { LazyWorkbookSurface, isWorkbookSnapshot, seedWorkbook, workbookStoreKey } from "../../ui/blocks/workbook";
 
-/* Spreadsheet page — a full Univer workbook as a standalone nav surface. Free-
+/* Spreadsheet page — a full Univer workbook as the page surface itself. Free-
    surface: the whole workbook persists as ONE snapshot under an app-state key (not
-   record data), loaded here and autosaved on every edit. The heavy engine is the
+   record data), loaded here and autosaved on every edit. The page bleeds to the
+   content edges (no card frame) and its controls (save state, reset, clear) ride
+   inside the workbook's own toolbar row, so the only chrome above the grid is the
+   app top bar + the sheet's single toolbar. The heavy engine is the
    LazyWorkbookSurface split, so this page adds ~0 to the eager bundle. */
 
 const PAGE_KEY = "spreadsheet";
@@ -75,23 +79,24 @@ export function SpreadsheetPage() {
     api.setState(KEY, null).catch(() => {});
   }, []);
 
+  // compact cluster for the workbook toolbar row: live save state + icon actions
   const bar = (
     <>
       <span className="nxWorkbookSave" data-state={saveState} data-testid="workbook-save">
         {saveState === "saving" ? <ThinkingDots label={t("page.spreadsheet.saving")} /> : null}
         {saveState === "saving" ? t("page.spreadsheet.saving") : saveState === "saved" ? t("page.spreadsheet.saved") : ""}
       </span>
-      <Button size="sm" variant="ghost" icon={<RotateCcw size={13} />} data-testid="workbook-reset" onClick={mountSeed}>
-        {t("page.spreadsheet.reset")}
-      </Button>
-      <Button size="sm" variant="ghost" data-testid="workbook-clear" onClick={clearWorkbook}>
-        {t("page.spreadsheet.clear")}
-      </Button>
+      <Tip label={t("page.spreadsheet.reset")}>
+        <Button size="sm" variant="ghost" icon={<RotateCcw size={13} />} aria-label={t("page.spreadsheet.reset")} data-testid="workbook-reset" onClick={mountSeed} />
+      </Tip>
+      <Tip label={t("page.spreadsheet.clear")}>
+        <Button size="sm" variant="ghost" icon={<Eraser size={13} />} aria-label={t("page.spreadsheet.clear")} data-testid="workbook-clear" onClick={clearWorkbook} />
+      </Tip>
     </>
   );
 
   return (
-    <div style={{ height: "100%", minHeight: "72vh", display: "flex", flexDirection: "column" }} data-testid="page-spreadsheet">
+    <div className="pageBleed" data-testid="page-spreadsheet">
       {phase === "loading" && <div className="nxWorkbook nx-rise-in-sm">{skeleton}</div>}
 
       {phase === "empty" && (
@@ -113,7 +118,6 @@ export function SpreadsheetPage() {
             value={initial}
             reloadNonce={reloadNonce}
             onChange={persist}
-            title={t("page.spreadsheet.demoTitle")}
             actions={bar}
             data-testid="workbook-surface"
           />

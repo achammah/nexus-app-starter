@@ -78,7 +78,6 @@ const dicts = {
     "kit.workbookBlurb": "A full Excel-grade workbook as a standalone page: a formula bar with 400+ functions, insert rows and columns, cell formatting, multiple sheets, freeze and merge. Powered by Univer, themed to your tokens, loaded as a lazy chunk.",
     "kit.workbookOpen": "Open the Spreadsheet",
     "page.spreadsheet.title": "Spreadsheet",
-    "page.spreadsheet.demoTitle": "Demo workbook",
     "page.spreadsheet.loading": "Loading spreadsheet…",
     "page.spreadsheet.saving": "Saving…",
     "page.spreadsheet.saved": "Saved",
