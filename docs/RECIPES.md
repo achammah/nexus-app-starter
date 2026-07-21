@@ -40,6 +40,20 @@ Relation fields persist target row IDS — single: `"co_1"` · many (`multiple: 
 4. Ship real: set `NEXUS_API_KEY`. With a `suggestTaskId` on the field the route runs the AI task via `runAiTask` and normalizes its output (`{changes:[{original,replacement,reason?,kind?}]}` or a bare array) into tracked changes. Without a `suggestTaskId` (or without the key) it serves a labeled mock derived from the document — the UI and config don't change.
 5. Library pieces (nexus-ui): `useSuggestions(blocks, onBlocksChange, changes, onChangesChange)` (the accept/reject/undo engine), `SuggestionPanel` (the rail), `Pipeline`/`Chip` (the state indicator) — all entity-agnostic.
 
+## Add a whiteboard (canvas) field to an object
+
+1. `starter.config.json` → append to the object's `fields[]`:
+```jsonc
+{ "key": "sketch", "label": "Sketch", "type": "whiteboard", "width": 150 }
+```
+2. The record page mounts an excalidraw canvas as a full-width block — after the hero in the `document` layout, below the details in `standard` (side peek included). The editor lazy-loads only when a record with the field is open; list pages stay light.
+3. The value is plain scene JSON through the normal patch path: `{ "elements": [...] }` (elements only — every mount scrolls to content; a stored `appState` key is tolerated and ignored). Saves debounce behind a Saving…/Saved chip and only fire when ELEMENTS change — pans, zooms and selections never write. The server validates the shape (`elements` must be an array) and the timeline logs `canvas · N elements`, never raw JSON.
+4. Cells (table + kanban card) render a memoized SVG thumbnail from the stored scene (cached by content + theme, re-derived on a live dark-flip); an empty scene shows a subtle canvas glyph and loads nothing. Free-text search skips whiteboard values (geometry is not prose), and the field is excluded from the FilterBar.
+5. Mobile (≤768px): the field rests as a static preview + an "Edit canvas" button; the tap opens a fullscreen overlay editor with native touch draw/pan/pinch. Inline drag-draw is a desktop interaction by design — the page never traps touch scroll.
+6. v1 boundary: the image tool is disabled (scenes stay lean JSON — no base64 blobs in the command log) and file-system canvas actions (open/save-file) are hidden. Seed demo scenes by drawing in the editor and copying the saved value from the API, never by hand-writing element objects.
+
+**Wiring to Nexus.** The scene is an ordinary JSON field on the records API (`PATCH /api/objects/:key/:id` with `{ "<field>": { "elements": [...] } }`), so a workflow or agent can read or write canvases like any other field — e.g. an AI task that generates a diagram writes its scene into the field and the thumbnail + canvas render it on the next poll. Elements follow excalidraw's serialized-element shape.
+
 ## Async Nexus building blocks (server)
 - **`runAiTask(store, emitEvent, {taskId, objectKey, recordId, buildInput, applyOutput, onFail?})`** (`server/aiTaskRunner.mjs`) — run one AI task against a record in the background, write the result, revert on failure. Powers `/enrich`.
 - **`fireAsyncGeneration(store, {objectKey, placeholder, webhookUrl, payload, emitEvent?})`** (`server/asyncGeneration.mjs`) — create a placeholder record now, make it durable, fire an off-machine generation webhook; the finished record lands back via the warehouse.

@@ -35,6 +35,9 @@ function typedValue(field, i, rowsByObject, config) {
       return `Working notes ${i + 1}: context gathered from the last touchpoint; follow-ups agreed and owners assigned.`;
     case "json":
       return { source: "seed", index: i };
+    case "whiteboard":
+      // canvases start empty — scenes are drawn, never fabricated by the seeder
+      return null;
     case "user": {
       const users = config?.users ?? [];
       return users.length ? users[i % users.length] : "you";

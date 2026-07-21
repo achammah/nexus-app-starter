@@ -21,6 +21,11 @@ const flatVal = (v, type) => {
     if (type === "money" && typeof v.amount === "number") return `${v.amount} ${v.code ?? ""}`.trim();
     if (type === "fullName") return [v.first, v.last].filter(Boolean).join(" ") || "—";
     if (type === "address") return [v.street, v.city].filter(Boolean).join(", ") || "—";
+    // whiteboard scenes summarize as a count — never a coordinate dump in the timeline
+    if (type === "whiteboard" && Array.isArray(v.elements)) {
+      const n = v.elements.filter((e) => e && typeof e === "object" && !e.isDeleted).length;
+      return n ? `canvas · ${n} element${n === 1 ? "" : "s"}` : "—";
+    }
     const vals = Object.values(v).filter((x) => x !== null && x !== undefined && x !== "");
     return vals.length ? vals.map((x) => flatVal(x, undefined)).join(", ") : "—";
   }
@@ -565,13 +570,17 @@ export class Store {
     if (q.q) {
       const t = String(q.q).toLowerCase();
       // shaped values (money/address/fullName objects, string[] lists) match on
-      // their inner text — a plain String() would hide them behind "[object Object]"
+      // their inner text — a plain String() would hide them behind "[object Object]".
+      // Whiteboard scenes are geometry, not prose: their keys stay out of the
+      // corpus (a query like "rectangle" must not match every canvas).
+      const cfg2 = this.config.objects.find((o) => o.key === objKey);
+      const skip = new Set((cfg2?.fields ?? []).filter((f) => f.type === "whiteboard").map((f) => f.key));
       const flat = (v) =>
         v === null || v === undefined ? ""
         : Array.isArray(v) ? v.map(flat).join(" ")
         : typeof v === "object" ? Object.values(v).map(flat).join(" ")
         : String(v);
-      rows = rows.filter((r) => Object.values(r).some((v) => flat(v).toLowerCase().includes(t)));
+      rows = rows.filter((r) => Object.entries(r).some(([k, v]) => !skip.has(k) && flat(v).toLowerCase().includes(t)));
     }
     if (q.sortField) {
       const dir = q.sortDir === "desc" ? -1 : 1;
@@ -654,6 +663,10 @@ export class Store {
         for (const [part, pv] of Object.entries(v))
           if (pv !== null && pv !== undefined && typeof pv !== "string")
             return `${f.label} ${part} must be text`;
+      }
+      if (f.type === "whiteboard") {
+        if (typeof v !== "object" || Array.isArray(v) || !Array.isArray(v.elements))
+          return `${f.label} must be a canvas scene shaped like { "elements": [...] }`;
       }
     }
     return null;

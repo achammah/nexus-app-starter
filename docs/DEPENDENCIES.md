@@ -35,6 +35,7 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | lodash + marked + react-responsive-carousel | → 4.18.1 / 4.3.0 / 3.2.23 | MIT | glide-data-grid peer dependencies (npm auto-installs); marked and the carousel serve its markdown/image cell kinds, which the Sheet view does not use and the bundler tree-shakes OUT of the chunk | 4972 / 460 / 320 | not bundled (verified by chunk size) |
 | @xyflow/react | 12.11.2 (pinned) → 12.11.2 | MIT | the flow view's node-graph canvas (pan/zoom, drag, minimap, controls, viewport windowing); transitive: @xyflow/system 1192 KB, classcat 24 KB, zustand 708 KB (internal to the library — the app adopts no store) | 2860 | lazy view chunk (FlowView) |
 | @dagrejs/dagre | 3.0.0 (pinned) → 3.0.0 | MIT | the flow view's tree auto-layout (TB ranks) for graphs up to 2,000 nodes; above that an in-repo O(V+E) BFS-rank grid takes over (`views/flow/layout.ts`) | 1404 | lazy view chunk (FlowView) |
+| @excalidraw/excalidraw | 0.18.1 (pinned exact) → 0.18.1 | MIT | the whiteboard field type's canvas engine + `exportToSvg` thumbnails (`fields/whiteboard/`) | 79184 | lazy only — see "Whiteboard chunks" below; zero eager cost |
 
 ## Dev
 
@@ -56,6 +57,7 @@ The app builds as ONE main chunk plus a lazy chunk per heavy view. Measured eage
 | pre view-registry (49292a9) | 1,268.07 kB | 374.81 kB | 158.79 kB |
 | with the view registry | 1,274.53 kB | 376.92 kB | 158.79 kB |
 | with the Sheet + flow view definitions (eager) | 1,284.67 kB | 380.19 kB | 158.82 kB |
+| with the field registry + whiteboard | 1,294.06 kB | 383.79 kB | 160.33 kB |
 
 Lazy view chunks (each loads on first open of its view tab):
 
@@ -64,7 +66,21 @@ Lazy view chunks (each loads on first open of its view tab):
 | SpreadsheetView (the Sheet view + glide) | 310.39 kB | 103.55 kB | 12.92 kB |
 | FlowView (xyflow + dagre + canvas) | 217.20 kB | 70.69 kB | 19.53 kB |
 
-Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager; the flow definition adds +0.41% min / +0.41% gzip over the Sheet-merged baseline of 1,279.42 kB / 378.63 kB). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip, FlowView at 70.69 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
+Budget rule: the eager bundle must not grow more than 2% over the previous baseline without an explicit maintainer go (the registry landed at +0.51% min / +0.56% gzip; the Sheet view added +0.38% min / +0.45% gzip eager; the flow definition adds +0.41% min / +0.41% gzip over the Sheet-merged baseline; the field registry + whiteboard adds +0.73% min / +0.95% gzip over the Sheet+flow baseline — the field registry, the whiteboard definition + thumbnail shell, and the gallery's inline demo scene; excalidraw itself is fully lazy). New HEAVY view types register a `React.lazy` component (the registry host wraps rendering in Suspense), which code-splits them out of the eager chunk automatically; a lazy view chunk stays at or under ~250 KB gzip (the Sheet chunk sits at 103.55 KB gzip, FlowView at 70.69 KB gzip). The natural first split candidates in the existing set are recharts, react-day-picker and date-fns if the eager chunk needs to shrink.
+
+### Whiteboard chunks (the one documented exception to the 250 KB lazy cap)
+
+The whiteboard field loads nothing eagerly: empty cells render a static glyph with zero imports. Measured chunks (`vite build`, this repo's dist):
+
+| Chunk | When it loads | min | gzip |
+|---|---|---|---|
+| excalidraw editor core (`percentages-*.js` — the editor + `exportToSvg`/`getSceneVersion`) | first NON-EMPTY thumbnail on screen, or a canvas mount — shared by both paths | 1,109.22 kB | 358.65 kB |
+| excalidraw UI + vendor (`index-*.js`) | with the editor core | 637.62 kB | 153.44 kB |
+| `WhiteboardField-*.js` + its CSS | a record page mounts the canvas | 2.89 kB + 145.62 kB CSS | 1.29 kB + 23.03 kB CSS |
+| font machinery (`subset-shared.chunk-*.js`) + per-language locales | on demand from inside excalidraw | 1,823.57 kB | 742.48 kB |
+| mermaid-to-excalidraw diagram family (~20 chunks: cytoscape, katex, per-diagram) | never — the text-to-diagram dialog is not exposed in our `UIOptions` | on disk only | on disk only |
+
+Fonts self-host: the build emits the woff2 files into `dist/assets` (no CDN fetch; journeys run fully offline). `@excalidraw/utils` is deliberately NOT used for thumbnails: its latest published build predates the current scene format by three years, while the main package exports the same `exportToSvg`/`getSceneVersion` version-matched to the editor.
 
 ## Adapted-source provenance
 
