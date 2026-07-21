@@ -92,7 +92,12 @@ function GalleryCard({
       style={{
         width: colWidth,
         height,
-        transform: `translate(${x}px, ${y}px)`,
+        // position via the CSS `translate` property (NOT `transform`): the
+        // entrance (nxRiseIn) and hover-lift animate `transform`, so sharing it
+        // for layout would let the animation's `transform:none` collapse every
+        // windowed card to (0,0). `translate` composes under `transform`, so
+        // position holds through the entrance stagger and the hover lift.
+        translate: `${x}px ${y}px`,
         ...(entranceIndex >= 0 ? ({ "--i": Math.min(entranceIndex, 8) } as React.CSSProperties) : {}),
       }}
       data-testid={`gcard-${row.id}`}
