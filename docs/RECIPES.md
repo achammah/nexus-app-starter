@@ -54,6 +54,14 @@ Relation fields persist target row IDS — single: `"co_1"` · many (`multiple: 
 
 **Wiring to Nexus.** The scene is an ordinary JSON field on the records API (`PATCH /api/objects/:key/:id` with `{ "<field>": { "elements": [...] } }`), so a workflow or agent can read or write canvases like any other field — e.g. an AI task that generates a diagram writes its scene into the field and the thumbnail + canvas render it on the next poll. Elements follow excalidraw's serialized-element shape.
 
+## Extend a field type's editors (field-type registry)
+
+Every field type's editors live in ONE registry — `src/ui/record-core/fields/`, one folder per type. A folder's `definition.ts` registers the render-side slots (record-page `render`, list `cell`, `previewText`) AND the draft-side slots the create dialog, form view and guided wizard all share: `Draft` (the controlled editor), `coerce` (raw input → typed value), and `validate` (client-side shape check). The whiteboard field above is one such entry; every built-in type (text, number, currency, select, date, user, money, address, fullName, …) is another.
+
+1. Add a NEW field type: drop `src/ui/record-core/fields/<type>/definition.ts` exporting a `FieldTypeDefinition` with the slots your type needs. It self-registers (the registry globs the folder) — no switch statement to edit anywhere. Its `Draft`/`coerce`/`validate` then ride the SAME create dialog, guided wizard and form-view pipeline as every other type.
+2. The pure draft core `fields/draft.ts` (`coerceDraft` · `validateDraft` · `withStageDefault` · `requiredKeys`, node-tested) drives all three create surfaces; it consults each type's registered `coerce`/`validate` first, so a custom type gets typed create + client validation for free by filling its entry.
+3. One registry, every surface: the create dialog, the record page, the form view and the guided wizard read the same slots, so a field renders and validates identically wherever it appears — the drift that used to exist (three select renderings, number coercion missing from the dialog) can't come back.
+
 ## Async Nexus building blocks (server)
 - **`runAiTask(store, emitEvent, {taskId, objectKey, recordId, buildInput, applyOutput, onFail?})`** (`server/aiTaskRunner.mjs`) — run one AI task against a record in the background, write the result, revert on failure. Powers `/enrich`.
 - **`fireAsyncGeneration(store, {objectKey, placeholder, webhookUrl, payload, emitEvent?})`** (`server/asyncGeneration.mjs`) — create a placeholder record now, make it durable, fire an off-machine generation webhook; the finished record lands back via the warehouse.
