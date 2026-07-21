@@ -65,6 +65,12 @@ export default [
         assert((await p.locator('[data-testid="flow-minimap"] svg').count()) >= 1, "the minimap renders");
         await p.getByRole("button", { name: /zoom in/i }).waitFor();
         assert(true, "the zoom controls render");
+        // the staggered card entrance settles before the evidence shot (the
+        // view-registry chip journey's pattern)
+        await p.waitForFunction(() =>
+          [...document.querySelectorAll('[data-testid^="flow-node-"]')].every((el) => getComputedStyle(el).opacity === "1"),
+        );
+        assert(true, "every card settles fully visible (entrance animation completed)");
         await shot(p, ROOT, "flow-graph-minimap");
         await ctx.close();
       } finally { proc.kill(); }
@@ -169,6 +175,12 @@ export default [
           { timeout: 5000 },
         );
         assert(true, "one hub per distinct target (3 of 3 once the refit settles)");
+        // hub pop-in settles before the evidence shot
+        await p.waitForFunction(() =>
+          [...document.querySelectorAll('[data-testid^="flow-hub-"], [data-testid^="flow-node-"]')].every(
+            (el) => getComputedStyle(el).opacity === "1",
+          ),
+        );
         await shot(p, ROOT, "flow-hubs");
         await ctx.close();
       } finally { proc.kill(); }
@@ -193,6 +205,10 @@ export default [
         await p.waitForSelector('[data-testid="flow-empty"]');
         const empty = await p.textContent('[data-testid="flow-empty"]');
         assert(empty?.includes("Nothing to map yet"), "the empty state renders designed copy");
+        await p.waitForFunction(() => {
+          const el = document.querySelector('[data-testid="flow-empty"]');
+          return el && getComputedStyle(el).opacity === "1";
+        });
         await shot(p, ROOT, "flow-states");
         await ctx.close();
       } finally { proc.kill(); }
@@ -208,6 +224,9 @@ export default [
         await p.goto(`${BASE}/#/o/flow_tasks`);
         await p.waitForSelector('[data-testid="flow-flow_tasks"]');
         await p.waitForSelector('[data-testid="flow-node-ft_1"]');
+        await p.waitForFunction(() =>
+          [...document.querySelectorAll('[data-testid^="flow-node-"]')].every((el) => getComputedStyle(el).opacity === "1"),
+        );
         await shot(p, ROOT, "flow-mobile");
         // tap-to-open is the mobile core interaction
         await p.tap('[data-testid="flow-node-ft_1"]');
