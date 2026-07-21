@@ -28,6 +28,15 @@ Views are self-registering: the switcher tabs, the per-view toolbar and the view
 5. Vendor into the starter: `npm run sync-ui` (source override `NEXUS_UI_PATH`). sync-ui rewrites `src/ui/.ui-version`, which STALES the gallery inventory: if nexus-ui exports changed, first regenerate `docs/catalog.json` in nexus-ui (`node scripts/gen-docs.mjs`, with OURS rows for the new files), copy its fields into `src/app/gallery.catalog.json`, and in every case restamp that file's `uiVersion` to the new `.ui-version` line. A stale stamp fails the gallery journey.
 6. `npm run model` regenerates docs/DATA-MODEL.md and preserves everything below its `<!-- hand-maintained below -->` marker (the App-object options section lives there). Hand-written schema notes go below the marker; text above it is generator-owned.
 
+## Adding a field type
+
+Field types are self-registering, the field twin of the view registry: the registry (`src/ui/record-core/fields/registry.ts`) discovers every `fields/<type>/definition.{ts,tsx}` at build time via `import.meta.glob`, and the hosts (RecordPage, DataTable, KanbanBoard, Filters) consult it BEFORE their built-in type switches — a new field type is a dropped folder in nexus-ui, never a switch edit.
+
+1. In nexus-ui, create `src/record-core/fields/<type>/definition.tsx` default-exporting a `FieldTypeDefinition` (see `fields/types.ts`). Every slot is optional: `render` (the record-page surface; `React.lazy` for heavy editors — the host wraps the registry branch in Suspense with a designed loading state), `cell` (read-only list cell for table cells and kanban card meta), `previewText` (one-line text used by `formatCell`/`csvCell`/palette surfaces), `layout: "block"` (full-width record-page breakout, the richText treatment), `filterable: false` (drop from the FilterBar), `keyboardEditable: false` (grid type-to-edit skips it), `clearValue` (Backspace-clear on the grid), plus the editor-side slots `Draft`/`coerce`/`validate` (create/form/import surfaces).
+2. `render` receives `{field, row, value, readOnly?, onSave}` — `onSave` commits ONE whole-value patch through the record store, the only write path. Keep the live editing state local and seeded once (the host keys the render by row id, so a same-record poll never clobbers in-progress edits).
+3. If the server should validate the value shape, add a type case to `validate()` in `server/store.mjs` (and a `flatVal` case for readable timeline summaries). Seed generators return `null` for structured types unless a typed generator exists (`server/seed.mjs`).
+4. Mobile is part of the definition, never a later rework; heavy surfaces lazy-load; pure logic gets a `journeys/unit/` test; ship a journey per visible behavior. Reference implementation: `fields/whiteboard/`.
+
 ## Workflow
 
 - Branch `feat/<lane>` from the tag named in your spec, in your own git worktree. Commit in logical units with plain one-line messages.

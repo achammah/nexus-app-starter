@@ -34,6 +34,7 @@ erDiagram
     text title "PK"
     select status
     rich_ext body
+    whiteboard sketch
   }
   reports {
     text title "PK"
@@ -101,6 +102,7 @@ Default view: table
 | `title` | text | primary |
 | `status` | select | options: Draft / In review / Approved / Published |
 | `body` | richText |  |
+| `sketch` | whiteboard |  |
 
 ### Reports (`reports`)
 Default view: table
@@ -135,6 +137,9 @@ Default view: grid
 Users directory: `you`, `Maya Verstraete`, `Jonas Peeters`, `Sofia Marchetti` (drives `user`-type fields).
 
 <!-- hand-maintained below -->
+
+## Field value shapes (beyond primitives)
+- `whiteboard` — `{ "elements": ExcalidrawElement[] }` (elements only; a stored `appState` key is tolerated and ignored — the canvas scrolls to content on every mount). Elements are excalidraw's serialized-element objects (drawn in the editor, never hand-written); the server validates `elements` is an array, timeline events log `canvas · N elements`, and free-text search skips the field. Full recipe: docs/RECIPES.md "Add a whiteboard (canvas) field to an object".
 
 ## App-object options (non-field)
 Per object in `starter.config.json`, alongside the field list:

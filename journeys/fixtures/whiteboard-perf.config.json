@@ -1,0 +1,47 @@
+{
+  "app": {
+    "name": "Whiteboard Perf",
+    "slug": "wb-perf"
+  },
+  "theme": {
+    "skinPreset": "nexus"
+  },
+  "users": [
+    "you"
+  ],
+  "objects": [
+    {
+      "key": "sheets",
+      "label": "Sheets",
+      "labelOne": "Sheet",
+      "icon": "file-text",
+      "defaultView": "table",
+      "fields": [
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 240
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "options": [
+            "Open",
+            "Done"
+          ],
+          "width": 110
+        },
+        {
+          "key": "diagram",
+          "label": "Diagram",
+          "type": "whiteboard",
+          "width": 150
+        }
+      ],
+      "seedCount": 10000
+    }
+  ]
+}
