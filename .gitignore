@@ -5,3 +5,4 @@ journeys/.last-pass
 *.log
 .DS_Store
 journeys/shots/
+.warehouse-local.jsonl

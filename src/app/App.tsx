@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, Sun, Users, Table2, Kanban, X, Zap, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, RefreshCw, Sun, Users, Table2, Kanban, X, Zap, Sparkles } from "lucide-react";
 import { api, type AppConfig } from "./api";
 import { favList, favToggle, type Fav } from "./favorites";
 import { formatCell } from "../ui/record-core/DataTable";
@@ -19,6 +19,7 @@ import { ShortcutsOverlay, MobileReviewBanner, type ShortcutGroup } from "../ui/
 import { Login } from "./Login";
 import { Button } from "../ui/primitives/Button";
 import { Tip } from "../ui/primitives/fields";
+import { ThinkingDots } from "../ui/primitives/ThinkingDots";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "../ui/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/components/ui/dropdown-menu";
 
@@ -58,6 +59,53 @@ export type PanelPage =
 type Toast = { id: number; text: string };
 const ToastCtx = React.createContext<(text: string) => void>(() => {});
 export const useToast = () => React.useContext(ToastCtx);
+
+/* Live-sync affordance — pulls external warehouse writes (an async generation's finished
+   record, or any out-of-process writer) into the running app via api.syncStore(), which the
+   object list then picks up on its rev poll. ThinkingDots while in-flight; a brief status word
+   after ("synced N" / "up to date"), then back to rest. Manual by design — a surface that fires
+   async work polls on its own (see the Generate action + useAsyncOp). No-warehouse app: always
+   "up to date". */
+function SyncButton() {
+  const [syncing, setSyncing] = React.useState(false);
+  const [status, setStatus] = React.useState<string | null>(null);
+  const doSync = React.useCallback(() => {
+    setSyncing(true);
+    setStatus(null);
+    api.syncStore()
+      .then((r) => setStatus(r.applied > 0 ? t("sync.applied", { n: r.applied }) : t("sync.upToDate")))
+      .catch(() => setStatus(t("sync.failed")))
+      .finally(() => setSyncing(false));
+  }, []);
+  // clear the status word after a few seconds so the toolbar returns to rest
+  React.useEffect(() => {
+    if (!status) return;
+    const id = setTimeout(() => setStatus(null), 4000);
+    return () => clearTimeout(id);
+  }, [status]);
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <Tip label={t("sync.tip")}>
+        <Button
+          variant="ghost"
+          size="sm"
+          aria-label={t("sync.now")}
+          data-testid="sync-now"
+          onClick={doSync}
+          disabled={syncing}
+          icon={<RefreshCw size={14} />}
+        />
+      </Tip>
+      {syncing ? (
+        <ThinkingDots label={t("sync.now")} />
+      ) : status ? (
+        <span data-testid="sync-status" style={{ font: "var(--nx-text-meta)", color: "var(--nx-fg-faint)", whiteSpace: "nowrap" }}>
+          {status}
+        </span>
+      ) : null}
+    </span>
+  );
+}
 
 /* Skin resolution ladder: inline object > preset name > accent shortcut. */
 function resolveSkin(c: AppConfig | null): Skin | undefined {
@@ -557,6 +605,7 @@ export function App() {
               {searchBox()}
             </div>
             {copilotToggle}
+            <SyncButton />
             {themeButton}
             {auth?.user && (
               <button
@@ -650,6 +699,7 @@ export function App() {
               </span>
               {searchBox()}
               {copilotToggle}
+              <SyncButton />
               {themeButton}
             </header>
           )}

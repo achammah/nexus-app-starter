@@ -133,6 +133,18 @@ export class RemoteStore extends Store {
     if (applied) console.log(`[warehouse] sync applied ${applied} external event(s) (seq ${this._seq})`);
     return applied;
   }
+
+  /* Simulate an EXTERNAL writer: append a `patch` event to the warehouse at a fresh seq
+     WITHOUT applying it locally, so the running app surfaces it via sync() (the async-
+     generation mock writeback rides this). A real out-of-process writer reads the
+     warehouse MAX(seq); in-process we use `_seq + 1`, always beyond every flushed +
+     buffered event — the caller must not mint a colliding local mutation in the brief
+     window before the next sync (the async-gen flow never does). */
+  async appendExternal(objKey, id, patch) {
+    await this.ready;
+    const iso = new Date().toISOString();
+    await this._wh.append([{ seq: this._seq + 1, ts: iso, op: "patch", args: [iso, objKey, id, patch] }]);
+  }
 }
 
 for (const op of LOGGED_OPS) {

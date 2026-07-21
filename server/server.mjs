@@ -18,6 +18,8 @@ import { fileURLToPath } from "node:url";
 import { Store } from "./store.mjs";
 import { RemoteStore } from "./store-remote.mjs";
 import { bigqueryWarehouse } from "./warehouse.mjs";
+import { localWarehouse } from "./warehouse-local.mjs";
+import { fireAsyncGeneration } from "./asyncGeneration.mjs";
 import { runAiTask } from "./aiTaskRunner.mjs";
 import { emulatorChat } from "../src/lib/nexusClient.mjs";
 import { env, AUTH_ENABLED, FEATURES } from "./env.mjs";
@@ -39,7 +41,10 @@ const CONFIG = JSON.parse(
 const VERSION = readFileSync(path.join(ROOT, "VERSION"), "utf8").trim();
 // WAREHOUSE=bigquery → the command-log spine (persistent, Nexus-native);
 // unset → the in-memory mock. Same contract either way.
-const store = env.WAREHOUSE === "bigquery" ? new RemoteStore(CONFIG, bigqueryWarehouse()) : new Store(CONFIG);
+const store =
+  env.WAREHOUSE === "bigquery" ? new RemoteStore(CONFIG, bigqueryWarehouse())
+  : env.WAREHOUSE === "local" ? new RemoteStore(CONFIG, localWarehouse())
+  : new Store(CONFIG);
 if (store.ready) await store.ready; // replay the event log before serving
 startScheduler(store);
 
@@ -189,6 +194,40 @@ async function api(req, res, url, apiKey = null) {
       let applied = 0;
       try { applied = (await store.sync?.()) ?? 0; } catch (e) { console.error("[sync]", e.message); }
       return send(res, 200, { applied });
+    }
+
+    /* Labeled MOCK generator — stands in for an off-machine generation workflow (like the
+       enrich/suggest mocks). fireAsyncGeneration fires this as its webhook with {objectKey,id};
+       after a beat it writes the finished record BACK THROUGH THE WAREHOUSE (appendExternal)
+       so the running app pulls it via sync() — no real webhook/creds. On the in-memory store
+       (no warehouse) it settles in-process instead. Replace with a real generation workflow. */
+    if (parts[1] === "_mock" && parts[2] === "generate" && req.method === "POST") {
+      const { objectKey, id } = await readBody(req);
+      const cfg = CONFIG.objects.find((o) => o.key === objectKey);
+      const gen = cfg?.generate;
+      if (!cfg || !gen || !id) return send(res, 400, { error: "no generate config / id" });
+      const optVals = (opts) => (opts ?? []).map((o) => (typeof o === "string" ? o : o.value));
+      const primary = cfg.fields.find((f) => f.primary) ?? cfg.fields[0];
+      const statusF = cfg.fields.find((f) => f.key === gen.statusField);
+      const ready = gen.ready ?? optVals(statusF?.options).slice(-1)[0] ?? "Ready";
+      const resultF = gen.resultField ? cfg.fields.find((f) => f.key === gen.resultField) : null;
+      const patch = {
+        [primary.key]: `Generated ${cfg.labelOne.toLowerCase()} · ${new Date().toISOString().slice(0, 10)}`,
+        [gen.statusField]: ready,
+      };
+      if (resultF) {
+        const mockText = `(mock) generated ${resultF.label} — replace the /api/_mock/generate writeback in server.mjs with a real generation workflow.`;
+        patch[resultF.key] = resultF.type === "richText" ? [{ id: `gb_${Date.now().toString(36)}`, type: "p", text: mockText }] : mockText;
+      }
+      const delayMs = Number(gen.delayMs ?? 1500);
+      const writeBack = () => {
+        try {
+          if (typeof store.appendExternal === "function") store.appendExternal(cfg.key, id, patch).catch((e) => console.error("[mock-generate]", e.message));
+          else store.patch(cfg.key, id, patch); // in-memory store: settle in-process
+        } catch (e) { console.error("[mock-generate]", e.message); }
+      };
+      setTimeout(writeBack, delayMs);
+      return send(res, 202, { scheduled: true, delayMs });
     }
 
     /* Copilot proxy — one turn of native agent chat through the emulator API
@@ -406,6 +445,29 @@ async function api(req, res, url, apiKey = null) {
           if (scoped) rows = rows.filter((r) => !r._team || r._team === teamCtx.id);
           return send(res, 200, { rows });
         }
+      }
+
+      /* Async-generation seam (config-driven). The object's `generate` config names the
+         status + result fields; fireAsyncGeneration drops a PLACEHOLDER row NOW (statusField
+         = generating) and fires the labeled local mock webhook, which writes the finished
+         record back to the warehouse — RemoteStore.sync() settles it into the running app. */
+      if (parts[3] === "generate" && !parts[4] && req.method === "POST") {
+        if (deny("create")) return;
+        const gen = cfg.generate;
+        if (!gen) return send(res, 400, { error: `object ${objKey} has no generate action configured` });
+        const optVals = (opts) => (opts ?? []).map((o) => (typeof o === "string" ? o : o.value));
+        const primary = cfg.fields.find((f) => f.primary) ?? cfg.fields[0];
+        const statusF = cfg.fields.find((f) => f.key === gen.statusField);
+        const generating = gen.generating ?? optVals(statusF?.options)[0] ?? "Generating";
+        const placeholder = { [primary.key]: gen.titlePlaceholder ?? "Generating…", [gen.statusField]: generating };
+        const created = await fireAsyncGeneration(store, {
+          objectKey: objKey,
+          placeholder,
+          webhookUrl: `http://${req.headers.host}/api/_mock/generate`,
+          payload: (c) => ({ objectKey: objKey, id: c.id }),
+          emitEvent,
+        });
+        return send(res, 202, created);
       }
 
       if (parts[3] === "merge" && !parts[4] && req.method === "POST") {
