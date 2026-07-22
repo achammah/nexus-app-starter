@@ -9,6 +9,12 @@ A **page** is any surface that is not an object's record list. There are two way
 
 This file covers the first. Custom pages: `docs/EXTENDING.md` §"Add a page".
 
+> **Requires the pages host.** `config.pages[]` is read by the app shell: the `PageKind`
+> union and `PageConfig` type in `src/app/api.ts`, the nav merge in `src/app/pages.tsx`
+> (`navPages` / `configPageFor`), and the icon resolver `src/app/pageIcons.tsx`. If those
+> are absent from an app, it has only the custom-page registry — add a page as a component
+> instead, or bring the shell up to date.
+
 ## The two families
 
 Every page kind is one of two shapes, and the difference decides what you must configure:

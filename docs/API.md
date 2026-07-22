@@ -85,7 +85,7 @@ One implementation sits behind every search surface — the top-bar search (whic
 ⌘K palette), and the `/` panel search. Surfaces differ in chrome, never in what they can
 find.
 
-| Export (`src/app/useGlobalSearch.ts`) | Does |
+| Export (`src/app/useGlobalSearch.ts` — present alongside the pages host, see `docs/PAGE-KINDS.md`) | Does |
 |---|---|
 | `useRecordSearch(config, q, active?)` | debounced (180ms) cross-object record search; queries every configured object in parallel via `GET /api/objects/:o?q=`, takes the top 5 per object, caps at 12 hits. `active=false` parks it when the surface is closed; a query under 2 characters returns nothing |
 | `navMatches(items, q)` | substring match over the nav taxonomy (objects, pages) for the surfaces that do not get cmdk's own filtering |
