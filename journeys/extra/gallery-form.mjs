@@ -54,8 +54,10 @@ export default [
         const covers = await p.locator('[data-testid="gallery-shots"] img[data-testid$="-cover"]').count();
         assert(covers === 6, `cover images render for every row with a cover url (${covers})`);
         await p.waitForSelector('[data-testid="gcard-sh_4-ph"]');
+        // coverless → a neutral placeholder with a muted media icon, never title initials
         const ph = (await p.textContent('[data-testid="gcard-sh_4-ph"]'))?.trim();
-        assert(ph === "TO", `a coverless row shows the tokenized initials placeholder (${JSON.stringify(ph)})`);
+        assert(ph === "", `the coverless placeholder shows no title initials (text=${JSON.stringify(ph)})`);
+        assert((await p.locator('[data-testid="gcard-sh_4-ph"] svg.nxGCard-phIcon').count()) === 1, "the coverless placeholder shows a muted media icon");
         const chipColor = await p.getAttribute('[data-testid="gcard-sh_1"] .nxOptChip', "data-color");
         assert(chipColor === "blue", `the meta chip carries the configured option color (${chipColor})`);
         await shot(p, ROOT, "gallery-grid");

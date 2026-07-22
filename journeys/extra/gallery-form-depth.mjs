@@ -46,6 +46,17 @@ export default [
         }
         await p.waitForSelector('[data-testid="gcard-sh_1"]');
         await shot(p, ROOT, "gallery-depth-groups");
+        // item 2: grouping renders ALL groups, not just the first — scroll to reveal
+        // groups 2 & 3, whose cards are windowed until they enter the viewport
+        await p.locator('[data-testid="gsection-Sketch"]').scrollIntoViewIfNeeded();
+        await p.waitForSelector('[data-testid="gcard-sh_2"]', { timeout: 4000 });
+        assert(true, "scrolling to group 2 (Sketch) renders its cards");
+        await p.locator('[data-testid="gsection-Chart"]').scrollIntoViewIfNeeded();
+        await p.waitForSelector('[data-testid="gcard-sh_3"]', { timeout: 4000 });
+        assert(true, "scrolling to group 3 (Chart) renders its cards");
+        // back to the top so the Photo cards are in view for the collapse test
+        await p.locator('[data-testid="gallery-shots"]').evaluate((el) => el.scrollTo(0, 0));
+        await p.waitForSelector('[data-testid="gcard-sh_1"]');
         // collapse Photo → its cards leave the DOM
         await p.click('[data-testid="gsection-Photo"]');
         await p.waitForSelector('[data-testid="gcard-sh_1"]', { state: "detached", timeout: 4000 });
@@ -93,13 +104,24 @@ export default [
       try {
         const { ctx, p } = await open(page, "http://localhost:5943", "#/o/shots");
         await p.waitForSelector('[data-testid="gcard-sh_1"]');
-        // configured cardFields [kind, note] → kind renders as a colored chip, note as text
-        const chip = await p.getAttribute('[data-testid="gcard-sh_1"] .nxOptChip', "data-color");
-        assert(chip === "blue", `card renders the kind field as its colored chip (${chip})`);
-        const body = (await p.textContent('[data-testid="gcard-sh_1"] .nxGCard-body'))?.trim();
-        assert(!!body && body.includes("Golden hour"), "card renders the configured note field value");
-        assert(!!body && body.indexOf("Photo") < body.indexOf("Golden hour"), "card fields render in configured order (kind before note)");
+        // shots is grouped by kind AND lists kind in cardFields → the group field is
+        // HIDDEN on the cards (no redundant chip inside its own section, like Airtable)
+        assert((await p.locator('[data-testid="gcard-sh_1"] .nxOptChip').count()) === 0,
+          "the group field (kind) is hidden on cards inside its own section");
+        const grouped = (await p.textContent('[data-testid="gcard-sh_1"] .nxGCard-body'))?.trim();
+        assert(!!grouped && grouped.includes("Golden hour"), "the non-group card field (note) still renders");
+        assert(!!grouped && !grouped.includes("Photo"), "the redundant group value is not reprinted on the card");
         await ctx.close();
+        // registry rendering + configured order on a NON-grouped gallery (cards):
+        // the select cardField shows as its colored chip, before the note field
+        const { ctx: ctx2, p: p2 } = await open(page, "http://localhost:5943", "#/o/cards");
+        await p2.waitForSelector('[data-testid="gcard-cd_1"]');
+        const chip = await p2.getAttribute('[data-testid="gcard-cd_1"] .nxOptChip', "data-color");
+        assert(chip === "blue", `an ungrouped gallery renders the kind cardField as its colored chip (${chip})`);
+        const body = (await p2.textContent('[data-testid="gcard-cd_1"] .nxGCard-body'))?.trim();
+        assert(!!body && body.includes("Golden hour"), "the note cardField value renders");
+        assert(!!body && body.indexOf("Photo") < body.indexOf("Golden hour"), "card fields render in configured order (kind before note)");
+        await ctx2.close();
       } finally { proc.kill(); }
     },
   },
