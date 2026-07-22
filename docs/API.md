@@ -79,29 +79,6 @@ A disabled feature flag makes ONE change in three places at once: the nav entry
 disappears, the page is gone, and its routes 404 (`FEATURE_TEAMS` `FEATURE_WEBHOOKS`
 `FEATURE_APIKEYS` `FEATURE_TASKS` `FEATURE_SCHEMA` `FEATURE_THEME` `FEATURE_GALLERY`).
 
-## Unified search
-
-One implementation sits behind every search surface — the top-bar search (which opens the
-⌘K palette), and the `/` panel search. Surfaces differ in chrome, never in what they can
-find.
-
-| Export (`src/app/useGlobalSearch.ts` — present alongside the pages host, see `docs/PAGE-KINDS.md`) | Does |
-|---|---|
-| `useRecordSearch(config, q, active?)` | debounced (180ms) cross-object record search; queries every configured object in parallel via `GET /api/objects/:o?q=`, takes the top 5 per object, caps at 12 hits. `active=false` parks it when the surface is closed; a query under 2 characters returns nothing |
-| `navMatches(items, q)` | substring match over the nav taxonomy (objects, pages) for the surfaces that do not get cmdk's own filtering |
-| `RecordHit` | `{obj, row, name}` — `name` is the row's primary value formatted for display |
-
-Records come from the API; the nav taxonomy is matched client-side and each surface
-renders it itself.
-
-**A page kind can publish its own index into the same palette.** The document workspace
-emits `onPageIndex(entries)` whenever its page set changes and hands back an opener
-through `onOpenPageRef(open)`, so handbook pages appear alongside records in ONE ⌘K.
-Pair it with that surface's own `cmdK` turned off so the app owns the single palette —
-the wired document page passes `config={{ cmdK: false }}` for exactly this reason, since
-otherwise ⌘K opens two stacked palettes on that page. Detail in `docs/BLOCKS.md`
-§"Feeding the app's unified search". Any block can follow the same two-prop shape.
-
 ## The data spine — `app_state`
 
 ```

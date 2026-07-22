@@ -5,7 +5,6 @@ AGENTS.md
 docs/README.md
 docs/ARCHITECTURE.md
 docs/CONFIG.md
-docs/PAGE-KINDS.md
 docs/BLOCKS.md
 docs/API.md
 docs/EXTENDING.md
