@@ -30,7 +30,7 @@ const skeleton = (
 /* `pageKey` namespaces the stored workbook so several standalone spreadsheet pages
    coexist (the static "Spreadsheet" page and any config.pages[] { kind:"spreadsheet" }
    entry share this ONE component — the config-driven page is the same full surface). */
-export function SpreadsheetPage({ pageKey = "spreadsheet" }: { pageKey?: string }) {
+export function SpreadsheetPage({ pageKey = "spreadsheet", demoSeed = true }: { pageKey?: string; demoSeed?: boolean }) {
   const KEY = React.useMemo(() => workbookStoreKey(pageKey), [pageKey]);
   const [phase, setPhase] = React.useState<Phase>("loading");
   const [initial, setInitial] = React.useState<IWorkbookData | null>(null);
@@ -49,7 +49,9 @@ export function SpreadsheetPage({ pageKey = "spreadsheet" }: { pageKey?: string 
   React.useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
 
   // load the stored workbook once: valid snapshot → mount · explicit null → empty ·
-  // never-set/corrupt → seed the demo and persist it so a reload restores it
+  // never-set/corrupt → seed the DEMO workbook (demoSeed pages only) and persist it so a
+  // reload restores it; a genuinely new page (no demoSeed) opens on the empty state, not
+  // a clone of the demo workbook.
   React.useEffect(() => {
     let live = true;
     api.state().then((s) => {
@@ -57,14 +59,14 @@ export function SpreadsheetPage({ pageKey = "spreadsheet" }: { pageKey?: string 
       const snap = s[KEY];
       if (isWorkbookSnapshot(snap)) { setInitial(snap); setPhase("ready"); }
       else if (snap === null) { setPhase("empty"); }
-      else {
+      else if (demoSeed) {
         const seed = seedWorkbook();
         setInitial(seed); setPhase("ready");
         api.setState(KEY, seed).catch(() => {});
-      }
+      } else { setPhase("empty"); }
     }).catch(() => setPhase("empty"));
     return () => { live = false; };
-  }, [KEY]);
+  }, [KEY, demoSeed]);
 
   const mountSeed = React.useCallback(() => {
     const seed = seedWorkbook();

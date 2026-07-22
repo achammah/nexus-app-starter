@@ -55,10 +55,21 @@ function seedBoard(title: string): WhiteboardScene {
   return { elements };
 }
 
+/* a genuinely NEW page (no demoSeed) opens on a blank board carrying only its title —
+   never a clone of a demo page's content. The rich board is opt-in (config.demoSeed). */
+function emptyBoard(title: string): WhiteboardScene {
+  const elements = convertToExcalidrawElements(
+    [{ type: "text", x: 0, y: 0, text: title, fontSize: 28, strokeColor: "#1e1e1e" }] as never,
+  ) as unknown as WhiteboardScene["elements"];
+  return { elements };
+}
+
 export default function WhiteboardPage({ page }: { page: PageConfig }) {
   const KEY = wbDocKey(page.key);
   const config = React.useMemo(() => resolveWhiteboardConfig(page.whiteboard), [page.whiteboard]);
-  const { phase, initial, reloadNonce, save, saveState, reseed } = usePageDoc<WhiteboardScene>(KEY, isScene, () => seedBoard(page.label));
+  const { phase, initial, reloadNonce, save, saveState, reseed } = usePageDoc<WhiteboardScene>(
+    KEY, isScene, () => (page.demoSeed ? seedBoard(page.label) : emptyBoard(page.label)),
+  );
 
   const bar = (
     <div className="nxPageBar" data-testid="wb-page-bar">

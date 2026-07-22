@@ -105,6 +105,11 @@ function seedSystemMap(): FlowDoc {
 
 const newId = () => `n_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`;
 
+/* a genuinely NEW page (no demoSeed) opens on a single starter node, not the demo
+   graph — so the canvas + its add-node/edge-draw tools render (FlowView's zero-row
+   empty state has no add affordance), while never cloning the System Map demo. */
+const emptyFlowDoc = (title: string): FlowDoc => ({ nodes: [{ id: newId(), title, kind: "System", note: "", connectsTo: [] }] });
+
 export default function FlowPage({ page }: { page: PageConfig }) {
   const KEY = flowDocKey(page.key);
   const VKEY = flowViewKey(page.key);
@@ -144,12 +149,12 @@ export default function FlowPage({ page }: { page: PageConfig }) {
       if (!live) return;
       const d = s[KEY];
       if (isFlowDoc(d)) setDoc(d);
-      else { const seed = seedSystemMap(); setDoc(seed); api.setState(KEY, seed).catch(() => {}); }
+      else { const seed = page.demoSeed ? seedSystemMap() : emptyFlowDoc(page.label); setDoc(seed); api.setState(KEY, seed).catch(() => {}); }
       const vs = s[VKEY];
       setViewStateRaw(vs && typeof vs === "object" && !Array.isArray(vs) ? (vs as Record<string, unknown>) : {});
-    }).catch(() => { if (live) setDoc(seedSystemMap()); });
+    }).catch(() => { if (live) setDoc(page.demoSeed ? seedSystemMap() : emptyFlowDoc(page.label)); });
     return () => { live = false; };
-  }, [KEY, VKEY]);
+  }, [KEY, VKEY, page.demoSeed, page.label]);
 
   // rows for FlowView: the graph draws edges from `_refs` (the id decoration the record
   // API would add), so mirror `connectsTo` into `_refs` here — that is what makes
@@ -189,10 +194,10 @@ export default function FlowPage({ page }: { page: PageConfig }) {
   }, [persistVs]);
 
   const reset = React.useCallback(() => {
-    const seed = seedSystemMap();
+    const seed = page.demoSeed ? seedSystemMap() : emptyFlowDoc(page.label);
     setDoc(seed); setViewStateRaw({}); setSelection({});
     persistDoc(seed); persistVs({});
-  }, [persistDoc, persistVs]);
+  }, [persistDoc, persistVs, page.demoSeed, page.label]);
 
   const noop = React.useCallback(() => {}, []);
 

@@ -38,6 +38,11 @@ export interface PageConfig {
   view?: Record<string, unknown>;
   /* FREE-SURFACE whiteboard: the canvas option set (tools/palette/templates/ops…) */
   whiteboard?: WhiteboardConfig;
+  /* FREE-SURFACE kinds only: seed this page with rich EXAMPLE content on first load
+     (the starter's showcase pages set it). Omitted (the default) → the page starts
+     EMPTY — a genuinely new page a client adds is a blank surface, never a clone of a
+     demo page's content. */
+  demoSeed?: boolean;
 }
 
 /* An object as the app shell sees it: the record-core ObjectConfig plus shell-only knobs.

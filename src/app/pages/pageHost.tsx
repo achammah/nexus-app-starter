@@ -42,7 +42,7 @@ export function ConfigPageHost({
   return (
     <React.Suspense fallback={<PageLoading label={t("page.generic.loading")} />}>
       {page.kind === "spreadsheet" ? (
-        <SpreadsheetPage pageKey={page.key} />
+        <SpreadsheetPage pageKey={page.key} demoSeed={!!page.demoSeed} />
       ) : page.kind === "whiteboard" ? (
         <LazyWhiteboardPage page={page} />
       ) : page.kind === "flow" ? (
