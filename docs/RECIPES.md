@@ -285,28 +285,60 @@ The full option set (every key optional but `startDateField`, resolved through t
 
 ## Give an object a map view
 
-Records with coordinates plot as markers with record-card popups; a corner chip counts records without coordinates (never silently dropped).
+A full-fidelity map: a switchable basemap (streets/light/dark/satellite/terrain), layer toggles (points · clustering · heatmap), color- and size-by-field markers with a legend, draw/measure tools that filter records by the drawn area, search + geocode, routing between records, and click-to-add. Records without coordinates are counted in a corner chip (never silently dropped). Every capability is config-composable with a sensible default and overridable.
 
-1. The object needs two `number` fields holding latitude/longitude, and a `views` entry with `"type": "map"`:
+1. The object needs two `number` fields holding latitude/longitude, and a `views` entry with `"type": "map"`. The minimum is inference-driven — coordinate fields named `lat`/`latitude` and `lng`/`lon`/`long`/`longitude` are picked up automatically:
 ```jsonc
 { "key": "sites", "label": "Sites", "labelOne": "Site", "defaultView": "map",
   "views": [
     { "type": "table" },
-    { "type": "map", "colorField": "kind" }
+    { "type": "map", "colorField": "kind", "sizeField": "headcount" }
   ],
   "fields": [
     { "key": "name", "label": "Name", "type": "text", "primary": true },
     { "key": "kind", "label": "Kind", "type": "select",
       "options": [ { "value": "Office", "color": "blue" }, { "value": "Warehouse", "color": "orange" } ] },
+    { "key": "headcount", "label": "Headcount", "type": "number" },
     { "key": "lat", "label": "Latitude", "type": "number" },
     { "key": "lng", "label": "Longitude", "type": "number" }
   ] }
 ```
-2. Config keys (all optional when inference can fill them): `latField`/`lngField` name the coordinate fields — omitted, the view infers them from number fields named `lat`/`latitude` and `lng`/`lon`/`long`/`longitude` (key first, label second). `titleField` names the popup/pin title (default: the primary field). `colorField` names a select field — pins and points tint from its option palette, the same colors its chips use everywhere else.
-3. Rendering scales by count: up to 25 located records each is a real pin button (keyboard-focusable, tap-to-open popup); past that the view switches to GL clustering (cluster click zooms to its expansion). Clicking a pin or point opens a record-card popup; Open lands on the record peek. The map fits bounds to the data once on load.
-4. Tiles come from OpenFreeMap (free, no token, no account). When the tile host is unreachable the view falls back to a plain token-colored canvas — markers, clustering and popups keep working — and shows a "Map tiles unavailable" chip. Offline CI runs on exactly this path.
-5. Wiring to Nexus: records usually arrive with coordinates already set (imports, warehouse sync). To geocode an address INTO `lat`/`lng`, follow the AI-enrichment seam ("Make a field AI-enrichable"): a `primitive` task on an address field whose output writes the two number fields — the map picks the values up on the next poll. No geocoding ships in the view itself.
-6. Demo object: `demo_places` (hidden from the nav; front door on the Kit demo page). Journey + manifest rows: `journeys/extra/map-view.mjs`.
+
+2. The full config surface (every key optional; each has a default so it works out of the box AND is overridable so a client tailors it):
+
+| Key | Values | Drives |
+|---|---|---|
+| `latField` / `lngField` | `number` field keys (inferred when omitted) | the coordinates |
+| `titleField` | any field key (default: the primary) | the pin/popup title |
+| `colorField` | a `select` field key | pins/points/clusters tint from its option palette; the legend lists them |
+| `sizeField` | a `number`/`currency` field key | marker radius scales by the value; the legend shows the ramp |
+| `basemaps` | a subset of `streets`·`light`·`dark`·`satellite`·`terrain` (default all) | which basemaps the switcher offers |
+| `defaultBasemap` | one of the offered (default `streets`) | the basemap on load |
+| `clustering` | boolean (default true) | cluster nearby points past the threshold |
+| `clusterRadius` | 20–100 px (default 50) | the cluster grouping radius (also a live slider) |
+| `clusterThreshold` | number (default 25) | located-count above which clustering activates |
+| `heatmap` | boolean (default false) | show the heatmap layer by default (always toggleable) |
+| `heatmapWeightField` | a `number`/`currency` field key | weights the heatmap density |
+| `legend` | boolean (default true) | the color/size legend |
+| `draw` | boolean (default true) | the draw + measure tools (distance/area/radius) |
+| `filterByArea` | boolean (default true) | a drawn polygon/circle filters the plotted records |
+| `geocode` | boolean (default true) | address search in the map search box |
+| `route` | boolean (default true) | route/directions between two records |
+| `addPoint` | boolean (default true) | click the map to create a record there (needs create rights) |
+| `scaleControl` / `geolocateControl` / `fullscreenControl` | boolean (defaults true/false/true) | the native controls |
+| `geocodeEndpoint` / `routeEndpoint` | URL strings (optional) | the provider seam — see below |
+
+3. **Layers** — a Layers panel toggles Points, Cluster-nearby (with a live radius slider) and Heatmap; the choices persist per object in the saved-view state. Points render as real keyboard-focusable pin buttons up to the threshold (or with clustering off, up to 400), and as GPU circles/clusters above it. Turning Points off leaves a heatmap-only view.
+
+4. **Basemaps** — the switcher offers vector styles (OpenFreeMap `bright`/`positron`, CARTO `dark-matter`) and raster imagery (Esri World Imagery satellite, OpenTopoMap terrain). All are FREE and keyless — no token can leak. When a style/tile host is unreachable the view falls back to a token-only canvas (markers, clustering, heatmap, draw and popups keep working) and shows a "Map tiles unavailable" chip; offline CI runs on exactly this path. All chrome (controls, panels, legend, popups) is token-themed in light and dark and re-derives on a skin change.
+
+5. **Draw / measure / filter** — the tool rail draws a line (distance), a polygon (area) or a radius circle; a drawn polygon/circle also filters the plotted records to those inside (a "N of M in area" chip clears it). **Route** picks two records and draws a path with a distance + ETA. **Add point** opens the create dialog seeded with the clicked coordinates (the review surface — no silent write).
+
+6. **Geocode + route provider seam** — geocoding and routing ship with a LOCAL deterministic MOCK (works offline; a small gazetteer + a great-circle route), so the capability is wired end-to-end with no external service and no key. To use a real provider, set `geocodeEndpoint` / `routeEndpoint` on the view to an APP route that proxies a keyed vendor SERVER-SIDE (the key never reaches the browser). Shapes: geocode returns `[{ label, lng, lat, bbox? }]`; route takes `{ waypoints: [[lng,lat],…] }` and returns `{ coordinates: [[lng,lat],…], distanceM, durationS }`. See `src/ui/record-core/views/map/geocode.ts`.
+
+7. **Wiring to Nexus** — records usually arrive with coordinates set (imports, warehouse sync); a record created or updated by a workflow, agent or external writer appears on the next rev poll like any view. To geocode an address INTO `lat`/`lng` at write time, use the AI-enrichment seam ("Make a field AI-enrichable"): a `primitive` task on an address field whose output writes the two number fields.
+
+8. Demo object: `demo_places` (hidden from the nav; front door on the Kit demo page) — a dense, realistic geo demo (100+ located rows across Western Europe, colored by kind and sized by headcount). Journeys + manifest rows: `journeys/extra/map-view.mjs`; pure cores unit-tested in `journeys/unit/map-geo.test.ts` + `journeys/unit/map-depth.test.ts`.
 
 ## Save + share list views
 Views menu (any object list): shape filters/layout/grouping/rollup → "Save current as view" → named, server-persisted, visible to the whole workspace; "All <object>" resets. Kanban Rollup picker: sum/avg/min/max over any numeric field per column. Bulk edit: select rows → Edit → field + value (empty clears) with live progress. Multi-level sort: shift-click a second header.
