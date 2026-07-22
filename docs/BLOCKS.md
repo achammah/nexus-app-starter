@@ -5,11 +5,13 @@ The composed surfaces in `src/ui/blocks/`. Each implements the contract in
 option reference — what you pass, what it stores, what it can do.
 
 > **Acquiring them.** These blocks live in the nexus-ui library and arrive in an app
-> through `npm run sync-ui`. A block's own npm dependencies are NOT vendored — the app
-> must declare them in its `package.json` or the build fails on an unresolved import:
-> `exceljs` (workbook XLSX/CSV), `docx` + `mammoth` (document import/export), `three`
-> (3D viewer). Check `src/ui/.ui-version` to see which library commit an app currently
-> carries. See `docs/CONSTRAINTS.md` §"A vendored block brings its own dependencies".
+> through `npm run sync-ui`; `src/ui/.ui-version` records which library commit an app
+> currently carries. A block's npm dependencies are NOT vendored with its source — the app
+> must declare them itself: `three` (3D viewer, a STATIC import, so it breaks the build
+> when missing), `exceljs` (workbook XLSX/CSV) and `docx` + `mammoth` (document
+> import/export), all three dynamic, so they break at the click instead. Verify against
+> `package.json` and the lockfile, not against a local build —
+> `docs/CONSTRAINTS.md` §"A vendored block brings its own dependencies".
 
 ---
 

@@ -98,8 +98,9 @@ renders it itself.
 emits `onPageIndex(entries)` whenever its page set changes and hands back an opener
 through `onOpenPageRef(open)`, so handbook pages appear alongside records in ONE ⌘K.
 Pair it with that surface's own `cmdK` turned off so the app owns the single palette —
-detail in `docs/BLOCKS.md` §"Feeding the app's unified search". Any block can follow the
-same two-prop shape.
+the wired document page passes `config={{ cmdK: false }}` for exactly this reason, since
+otherwise ⌘K opens two stacked palettes on that page. Detail in `docs/BLOCKS.md`
+§"Feeding the app's unified search". Any block can follow the same two-prop shape.
 
 ## The data spine — `app_state`
 

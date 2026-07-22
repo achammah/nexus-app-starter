@@ -404,6 +404,10 @@ Options: `key` (default `tasks` — the self-relations point at it), `label`/`la
 `views` and `defaultView`. The default view set is Today · Table · Board · Timeline ·
 Calendar, opening on Today.
 
+`seedTasks(today?)` returns a ready demo project — a realistic product-launch plan of 34
+tasks across 5 people, with subtask trees and real cross-team dependencies, dated relative
+to the day you call it, so a timeline and a focus view have something to say immediately.
+
 "Done" resolves automatically: any status value named like done/complete/shipped/closed/cancel
 counts as complete for overdue, at-risk and critical-path styling. Pass `doneStatuses` to
 be explicit instead.

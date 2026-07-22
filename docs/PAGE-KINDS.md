@@ -70,7 +70,7 @@ Config pages and hand-written custom pages merge into ONE ordered nav list, so a
 | `whiteboard` | free surface | an excalidraw canvas page | — (optional `whiteboard` config) | `WhiteboardPage` |
 | `flow` | free surface | a node-graph canvas page | — | `FlowPage` |
 | `spreadsheet` | free surface | a full Univer workbook | — | `Spreadsheet` |
-| `document` | free surface | a Notion-style page WORKSPACE — nested pages, tree, links, backlinks | — (optional `scene`-free; see `docs/BLOCKS.md`) | `DocumentPage` (lazy) |
+| `document` | free surface | a Notion-style page WORKSPACE — nested pages, tree, links, backlinks | — (spectrum options: `docs/BLOCKS.md`) | `DocumentPage` (lazy) |
 | `viewer3d` | free surface | a 3D object / floor-plan viewer | — (optional `scene`) | `Viewer3DPage` (lazy) |
 | `map` | aggregate | records plotted on a GL map | `source` + coordinate fields on the object | `AggregatePage` |
 | `calendar` | aggregate | records on a calendar; `source` may merge objects | `source` + a date field on each object | `AggregatePage` |
