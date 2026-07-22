@@ -18,7 +18,7 @@ The **building-blocks litmus** (`npm run journeys` → `blocks-coverage-litmus`)
 ## Quick start
 
 ```bash
-npm install
+npm install --force   # glide-data-grid@6.0.3 pins React <=18; --force keeps modern peer resolution (docs/DEPENDENCIES.md)
 npm run sync-ui       # vendor nexus-ui source into src/ui (sibling checkout or $NEXUS_UI_PATH)
 npm run build
 npm run serve         # zero-dep server on :4000 (+3000/8080) — API + built UI

@@ -6,7 +6,7 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 
 | Package | Range → resolved | License | Why it exists | KB | Loading |
 |---|---|---|---|---|---|
-| react / react-dom | ^18.3.1 → 18.3.1 | MIT | the UI runtime | 368 / 4488 | main chunk |
+| react / react-dom | ^19.0.0 → 19.2.8 | MIT | the UI runtime | 252 / 7264 | main chunk |
 | @tanstack/react-table | ^8.20.0 → 8.21.3 | MIT | DataTable's column/sort model | 776 | main chunk |
 | @tanstack/react-virtual | ^3.10.0 → 3.14.6 | MIT | DataTable windowing past 80 rows | 68 | main chunk |
 | @dnd-kit/core | ^6.1.0 → 6.3.1 | MIT | KanbanBoard drag | 1532 | main chunk |
@@ -50,6 +50,8 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | @univerjs/presets | 0.25.1 (pinned exact) → 0.25.1 | Apache-2.0 | the Spreadsheet page's full Univer workbook: the `createUniver` entry point that composes the sheet preset. Pulls the sheet engine packages transitively (@univerjs/core, sheets, sheets-ui, engine-formula, engine-render, design, themes, ...). Pinned exact (no `^`): the pre-1.0 line ships breaking changes on minors | 14040 | LAZY only, rides the WorkbookSurface chunk (React.lazy); zero eager cost |
 | @univerjs/preset-sheets-core | 0.25.1 (pinned exact) → 0.25.1 | Apache-2.0 | the sheets preset: the ribbon toolbar, formula bar (400+ functions via engine-formula), number formats, bold/fill, merge, freeze, multi-sheet, insert/delete rows and columns. The full workbook UI plus engine | 10048 | LAZY only, rides the WorkbookSurface chunk |
 
+**Install (React 19):** `@glideapps/glide-data-grid@6.0.3` (latest) pins its peer to React ≤18 but renders correctly on 19, so a first install uses `npm install --force`, which keeps npm's modern peer resolution so every glide/recharts peer (including `react-is` and `react-responsive-carousel`) still auto-installs. `--legacy-peer-deps` does NOT work here: it strips those peers and the build fails to resolve `react-is` / `react-responsive-carousel`. `npm ci` from the committed lockfile needs no flag.
+
 ## Dev
 
 | Package | Range → resolved | License | Why it exists | KB |
@@ -59,7 +61,7 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | typescript | ^5.5.4 → 5.9.3 | Apache-2.0 | typecheck (`tsc -b` in `npm run build`) | 23388 |
 | tailwindcss + @tailwindcss/vite | ^4.0.0 → 4.3.3 | MIT | the shadcn styling layer over the `--nx-*` tokens | 852 + 28 |
 | playwright | ^1.45.0 → 1.61.1 | Apache-2.0 | the journey runner's browser | 4904 |
-| @types/react, @types/react-dom | → 18.3.31 / 18.3.7 | MIT | React typings | 464 / 60 |
+| @types/react, @types/react-dom | → 19.2.17 / 19.2.3 | MIT | React typings | 436 / 80 |
 
 ## Loading strategy + bundle budget
 
