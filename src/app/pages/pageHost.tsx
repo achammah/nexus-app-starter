@@ -17,6 +17,8 @@ import { SpreadsheetPage } from "./Spreadsheet";
 const LazyWhiteboardPage = React.lazy(() => import("./WhiteboardPage"));
 const LazyFlowPage = React.lazy(() => import("./FlowPage"));
 const LazyAggregatePage = React.lazy(() => import("./AggregatePage"));
+const LazyDocumentPage = React.lazy(() => import("./DocumentPage"));
+const LazyViewer3DPage = React.lazy(() => import("./Viewer3DPage"));
 
 const PageLoading = ({ label }: { label: string }) => (
   <div className="pageBleed" data-testid="config-page-loading">
@@ -47,6 +49,10 @@ export function ConfigPageHost({
         <LazyWhiteboardPage page={page} />
       ) : page.kind === "flow" ? (
         <LazyFlowPage page={page} />
+      ) : page.kind === "document" ? (
+        <LazyDocumentPage pageKey={page.key} demoSeed={!!page.demoSeed} />
+      ) : page.kind === "viewer3d" ? (
+        <LazyViewer3DPage pageKey={page.key} demoSeed={!!page.demoSeed} scene={(page as { scene?: "vehicle" | "floorplan" }).scene ?? "vehicle"} />
       ) : (
         <LazyAggregatePage page={page} config={config} openRecord={openRecord} go={go} />
       )}

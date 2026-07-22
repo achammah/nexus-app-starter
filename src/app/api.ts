@@ -26,7 +26,7 @@ import type { Skin } from "../ui/skins/skin";
    every deal AND every session on one calendar). `view` carries any of the underlying
    view's config keys (basemaps, clustering, enabledViews…) so a client tailors it.
    See docs/RECIPES.md "Add a config-driven page (config.pages[])". */
-export type PageKind = "whiteboard" | "flow" | "spreadsheet" | "map" | "calendar";
+export type PageKind = "whiteboard" | "flow" | "spreadsheet" | "map" | "calendar" | "document" | "viewer3d";
 export interface PageConfig {
   key: string;
   label: string;

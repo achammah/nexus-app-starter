@@ -67,6 +67,8 @@ const KIND_ICON: Record<PageKind, React.ReactNode> = {
   spreadsheet: <Table2 size={15} />,
   map: <Map size={15} />,
   calendar: <CalendarDays size={15} />,
+  document: <FileText size={15} />,
+  viewer3d: <Boxes size={15} />,
 };
 
 export function pageIcon(name: string | undefined, kind?: PageKind): React.ReactNode {

@@ -48,7 +48,9 @@ const store =
 if (store.ready) await store.ready; // replay the event log before serving
 startScheduler(store);
 
-const MIME = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json", ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2" };
+/* `.mjs` matters: bundled ES-module workers (pdfjs, and any worker a block lazy-loads)
+   ship as .mjs, and a browser REFUSES to import a module served as octet-stream. */
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json", ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2", ".wasm": "application/wasm" };
 
 function send(res, code, body, type = "application/json") {
   const data = type === "application/json" ? JSON.stringify(body) : body;
