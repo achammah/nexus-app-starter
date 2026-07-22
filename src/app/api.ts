@@ -4,8 +4,46 @@
 import type { FileMeta, ObjectConfig, RecordRow, TimelineEvent } from "../ui/record-core/types";
 import type { Suggestion } from "../ui/record-core/useSuggestions";
 import type { Q } from "../ui/blocks/wizard";
+import type { WhiteboardConfig } from "../ui/record-core/fields/whiteboard/config";
 
 import type { Skin } from "../ui/skins/skin";
+
+/* A config-declared top-level page (config.pages[]) — the generalized customPages
+   extension point: a nav surface hosting a full-fidelity view/field component with
+   ZERO app code. `kind` picks the host; free-surface kinds own STORED content (a
+   per-page document in app_state), aggregate kinds pull records ACROSS `source`.
+   Everything else is a sensible default (works out of the box) + overridable.
+
+     FREE-SURFACE (own content, no records):
+       whiteboard  — a full excalidraw canvas (Miro/Paint), `whiteboard` config-composable
+       flow        — a free node graph (nodes are stored content, drawn/linked by hand)
+       spreadsheet — a full Univer workbook (the SpreadsheetPage precedent)
+     AGGREGATE (all records across `source` object(s) on one surface):
+       map         — every record with coordinates on one map (`view` = map view config)
+       calendar    — every record with a date on one calendar (`view` = calendar view config)
+
+   `source` is required for aggregate kinds (a string, or an array to MERGE objects —
+   every deal AND every session on one calendar). `view` carries any of the underlying
+   view's config keys (basemaps, clustering, enabledViews…) so a client tailors it.
+   See docs/RECIPES.md "Add a config-driven page (config.pages[])". */
+export type PageKind = "whiteboard" | "flow" | "spreadsheet" | "map" | "calendar";
+export interface PageConfig {
+  key: string;
+  label: string;
+  icon?: string;              // a lucide icon name (kebab or Pascal); falls back to the kind's icon
+  kind: PageKind;
+  /* AGGREGATE kinds: the object key(s) whose records feed the surface */
+  source?: string | string[];
+  /* AGGREGATE kinds: view-config overrides (map/calendar configSchema keys) */
+  view?: Record<string, unknown>;
+  /* FREE-SURFACE whiteboard: the canvas option set (tools/palette/templates/ops…) */
+  whiteboard?: WhiteboardConfig;
+  /* FREE-SURFACE kinds only: seed this page with rich EXAMPLE content on first load
+     (the starter's showcase pages set it). Omitted (the default) → the page starts
+     EMPTY — a genuinely new page a client adds is a blank surface, never a clone of a
+     demo page's content. */
+  demoSeed?: boolean;
+}
 
 /* An object as the app shell sees it: the record-core ObjectConfig plus shell-only knobs.
    `hideInNav` omits it from every nav surface (sidebar · drawer · bottom tab bar) while it
@@ -50,8 +88,12 @@ export interface AppConfig {
   users?: string[];
   /* server-set: seeded fictional rows are present (drives the Demo badge) */
   demo?: boolean;
-  /* server-set: feature flags (one env flag gates nav + page + API) */
-  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean; tasks?: boolean; schema?: boolean; gallery?: boolean };
+  /* server-set: feature flags (one env flag gates nav + page + API). Config-declared
+     pages honour the same gate (features[page.key] === false hides one). */
+  features?: { teams?: boolean; webhooks?: boolean; theme?: boolean; apikeys?: boolean; tasks?: boolean; schema?: boolean; gallery?: boolean } & Record<string, boolean | undefined>;
+  /* config-driven top-level pages — nav surfaces hosting a full view/field with no
+     app code (the generalized customPages point). See PageConfig. */
+  pages?: PageConfig[];
   objects: AppObject[];
 }
 

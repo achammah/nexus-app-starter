@@ -16,8 +16,25 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const URLBASE = process.env.JOURNEY_URL || "http://localhost:4000";
+/* JOURNEY_URL — FAIL-CLOSED. Journeys WRITE test data (records, stage moves, saved
+   views, notes) against whatever they drive, so the runner must NEVER silently target
+   the live preview on :4000: a bare default or an explicit :4000 pollutes the in-memory
+   store people are reviewing (measured incident). So: default to a THROWAWAY band port
+   (:4173, auto-booted below), and REFUSE :4000 outright with a clear error. Point it at
+   any other port you like (e.g. a pre-booted server) via JOURNEY_URL. */
+const URLBASE = process.env.JOURNEY_URL || "http://localhost:4173";
 const SURFACE = process.env.JOURNEY_SURFACE || "local";
+let BOOT_PORT;
+try { BOOT_PORT = new URL(URLBASE).port || "4173"; }
+catch { console.error(`REFUSED: JOURNEY_URL="${URLBASE}" is not a valid URL.`); process.exit(3); }
+if (BOOT_PORT === "4000") {
+  console.error(
+    `REFUSED: JOURNEY_URL="${URLBASE}" targets the live preview port :4000. Journeys write test\n` +
+    `data and would pollute it. Use a throwaway band port (e.g. http://localhost:4173) or leave\n` +
+    `JOURNEY_URL unset (it defaults to :4173, which the runner auto-boots).`,
+  );
+  process.exit(3);
+}
 const SHOTS = path.join(ROOT, ".playwright-mcp");
 mkdirSync(SHOTS, { recursive: true });
 
@@ -35,7 +52,9 @@ async function up(u) {
 }
 if (!(await up(URLBASE))) {
   if (SURFACE !== "local") { console.error(`BLOCKED: ${URLBASE} unreachable`); process.exit(3); }
-  serverProc = spawn("node", [path.join(ROOT, "server", "server.mjs")], { stdio: "ignore", detached: false });
+  // auto-boot on the TARGET port (never :4000 — guarded above), so an unset JOURNEY_URL
+  // self-boots a throwaway :4173 server instead of latching onto whatever holds :4000
+  serverProc = spawn("node", [path.join(ROOT, "server", "server.mjs")], { stdio: "ignore", detached: false, env: { ...process.env, PORT: BOOT_PORT } });
   for (let i = 0; i < 20 && !(await up(URLBASE)); i++) await new Promise((r) => setTimeout(r, 400));
   if (!(await up(URLBASE))) { console.error("BLOCKED: server failed to boot"); process.exit(3); }
 }
@@ -182,6 +201,33 @@ const journeys = [
       await page.waitForSelector('[data-testid="record-name"]');
       const name = await page.textContent('[data-testid="record-name"]');
       assert(name?.includes("Cargolane"), `palette jump lands on the record (${name})`);
+    },
+  },
+  {
+    name: "unified-search", feature: "Unified search (chrome)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="nav"]');
+      // the chrome search is GLOBAL, never scoped to the active object
+      const label = await page.textContent('[data-testid="global-search"]');
+      assert(!/compan/i.test(label ?? ""), `top-bar search is not object-scoped (${label})`);
+      // it opens the one unified palette, seeded by the character typed into it
+      await page.focus('[data-testid="global-search"]');
+      await page.keyboard.press("s");
+      await page.waitForSelector('[data-testid="palette-input"]', { timeout: 5000 });
+      assert((await page.inputValue('[data-testid="palette-input"]')) === "s", "the first typed character seeds the palette");
+      // one query reaches RECORDS across objects AND the page taxonomy
+      await page.fill('[data-testid="palette-input"]', "site");
+      await page.waitForFunction(
+        () => document.querySelectorAll('[data-testid^="palette-hit-"]').length > 0,
+        null, { timeout: 8000 },
+      );
+      const groups = await page.$$eval('[cmdk-group]:not([hidden]) [cmdk-group-heading]', (els) => els.map((e) => e.textContent?.trim()));
+      assert(groups.includes("Records"), `records group present (${groups.join("|")})`);
+      assert(groups.includes("Pages"), `pages group present (${groups.join("|")})`);
+      // per-LIST filtering still has its own field behind the palette
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[data-testid="list-search"]');
     },
   },
   {
@@ -543,12 +589,8 @@ const journeys = [
       const pickItem = async (trigger, locator) => {
         await page.click(trigger);
         await locator.waitFor();
-        for (let i = 0; i < 12; i++) {
-          if ((await locator.getAttribute("data-highlighted")) !== null) break;
-          await page.keyboard.press("ArrowDown");
-          await page.waitForTimeout(70);
-        }
-        await page.keyboard.press("Enter");
+        await locator.click(); // click the item directly — the ArrowDown key-hunt raced Radix focus transfer
+        await locator.waitFor({ state: "detached", timeout: 2000 }).catch(() => {}); // let the menu tear down before any reopen (the real cause of the 2nd-open timeout)
       };
       await page.goto(URLBASE + "/#/o/companies");
       await page.waitForSelector('[data-testid="table-companies"] tbody tr');
@@ -1351,12 +1393,8 @@ const journeys = [
         await page.click(`[data-testid="${trigger}"]`);
         const it = page.locator(`[data-testid="${item}"]`);
         await it.waitFor();
-        for (let i = 0; i < 8; i++) {
-          if ((await it.getAttribute("data-highlighted")) !== null) break;
-          await page.keyboard.press("ArrowDown");
-          await page.waitForTimeout(80);
-        }
-        await page.keyboard.press("Enter");
+        await it.click(); // click the item directly — the ArrowDown key-hunt raced Radix focus transfer
+        await it.waitFor({ state: "detached", timeout: 2000 }).catch(() => {}); // let the menu tear down before any reopen (the real cause of the 2nd-open timeout)
       };
       // companies: count per industry, no stageField needed
       await page.goto(URLBASE + "/#/o/companies");
@@ -1591,12 +1629,8 @@ const journeys = [
         await page.click('[data-testid="group-by"]');
         const item = page.locator(`[data-testid="group-by-${key}"]`);
         await item.waitFor();
-        for (let i = 0; i < 8; i++) {
-          if ((await item.getAttribute("data-highlighted")) !== null) break;
-          await page.keyboard.press("ArrowDown");
-          await page.waitForTimeout(80);
-        }
-        await page.keyboard.press("Enter");
+        await item.click(); // click the item directly — the ArrowDown key-hunt raced Radix focus transfer
+        await item.waitFor({ state: "detached", timeout: 2000 }).catch(() => {}); // let the menu tear down before any reopen (the real cause of the 2nd-open timeout)
       };
       await pickGroup("owner");
       await page.waitForSelector('[data-testid="col-you"]', { timeout: 6000 });
@@ -4126,6 +4160,94 @@ const journeys = [
       await page.setInputFiles('[data-testid="gallery-src-file"]', { name: "notes.txt", mimeType: "text/plain", buffer: buf });
       await page.waitForFunction(() => document.querySelector('[data-testid="gallery-wizard"]')?.textContent?.includes("notes.txt"));
       assert(true, "click-upload adds a file entry with its name + size");
+    },
+  },
+  {
+    // config.pages[] nav integration — the generalization: config-declared pages appear
+    // in the nav alongside the hand-written customPages, feature-gated + deep-linkable,
+    // with NO regression to the static pages.
+    name: "pages-nav-integration", feature: "config.pages[] nav + deep-link",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="nav"]');
+      for (const k of ["warroom", "systemmap", "scratch", "allsites", "companycal"]) {
+        assert(await page.locator(`[data-testid="nav-p-${k}"]`).count() === 1, `config page "${k}" is a nav item`);
+      }
+      // static customPages must NOT regress (still present)
+      assert(await page.locator('[data-testid="nav-p-spreadsheet"]').count() === 1, "static Spreadsheet page still in nav");
+      assert(await page.locator('[data-testid="nav-p-tasks"]').count() === 1, "static Tasks page still in nav");
+      // deep-linkable: a config page route resolves to its titled surface (reload lands on it)
+      await page.goto(URLBASE + "/#/p/allsites");
+      await page.waitForSelector('[data-testid="page-aggregate-allsites"]', { timeout: 12000 });
+      const title = await page.textContent(".nxPageBarTitle");
+      assert(title?.includes("All Sites"), `deep-link #/p/allsites lands on "All Sites" (got "${title}")`);
+    },
+  },
+  {
+    // free-surface flow — a standalone node graph over an in-memory store: seeded dense,
+    // layout-switchable, and hand-CREATE adds a node (proves the store adapter writes).
+    name: "page-flow-freesurface", feature: "Pages: free-surface flow",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/systemmap");
+      await page.waitForSelector('[data-testid="page-flow-systemmap"]', { timeout: 12000 });
+      await page.waitForSelector(".react-flow__node", { timeout: 10000 });
+      const before = await page.locator(".react-flow__node").count();
+      assert(before >= 15, `seeded graph is dense (${before} nodes ≥ 15)`);
+      assert(await page.locator('[data-testid="flow-layout-grid"]').count() === 1, "layout switcher offers Grid");
+      // hand-create through the in-memory store: the add button drops a node
+      await page.click('[data-testid="flow-add-node"]');
+      await page.waitForFunction((n) => document.querySelectorAll(".react-flow__node").length > n, before, { timeout: 6000 });
+      const after = await page.locator(".react-flow__node").count();
+      assert(after > before, `add-node writes to the page store (${before} → ${after})`);
+    },
+  },
+  {
+    // free-surface whiteboard — the full excalidraw canvas as a page, seeded + autosaving.
+    name: "page-whiteboard-freesurface", feature: "Pages: free-surface whiteboard",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/warroom");
+      await page.waitForSelector('[data-testid="page-whiteboard-warroom"]', { timeout: 12000 });
+      await page.waitForSelector(".excalidraw", { timeout: 12000 });
+      assert(await page.locator(".excalidraw canvas").count() >= 1, "the excalidraw canvas mounts as the page surface");
+      // the full tool set is surfaced (not a reduced embed) + the page reset affordance
+      assert(await page.locator('[data-testid="toolbar-rectangle"]').count() >= 1, "native drawing tools surfaced");
+      assert(await page.locator('[data-testid="wb-page-reset"]').count() === 1, "page reset affordance present");
+    },
+  },
+  {
+    // config-driven spreadsheet — kind:"spreadsheet" in config hosts the SAME full Univer
+    // workbook the static Spreadsheet page uses, under its own per-page store.
+    name: "page-spreadsheet-config", feature: "Pages: config-driven spreadsheet",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/scratch");
+      await page.waitForSelector('[data-testid="page-spreadsheet"]', { timeout: 12000 });
+      await page.waitForSelector('[data-testid="workbook-surface"] canvas, .nxWorkbook canvas', { timeout: 12000 });
+      assert(await page.locator("canvas").count() >= 1, "the Univer workbook renders on the config page");
+    },
+  },
+  {
+    // aggregate map — every record across the source object on ONE map.
+    name: "page-map-aggregate", feature: "Pages: aggregate map",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/allsites");
+      await page.waitForSelector('[data-testid="page-aggregate-allsites"]', { timeout: 12000 });
+      await page.waitForSelector("canvas", { timeout: 12000 });
+      const count = await page.textContent('[data-testid="aggregate-count"]');
+      assert(/\d+\s+across\s+Places/.test(count ?? ""), `aggregate count reads "N across Places" (got "${count}")`);
+      assert(await page.locator("canvas").count() >= 1, "the map surface renders the aggregated records");
+    },
+  },
+  {
+    // aggregate calendar (MULTI-source) — deals + sessions from TWO objects on one calendar.
+    name: "page-calendar-aggregate", feature: "Pages: aggregate calendar (multi-source)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/companycal");
+      await page.waitForSelector('[data-testid="page-aggregate-companycal"]', { timeout: 12000 });
+      const count = await page.textContent('[data-testid="aggregate-count"]');
+      assert(/across\s+Deals\s*\+\s*Sessions/.test(count ?? ""), `merges two objects — "across Deals + Sessions" (got "${count}")`);
+      await page.waitForSelector('[data-testid^="calendar-event-"]', { timeout: 12000 });
+      const events = await page.locator('[data-testid^="calendar-event-"]').count();
+      assert(events >= 8, `events from both objects render on one calendar (${events} ≥ 8)`);
     },
   },
 ];

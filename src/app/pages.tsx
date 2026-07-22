@@ -22,6 +22,41 @@ export interface PageDef {
   component: React.ComponentType;
 }
 
+import type { AppConfig, PageConfig } from "./api";
+import { pageIcon } from "./pageIcons";
+
+/* A nav entry, resolved for rendering. Static customPages and config-declared
+   config.pages[] entries share this shape so the sidebar / drawer / top bar /
+   ⌘K palette / breadcrumb all iterate ONE list and can't drift. */
+export interface NavPage {
+  key: string;
+  label: string;
+  icon?: React.ReactNode;
+  /* set for config.pages[] entries (a generic host renders them); absent for the
+     hand-written customPages (their `component` renders instead) */
+  config?: PageConfig;
+}
+
+/* customPages (static) + config.pages[] (runtime) as one ordered nav list —
+   the generalization: adding a config.pages[] entry adds a nav item with no code.
+   Config-page icons resolve from their string name (or the kind's default). */
+export function allNavPages(config: Pick<AppConfig, "pages">): NavPage[] {
+  const statics: NavPage[] = customPages.map((p) => ({ key: p.key, label: p.label, icon: p.icon }));
+  const declared: NavPage[] = (config.pages ?? []).map((p) => ({
+    key: p.key,
+    label: p.label,
+    icon: pageIcon(p.icon, p.kind),
+    config: p,
+  }));
+  return [...statics, ...declared];
+}
+
+/* the config.pages[] entry for a route key (null for a static customPage / object) */
+export function configPageFor(config: Pick<AppConfig, "pages">, key: string | undefined): PageConfig | null {
+  if (!key) return null;
+  return (config.pages ?? []).find((p) => p.key === key) ?? null;
+}
+
 import { Boxes, Database, KeyRound, ListTodo, Palette, Settings2, Shapes, Table2, Users2, Webhook } from "lucide-react";
 import { ApiKeysPage } from "./pages/ApiKeys";
 import { GalleryPage } from "./pages/Gallery";

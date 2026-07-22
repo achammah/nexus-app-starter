@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, RefreshCw, Sun, Users, X, Zap, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, RefreshCw, Search, Sun, Users, X, Zap, Sparkles } from "lucide-react";
 import { api, type AppConfig } from "./api";
 import { favList, favToggle, type Fav } from "./favorites";
 import { formatCell } from "../ui/record-core/DataTable";
@@ -8,7 +8,8 @@ import { applySkin, type Skin } from "../ui/skins/skin";
 import { skinPresets } from "../ui/skins/presets";
 import { ObjectView } from "./ObjectView";
 import { RecordView } from "./RecordView";
-import { customPages } from "./pages";
+import { customPages, allNavPages, configPageFor } from "./pages";
+import { ConfigPageHost } from "./pages/pageHost";
 import { CommandPalette } from "./CommandPalette";
 import { PanelSearch, PanelActions } from "./PanelPages";
 import { t } from "./i18n";
@@ -133,6 +134,8 @@ export function App() {
   }, []);
   // mobile nav drawer: burger (≤768px, both nav modes) opens a left Sheet
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  // an open REQUEST for the unified palette (new object each time; carries a seed char)
+  const [paletteSignal, setPaletteSignal] = React.useState<{ seed: string } | null>(null);
   // copilot side-panel (renders only when config.copilot is present)
   const [copilotOpen, setCopilotOpen] = React.useState(false);
   // keyboard-shortcuts help overlay (toggled by `?`)
@@ -366,7 +369,8 @@ export function App() {
           if (saved) applySkin(saved);
         }).catch(() => {});
         if (!route.object && !route.page && !/^#\/(reset|verify|delete|invite)\?/.test(window.location.hash)) {
-          route.go(c.objects[0] ? `#/o/${c.objects[0].key}` : customPages[0] ? `#/p/${customPages[0].key}` : "#/");
+          const firstPage = allNavPages(c)[0];
+          route.go(c.objects[0] ? `#/o/${c.objects[0].key}` : firstPage ? `#/p/${firstPage.key}` : "#/");
         }
         c.objects.forEach((o) => api.list(o.key).then((rows) => setCounts((m) => ({ ...m, [o.key]: rows.length }))).catch(() => {}));
       })
@@ -403,7 +407,10 @@ export function App() {
   /* ---- nav chrome: one knob (config app.nav), three surfaces (sidebar · top bar ·
      mobile drawer) sharing the same item/search renderers so they can't drift ---- */
   const navMode = config.app.nav ?? "side";
-  const visiblePages = customPages.filter((p) => (config.features as Record<string, boolean> | undefined)?.[p.key] !== false);
+  // static customPages + config.pages[] as ONE nav list (the generalization: a
+  // config.pages[] entry is a nav item with no code). Feature-gated identically.
+  const navPages = allNavPages(config);
+  const visiblePages = navPages.filter((p) => (config.features as Record<string, boolean> | undefined)?.[p.key] !== false);
   // every drawer path closes the drawer — including a click on the CURRENT object (no route change)
   const goNav = (h: string) => { route.go(h); setDrawerOpen(false); };
   const brand = (
@@ -426,26 +433,39 @@ export function App() {
       <Menu size={16} />
     </button>
   );
-  // the drawer search mirrors the topbar exactly: go to the active object's LIST first,
-  // THEN dispatch — a bare event dispatch does nothing visible from a record/custom page
+  /* The chrome search is GLOBAL, not a per-view filter: it opens the ⌘K palette,
+     which searches records across every object plus every page and object. One
+     unified surface, one implementation — per-LIST filtering keeps its own field
+     in the list view's FilterBar (`list-search`), where it belongs. Typing a
+     printable character straight into the trigger seeds the palette, so it still
+     behaves like a search field. */
   const searchBox = (inDrawer?: boolean) => (
-    <label className={inDrawer ? "topSearch drawerSearch" : "topSearch"} data-testid={inDrawer ? undefined : "global-search"}>
-      <input
-        placeholder={`Search ${active.label.toLowerCase()}…`}
-        data-testid={inDrawer ? "drawer-search" : undefined}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            const v = (e.target as HTMLInputElement).value;
-            route.go(`#/o/${active.key}`);
-            window.dispatchEvent(new CustomEvent("nx-search", { detail: v }));
-            if (inDrawer) setDrawerOpen(false);
-          }
-        }}
-      />
+    <button
+      type="button"
+      className={inDrawer ? "topSearch drawerSearch" : "topSearch"}
+      data-testid={inDrawer ? "drawer-search" : "global-search"}
+      aria-label={t("search.everything")}
+      onClick={() => {
+        setPaletteSignal({ seed: "" });
+        if (inDrawer) setDrawerOpen(false);
+      }}
+      onKeyDown={(e) => {
+        // Enter/Space keep their native button activation; any other printable seeds
+        if (e.key.length !== 1 || e.key === " " || e.metaKey || e.ctrlKey || e.altKey) return;
+        e.preventDefault();
+        setPaletteSignal({ seed: e.key });
+        if (inDrawer) setDrawerOpen(false);
+      }}
+    >
+      <Search size={14} className="topSearchIcon" />
+      <span className="topSearchLabel">{t("search.everything")}</span>
       {!inDrawer && <span className="kbd">⌘K</span>}
-    </label>
+    </button>
   );
-  const navButtons = (prefix: "" | "drawer-") => (
+  // Records (data objects) and Pages (config.pages[] + static customPages) are
+  // DIFFERENT taxonomies, so each nav surface renders them under its own header —
+  // a page is a surface, not a record.
+  const navObjectButtons = (prefix: "" | "drawer-") => (
     <>
       {config.objects.filter((o) => !o.hideInNav).map((o) => (
         <button
@@ -459,6 +479,10 @@ export function App() {
           <span className="navCount">{counts[o.key] ?? ""}</span>
         </button>
       ))}
+    </>
+  );
+  const navPageButtons = (prefix: "" | "drawer-") => (
+    <>
       {visiblePages.map((p) => (
         <button
           key={p.key}
@@ -540,7 +564,7 @@ export function App() {
       const mo = dest.match(/^#\/o\/([^/?]+)/);
       const mp = dest.match(/^#\/p\/([^/?]+)/);
       const label = mo ? (config.objects.find((o) => o.key === mo[1])?.label ?? mo[1])
-        : mp ? (customPages.find((p) => p.key === mp[1])?.label ?? mp[1])
+        : mp ? (navPages.find((p) => p.key === mp[1])?.label ?? mp[1])
         : dest;
       app.push({ keys: ["G", "then", k.toUpperCase()], label: `Go to ${label}` });
     }
@@ -555,7 +579,11 @@ export function App() {
           <header className="topNav" data-testid="nav-top">
             {burger}
             {brand}
-            <nav className="topNavItems">{navButtons("")}</nav>
+            <nav className="topNavItems">
+              {navObjectButtons("")}
+              {visiblePages.length > 0 && <span className="topNavDivider" aria-hidden="true" />}
+              {navPageButtons("")}
+            </nav>
             <span style={{ flex: 1 }} />
             <div className="topNavTools">
               {favs.length > 0 && (
@@ -640,10 +668,18 @@ export function App() {
           <div className="sideSection">
             <span className="nxMicro">Records</span>
             <nav className="sideNav" data-testid="nav">
-              {navButtons("")}
+              {navObjectButtons("")}
               {burger}
             </nav>
           </div>
+          {visiblePages.length > 0 && (
+            <div className="sideSection">
+              <span className="nxMicro">Pages</span>
+              <nav className="sideNav" data-testid="nav-pages">
+                {navPageButtons("")}
+              </nav>
+            </div>
+          )}
           {favs.length > 0 && (
             <div className="sideSection sideFavs" data-testid="fav-shelf">
               <span className="nxMicro">Favorites</span>
@@ -694,7 +730,7 @@ export function App() {
           {navMode === "side" && (
             <header className="top">
               <span className="crumb">
-                <b>{route.page ? customPages.find((p) => p.key === route.page)?.label ?? route.page : active.label}</b>
+                <b>{route.page ? navPages.find((p) => p.key === route.page)?.label ?? route.page : active.label}</b>
                 {route.recordId && <span>/ record</span>}
               </span>
               {searchBox()}
@@ -707,8 +743,22 @@ export function App() {
           <main className="content">
             {route.page ? (
               (() => {
-                const P = customPages.find((p) => p.key === route.page)?.component;
-                return P ? <P /> : <div className="nxCard" style={{ padding: 32 }}>Unknown page.</div>;
+                // a hand-written customPage renders its component; a config.pages[]
+                // entry renders through the generic ConfigPageHost (keyed per page so
+                // navigating between two same-kind pages remounts cleanly)
+                const staticPage = customPages.find((p) => p.key === route.page);
+                if (staticPage) { const P = staticPage.component; return <P />; }
+                const cfgPage = configPageFor(config, route.page);
+                if (cfgPage) return (
+                  <ConfigPageHost
+                    key={cfgPage.key}
+                    page={cfgPage}
+                    config={config}
+                    openRecord={(obj, id) => openPeek(obj, id)}
+                    go={route.go}
+                  />
+                );
+                return <div className="nxCard" style={{ padding: 32 }}>Unknown page.</div>;
               })()
             ) : route.recordId ? (
               <RecordView
@@ -816,6 +866,7 @@ export function App() {
                     q={panelQ}
                     onQ={setPanelQ}
                     onOpen={(obj, id) => pushPeek(obj, id)}
+                    onGo={(hash) => { setPeek(null); route.go(hash); }}
                     onPop={popPeek}
                   />
                 ) : (
@@ -882,7 +933,14 @@ export function App() {
             </SheetHeader>
             <div className="drawerBody">
               {searchBox(true)}
-              <nav className="sideNav">{navButtons("drawer-")}</nav>
+              <span className="nxMicro">Records</span>
+              <nav className="sideNav">{navObjectButtons("drawer-")}</nav>
+              {visiblePages.length > 0 && (
+                <div className="drawerSection">
+                  <span className="nxMicro">Pages</span>
+                  <nav className="sideNav">{navPageButtons("drawer-")}</nav>
+                </div>
+              )}
               {favs.length > 0 && (
                 <div className="drawerSection">
                   <span className="nxMicro">Favorites</span>
@@ -932,7 +990,7 @@ export function App() {
           </SheetContent>
         </Sheet>
 
-        <CommandPalette config={config} go={route.go} actions={contextActions} intercept={paletteIntercept} />
+        <CommandPalette config={config} go={route.go} actions={contextActions} intercept={paletteIntercept} openSignal={paletteSignal} />
         {/* copilot supersedes the iframe ChatDock; ChatDock is the fallback when the
             copilot block is absent but a chat.embedUrl is configured */}
         {config.copilot

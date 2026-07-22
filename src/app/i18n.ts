@@ -4,7 +4,9 @@
 
 const dicts = {
   en: {
-    "palette.placeholder": "Jump to a record, object, or page…",
+    "palette.placeholder": "Search everything…",
+    "palette.hint": "Records, pages and objects — everywhere in the app",
+    "search.everything": "Search everything…",
     "palette.records": "Records",
     "palette.objects": "Objects",
     "palette.pages": "Pages",
@@ -86,6 +88,14 @@ const dicts = {
     "page.spreadsheet.emptyTitle": "No workbook yet",
     "page.spreadsheet.emptyBody": "Create a workbook to start with formulas, formatting, and multiple sheets.",
     "page.spreadsheet.create": "Create a workbook",
+    // config-driven pages (config.pages[])
+    "page.generic.loading": "Loading…",
+    "page.saving": "Saving…",
+    "page.saved": "Saved",
+    "page.whiteboard.reset": "Reset demo board",
+    "page.flow.reset": "Reset demo map",
+    "page.aggregate.count": "{n} across {src}",
+    "page.aggregate.noSource": "This page has no source object configured. Set `source` on the config.pages[] entry.",
   },
 } as const;
 

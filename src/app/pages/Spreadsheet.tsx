@@ -16,8 +16,6 @@ import { LazyWorkbookSurface, isWorkbookSnapshot, seedWorkbook, workbookStoreKey
    app top bar + the sheet's single toolbar. The heavy engine is the
    LazyWorkbookSurface split, so this page adds ~0 to the eager bundle. */
 
-const PAGE_KEY = "spreadsheet";
-const KEY = workbookStoreKey(PAGE_KEY);
 const SAVE_DELAY = 700;
 
 type Phase = "loading" | "empty" | "ready";
@@ -29,7 +27,11 @@ const skeleton = (
   </div>
 );
 
-export function SpreadsheetPage() {
+/* `pageKey` namespaces the stored workbook so several standalone spreadsheet pages
+   coexist (the static "Spreadsheet" page and any config.pages[] { kind:"spreadsheet" }
+   entry share this ONE component — the config-driven page is the same full surface). */
+export function SpreadsheetPage({ pageKey = "spreadsheet", demoSeed = true }: { pageKey?: string; demoSeed?: boolean }) {
+  const KEY = React.useMemo(() => workbookStoreKey(pageKey), [pageKey]);
   const [phase, setPhase] = React.useState<Phase>("loading");
   const [initial, setInitial] = React.useState<IWorkbookData | null>(null);
   const [reloadNonce, setReloadNonce] = React.useState(0);
@@ -43,11 +45,13 @@ export function SpreadsheetPage() {
     saveTimer.current = setTimeout(() => {
       api.setState(KEY, snap).then(() => setSaveState("saved")).catch(() => setSaveState("idle"));
     }, SAVE_DELAY);
-  }, []);
+  }, [KEY]);
   React.useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
 
   // load the stored workbook once: valid snapshot → mount · explicit null → empty ·
-  // never-set/corrupt → seed the demo and persist it so a reload restores it
+  // never-set/corrupt → seed the DEMO workbook (demoSeed pages only) and persist it so a
+  // reload restores it; a genuinely new page (no demoSeed) opens on the empty state, not
+  // a clone of the demo workbook.
   React.useEffect(() => {
     let live = true;
     api.state().then((s) => {
@@ -55,14 +59,14 @@ export function SpreadsheetPage() {
       const snap = s[KEY];
       if (isWorkbookSnapshot(snap)) { setInitial(snap); setPhase("ready"); }
       else if (snap === null) { setPhase("empty"); }
-      else {
+      else if (demoSeed) {
         const seed = seedWorkbook();
         setInitial(seed); setPhase("ready");
         api.setState(KEY, seed).catch(() => {});
-      }
+      } else { setPhase("empty"); }
     }).catch(() => setPhase("empty"));
     return () => { live = false; };
-  }, []);
+  }, [KEY, demoSeed]);
 
   const mountSeed = React.useCallback(() => {
     const seed = seedWorkbook();
@@ -71,13 +75,13 @@ export function SpreadsheetPage() {
     setReloadNonce((n) => n + 1);
     setSaveState("saved");
     api.setState(KEY, seed).catch(() => {});
-  }, []);
+  }, [KEY]);
 
   const clearWorkbook = React.useCallback(() => {
     setPhase("empty");
     setInitial(null);
     api.setState(KEY, null).catch(() => {});
-  }, []);
+  }, [KEY]);
 
   // compact cluster for the workbook toolbar row: live save state + icon actions
   const bar = (

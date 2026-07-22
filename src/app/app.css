@@ -61,6 +61,12 @@
   border-radius: var(--nx-radius-s); padding: 5px 10px; min-width: 200px;
   cursor: text;
 }
+/* the trigger is a BUTTON that opens the unified palette, but reads as a field */
+button.topSearch { text-align: left; appearance: none; }
+button.topSearch:hover { border-color: var(--nx-border-strong); }
+button.topSearch:focus-visible { outline: 2px solid var(--nx-accent); outline-offset: 1px; }
+.topSearchIcon { flex: none; opacity: 0.7; }
+.topSearchLabel { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .topSearch input { border: 0; background: none; outline: none; font: var(--nx-text-body); color: var(--nx-fg); width: 100%; }
 .kbd {
   font: 600 10px/1 var(--nx-font-mono);
@@ -79,6 +85,33 @@
   margin: calc(-1 * var(--nx-gap-4)) calc(-1 * var(--nx-gap-5)) calc(-1 * var(--nx-gap-5));
   height: calc(100% + var(--nx-gap-4) + var(--nx-gap-5));
   display: flex; flex-direction: column; min-height: 0;
+}
+
+/* config-driven page chrome (config.pages[]): a slim bar (title + save state /
+   actions) over a canvas body that fills the rest — frame-continuous with the shell,
+   token-styled, light + dark. The hosted view/canvas owns its own pan/scroll. */
+.nxCanvasPage { overflow: hidden; }
+.nxPageBar {
+  display: flex; align-items: center; gap: var(--nx-gap-2); flex: none;
+  padding: 8px var(--nx-gap-4);
+  border-bottom: 1px solid var(--nx-border); background: var(--nx-bg);
+}
+.nxPageBarTitle { font: 650 14px/1.2 var(--nx-font-sans); letter-spacing: -0.01em; color: var(--nx-fg); }
+.nxPageBarMeta { font: var(--nx-text-meta); color: var(--nx-fg-faint); white-space: nowrap; }
+.nxCanvasPageBody { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.nxCanvasPageBody > * { flex: 1 1 auto; min-height: 0; min-width: 0; }
+.nxCanvasPageBody--scroll { overflow: auto; }
+.nxPageLoading {
+  flex: 1; min-height: 240px; display: flex; flex-direction: column; gap: 8px;
+  align-items: center; justify-content: center;
+  color: var(--nx-fg-faint); font: var(--nx-text-meta);
+}
+/* top-nav (app.nav:"top") separates the Records items from the Pages items */
+.topNavDivider { width: 1px; height: 20px; background: var(--nx-chrome-border, var(--nx-border)); margin: 0 4px; flex: none; align-self: center; }
+/* the flow PAGE restores a compact minimap on mobile — the record flow VIEW keeps it
+   hidden to reclaim canvas (flow.css), so this page-scoped override doesn't touch it */
+@media (max-width: 760px) {
+  .nxCanvasPage .nxFlowWrap .react-flow__minimap { display: block; width: 96px; height: 66px; }
 }
 
 /* view switch (table / kanban) */
@@ -146,7 +179,10 @@
   .topNavItems, .topNavTools, .topNavSignout { display: none; }
   .topNav .navBurger { display: flex; }
   .content { padding: var(--nx-gap-3); }
-  .top .topSearch { display: none; }
+  /* mobile: the global search stays reachable from the top bar, icon-only */
+  .top .topSearch { min-width: 0; padding: 6px; margin-left: auto; }
+  .top .topSearch .topSearchLabel, .top .topSearch .kbd { display: none; }
+  .navDrawer .topSearch .topSearchLabel { display: block; }
   /* full-bleed pages keep the bottom clearance (the mobile tab bar owns it) */
   .pageBleed {
     margin: calc(-1 * var(--nx-gap-3)) calc(-1 * var(--nx-gap-3)) 0;
