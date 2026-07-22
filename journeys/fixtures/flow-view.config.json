@@ -1,8 +1,13 @@
 {
-  "_note": "flow-view lane — records-as-graph. `flow_tasks` proves self-relation record→record edges (multiple:true dependsOn), drag persistence, node→peek, and the relation picker (owner_ref draws cross-object hubs from flow_people). `flow_plain` (no relation field) proves the plain-language config chip; `flow_empty` proves the designed empty state. Booted by journeys/extra/flow-view.mjs on the lane band (5861).",
-  "app": { "name": "Flow View Fixture", "slug": "flow-view-fixture" },
+  "_note": "flow-view lane \u2014 records-as-graph. `flow_org` is the DENSE depth demo (32-person, 7-department org chart: reportsTo hierarchy + collaboratesWith dependency web, department color/groups, level shapes, statuses, dated). `flow_tasks` keeps the v1 basics (self-relation edges, drag persist, node peek, relation picker \u2192 hubs). `flow_plain` proves the no-relation config chip; `flow_empty` the empty state. Booted by journeys/extra/flow-view.mjs on the lane band (5861).",
+  "app": {
+    "name": "Flow View Fixture",
+    "slug": "flow-view-fixture"
+  },
   "theme": {},
-  "users": ["you"],
+  "users": [
+    "you"
+  ],
   "objects": [
     {
       "key": "flow_people",
@@ -11,13 +16,36 @@
       "icon": "users",
       "defaultView": "table",
       "fields": [
-        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
-        { "key": "role", "label": "Role", "type": "text", "width": 160 }
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 200
+        },
+        {
+          "key": "role",
+          "label": "Role",
+          "type": "text",
+          "width": 160
+        }
       ],
       "sampleRows": [
-        { "id": "fp_1", "name": "Ada Cheng", "role": "Lead" },
-        { "id": "fp_2", "name": "Malik Osei", "role": "Engineer" },
-        { "id": "fp_3", "name": "Rosa Lindgren", "role": "Writer" }
+        {
+          "id": "fp_1",
+          "name": "Ada Cheng",
+          "role": "Lead"
+        },
+        {
+          "id": "fp_2",
+          "name": "Malik Osei",
+          "role": "Engineer"
+        },
+        {
+          "id": "fp_3",
+          "name": "Rosa Lindgren",
+          "role": "Writer"
+        }
       ]
     },
     {
@@ -27,33 +55,667 @@
       "icon": "list-checks",
       "defaultView": "flow",
       "views": [
-        { "type": "table" },
-        { "type": "flow", "relationField": "dependsOn" }
+        {
+          "type": "table"
+        },
+        {
+          "type": "flow",
+          "relationField": "dependsOn"
+        }
       ],
       "fields": [
-        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 220
+        },
         {
           "key": "status",
           "label": "Status",
           "type": "select",
           "options": [
-            { "value": "Planned", "color": "gray" },
-            { "value": "Active", "color": "blue" },
-            { "value": "Done", "color": "green" }
+            {
+              "value": "Planned",
+              "color": "gray"
+            },
+            {
+              "value": "Active",
+              "color": "blue"
+            },
+            {
+              "value": "Done",
+              "color": "green"
+            }
           ],
           "width": 120
         },
-        { "key": "dependsOn", "label": "Depends on", "type": "relation", "relation": "flow_tasks", "multiple": true, "width": 200 },
-        { "key": "owner_ref", "label": "Owner", "type": "relation", "relation": "flow_people", "width": 160 }
+        {
+          "key": "dependsOn",
+          "label": "Depends on",
+          "type": "relation",
+          "relation": "flow_tasks",
+          "multiple": true,
+          "width": 200
+        },
+        {
+          "key": "owner_ref",
+          "label": "Owner",
+          "type": "relation",
+          "relation": "flow_people",
+          "width": 160
+        }
       ],
       "sampleRows": [
-        { "id": "ft_1", "name": "Design schema", "status": "Done", "owner_ref": "fp_1" },
-        { "id": "ft_2", "name": "Build API", "status": "Active", "dependsOn": ["ft_1"], "owner_ref": "fp_1" },
-        { "id": "ft_3", "name": "Build UI", "status": "Active", "dependsOn": ["ft_1"], "owner_ref": "fp_1" },
-        { "id": "ft_4", "name": "Integration tests", "status": "Planned", "dependsOn": ["ft_2", "ft_3"], "owner_ref": "fp_2" },
-        { "id": "ft_5", "name": "Docs pass", "status": "Planned", "dependsOn": ["ft_2"], "owner_ref": "fp_2" },
-        { "id": "ft_6", "name": "Launch checklist", "status": "Planned", "dependsOn": ["ft_4", "ft_5"], "owner_ref": "fp_3" },
-        { "id": "ft_7", "name": "Retro notes", "status": "Planned" }
+        {
+          "id": "ft_1",
+          "name": "Design schema",
+          "status": "Done",
+          "owner_ref": "fp_1"
+        },
+        {
+          "id": "ft_2",
+          "name": "Build API",
+          "status": "Active",
+          "dependsOn": [
+            "ft_1"
+          ],
+          "owner_ref": "fp_1"
+        },
+        {
+          "id": "ft_3",
+          "name": "Build UI",
+          "status": "Active",
+          "dependsOn": [
+            "ft_1"
+          ],
+          "owner_ref": "fp_1"
+        },
+        {
+          "id": "ft_4",
+          "name": "Integration tests",
+          "status": "Planned",
+          "dependsOn": [
+            "ft_2",
+            "ft_3"
+          ],
+          "owner_ref": "fp_2"
+        },
+        {
+          "id": "ft_5",
+          "name": "Docs pass",
+          "status": "Planned",
+          "dependsOn": [
+            "ft_2"
+          ],
+          "owner_ref": "fp_2"
+        },
+        {
+          "id": "ft_6",
+          "name": "Launch checklist",
+          "status": "Planned",
+          "dependsOn": [
+            "ft_4",
+            "ft_5"
+          ],
+          "owner_ref": "fp_3"
+        },
+        {
+          "id": "ft_7",
+          "name": "Retro notes",
+          "status": "Planned"
+        }
+      ]
+    },
+    {
+      "key": "flow_org",
+      "label": "Org chart",
+      "labelOne": "Person",
+      "icon": "users",
+      "defaultView": "flow",
+      "views": [
+        {
+          "type": "table"
+        },
+        {
+          "type": "flow",
+          "relationField": "reportsTo",
+          "secondaryRelationField": "collaboratesWith",
+          "nodeColorField": "department",
+          "nodeShapeField": "level",
+          "groupField": "department",
+          "enabledLayouts": [
+            "hierarchical",
+            "force",
+            "grid"
+          ],
+          "defaultLayout": "hierarchical",
+          "edgeStyle": "smoothstep",
+          "animated": true,
+          "edgeLabels": false
+        }
+      ],
+      "fields": [
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 200
+        },
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "text",
+          "width": 190
+        },
+        {
+          "key": "department",
+          "label": "Department",
+          "type": "select",
+          "width": 140,
+          "options": [
+            {
+              "value": "Executive",
+              "color": "purple"
+            },
+            {
+              "value": "Engineering",
+              "color": "blue"
+            },
+            {
+              "value": "Product",
+              "color": "teal"
+            },
+            {
+              "value": "Design",
+              "color": "pink"
+            },
+            {
+              "value": "Sales",
+              "color": "green"
+            },
+            {
+              "value": "Operations",
+              "color": "orange"
+            },
+            {
+              "value": "Marketing",
+              "color": "yellow"
+            }
+          ]
+        },
+        {
+          "key": "level",
+          "label": "Level",
+          "type": "select",
+          "width": 120,
+          "options": [
+            {
+              "value": "IC",
+              "color": "gray"
+            },
+            {
+              "value": "Lead",
+              "color": "teal"
+            },
+            {
+              "value": "Manager",
+              "color": "blue"
+            },
+            {
+              "value": "Director",
+              "color": "purple"
+            },
+            {
+              "value": "Exec",
+              "color": "red"
+            }
+          ]
+        },
+        {
+          "key": "status",
+          "label": "Status",
+          "type": "select",
+          "width": 120,
+          "options": [
+            {
+              "value": "Active",
+              "color": "green"
+            },
+            {
+              "value": "Onboarding",
+              "color": "blue"
+            },
+            {
+              "value": "On leave",
+              "color": "orange"
+            }
+          ]
+        },
+        {
+          "key": "location",
+          "label": "Location",
+          "type": "text",
+          "width": 130
+        },
+        {
+          "key": "startDate",
+          "label": "Start date",
+          "type": "date",
+          "width": 130
+        },
+        {
+          "key": "reportsTo",
+          "label": "Reports to",
+          "type": "relation",
+          "relation": "flow_org",
+          "width": 180
+        },
+        {
+          "key": "collaboratesWith",
+          "label": "Collaborates with",
+          "type": "relation",
+          "relation": "flow_org",
+          "multiple": true,
+          "width": 220
+        }
+      ],
+      "sampleRows": [
+        {
+          "id": "p1",
+          "name": "Dana Whitfield",
+          "title": "Chief Executive Officer",
+          "department": "Executive",
+          "level": "Exec",
+          "status": "Active",
+          "location": "London",
+          "startDate": "2019-01-14"
+        },
+        {
+          "id": "p2",
+          "name": "Marcus Bell",
+          "title": "Chief Operating Officer",
+          "department": "Executive",
+          "level": "Exec",
+          "status": "Active",
+          "location": "London",
+          "startDate": "2019-03-04",
+          "reportsTo": "p1"
+        },
+        {
+          "id": "p3",
+          "name": "Priya Nadeau",
+          "title": "VP Engineering",
+          "department": "Engineering",
+          "level": "Director",
+          "status": "Active",
+          "location": "Berlin",
+          "startDate": "2019-06-17",
+          "reportsTo": "p1",
+          "collaboratesWith": [
+            "p11"
+          ]
+        },
+        {
+          "id": "p4",
+          "name": "Tomas Rivera",
+          "title": "Engineering Manager",
+          "department": "Engineering",
+          "level": "Manager",
+          "status": "Active",
+          "location": "Berlin",
+          "startDate": "2020-02-10",
+          "reportsTo": "p3",
+          "collaboratesWith": [
+            "p25"
+          ]
+        },
+        {
+          "id": "p5",
+          "name": "Sofia Kang",
+          "title": "Backend Lead",
+          "department": "Engineering",
+          "level": "Lead",
+          "status": "Active",
+          "location": "Remote",
+          "startDate": "2020-09-01",
+          "reportsTo": "p4",
+          "collaboratesWith": [
+            "p12"
+          ]
+        },
+        {
+          "id": "p6",
+          "name": "Liam O'Brien",
+          "title": "Senior Engineer",
+          "department": "Engineering",
+          "level": "IC",
+          "status": "Active",
+          "location": "Dublin",
+          "startDate": "2021-04-19",
+          "reportsTo": "p5",
+          "collaboratesWith": [
+            "p17"
+          ]
+        },
+        {
+          "id": "p7",
+          "name": "Yuki Tanaka",
+          "title": "Engineer",
+          "department": "Engineering",
+          "level": "IC",
+          "status": "Active",
+          "location": "Singapore",
+          "startDate": "2022-01-11",
+          "reportsTo": "p5"
+        },
+        {
+          "id": "p8",
+          "name": "Noah Schmidt",
+          "title": "Engineer",
+          "department": "Engineering",
+          "level": "IC",
+          "status": "Onboarding",
+          "location": "Berlin",
+          "startDate": "2025-06-30",
+          "reportsTo": "p4"
+        },
+        {
+          "id": "p9",
+          "name": "Amara Okoye",
+          "title": "Platform Lead",
+          "department": "Engineering",
+          "level": "Lead",
+          "status": "Active",
+          "location": "Remote",
+          "startDate": "2021-08-23",
+          "reportsTo": "p4",
+          "collaboratesWith": [
+            "p14"
+          ]
+        },
+        {
+          "id": "p10",
+          "name": "Elena Duarte",
+          "title": "Engineer",
+          "department": "Engineering",
+          "level": "IC",
+          "status": "Active",
+          "location": "Lisbon",
+          "startDate": "2023-03-06",
+          "reportsTo": "p9"
+        },
+        {
+          "id": "p11",
+          "name": "Jonas Berg",
+          "title": "VP Product",
+          "department": "Product",
+          "level": "Director",
+          "status": "Active",
+          "location": "Stockholm",
+          "startDate": "2019-09-02",
+          "reportsTo": "p1",
+          "collaboratesWith": [
+            "p19"
+          ]
+        },
+        {
+          "id": "p12",
+          "name": "Aisha Rahman",
+          "title": "Group Product Manager",
+          "department": "Product",
+          "level": "Manager",
+          "status": "Active",
+          "location": "London",
+          "startDate": "2020-11-16",
+          "reportsTo": "p11",
+          "collaboratesWith": [
+            "p16"
+          ]
+        },
+        {
+          "id": "p13",
+          "name": "Chen Wei",
+          "title": "Product Manager",
+          "department": "Product",
+          "level": "IC",
+          "status": "On leave",
+          "location": "Singapore",
+          "startDate": "2022-05-30",
+          "reportsTo": "p12",
+          "collaboratesWith": [
+            "p5"
+          ]
+        },
+        {
+          "id": "p14",
+          "name": "Ravi Menon",
+          "title": "Product Manager",
+          "department": "Product",
+          "level": "IC",
+          "status": "Active",
+          "location": "Bangalore",
+          "startDate": "2023-01-09",
+          "reportsTo": "p12"
+        },
+        {
+          "id": "p15",
+          "name": "Iris Lindqvist",
+          "title": "Head of Design",
+          "department": "Design",
+          "level": "Director",
+          "status": "Active",
+          "location": "Stockholm",
+          "startDate": "2019-11-25",
+          "reportsTo": "p2"
+        },
+        {
+          "id": "p16",
+          "name": "Kofi Mensah",
+          "title": "Design Lead",
+          "department": "Design",
+          "level": "Lead",
+          "status": "Active",
+          "location": "Remote",
+          "startDate": "2021-02-15",
+          "reportsTo": "p15",
+          "collaboratesWith": [
+            "p12"
+          ]
+        },
+        {
+          "id": "p17",
+          "name": "Mia Lundgren",
+          "title": "Product Designer",
+          "department": "Design",
+          "level": "IC",
+          "status": "Onboarding",
+          "location": "Berlin",
+          "startDate": "2025-05-12",
+          "reportsTo": "p16"
+        },
+        {
+          "id": "p18",
+          "name": "Diego Santos",
+          "title": "Product Designer",
+          "department": "Design",
+          "level": "IC",
+          "status": "Active",
+          "location": "Lisbon",
+          "startDate": "2022-08-08",
+          "reportsTo": "p16"
+        },
+        {
+          "id": "p19",
+          "name": "Hannah Cole",
+          "title": "VP Sales",
+          "department": "Sales",
+          "level": "Director",
+          "status": "Active",
+          "location": "New York",
+          "startDate": "2019-10-07",
+          "reportsTo": "p2",
+          "collaboratesWith": [
+            "p11"
+          ]
+        },
+        {
+          "id": "p20",
+          "name": "Omar Haddad",
+          "title": "Sales Manager",
+          "department": "Sales",
+          "level": "Manager",
+          "status": "Active",
+          "location": "New York",
+          "startDate": "2020-07-20",
+          "reportsTo": "p19",
+          "collaboratesWith": [
+            "p28"
+          ]
+        },
+        {
+          "id": "p21",
+          "name": "Grace Kim",
+          "title": "Account Executive",
+          "department": "Sales",
+          "level": "IC",
+          "status": "Active",
+          "location": "New York",
+          "startDate": "2021-11-29",
+          "reportsTo": "p20"
+        },
+        {
+          "id": "p22",
+          "name": "Felix Braun",
+          "title": "Account Executive",
+          "department": "Sales",
+          "level": "IC",
+          "status": "Active",
+          "location": "Berlin",
+          "startDate": "2022-03-14",
+          "reportsTo": "p20"
+        },
+        {
+          "id": "p23",
+          "name": "Zara Ali",
+          "title": "Account Executive",
+          "department": "Sales",
+          "level": "IC",
+          "status": "Onboarding",
+          "location": "London",
+          "startDate": "2025-06-02",
+          "reportsTo": "p20"
+        },
+        {
+          "id": "p24",
+          "name": "Nadia Farouk",
+          "title": "VP Operations",
+          "department": "Operations",
+          "level": "Director",
+          "status": "Active",
+          "location": "London",
+          "startDate": "2020-01-13",
+          "reportsTo": "p2"
+        },
+        {
+          "id": "p25",
+          "name": "Peter Novak",
+          "title": "Operations Manager",
+          "department": "Operations",
+          "level": "Manager",
+          "status": "Active",
+          "location": "Prague",
+          "startDate": "2020-10-05",
+          "reportsTo": "p24",
+          "collaboratesWith": [
+            "p4"
+          ]
+        },
+        {
+          "id": "p26",
+          "name": "Sara Meyer",
+          "title": "Operations Analyst",
+          "department": "Operations",
+          "level": "IC",
+          "status": "Active",
+          "location": "Berlin",
+          "startDate": "2022-06-27",
+          "reportsTo": "p25"
+        },
+        {
+          "id": "p27",
+          "name": "Tom Fischer",
+          "title": "Operations Analyst",
+          "department": "Operations",
+          "level": "IC",
+          "status": "Active",
+          "location": "Munich",
+          "startDate": "2023-09-18",
+          "reportsTo": "p25"
+        },
+        {
+          "id": "p28",
+          "name": "Lucia Romano",
+          "title": "Head of Marketing",
+          "department": "Marketing",
+          "level": "Director",
+          "status": "Active",
+          "location": "Milan",
+          "startDate": "2020-04-06",
+          "reportsTo": "p2",
+          "collaboratesWith": [
+            "p20"
+          ]
+        },
+        {
+          "id": "p29",
+          "name": "Ben Adler",
+          "title": "Marketing Lead",
+          "department": "Marketing",
+          "level": "Lead",
+          "status": "Active",
+          "location": "Remote",
+          "startDate": "2021-06-21",
+          "reportsTo": "p28",
+          "collaboratesWith": [
+            "p16"
+          ]
+        },
+        {
+          "id": "p30",
+          "name": "Nina Petrova",
+          "title": "Content Marketer",
+          "department": "Marketing",
+          "level": "IC",
+          "status": "Active",
+          "location": "Sofia",
+          "startDate": "2022-10-24",
+          "reportsTo": "p29"
+        },
+        {
+          "id": "p31",
+          "name": "Sam Okafor",
+          "title": "Growth Marketer",
+          "department": "Marketing",
+          "level": "IC",
+          "status": "On leave",
+          "location": "Remote",
+          "startDate": "2023-02-13",
+          "reportsTo": "p29"
+        },
+        {
+          "id": "p32",
+          "name": "Ella Nguyen",
+          "title": "Marketer",
+          "department": "Marketing",
+          "level": "IC",
+          "status": "Active",
+          "location": "Singapore",
+          "startDate": "2024-01-15",
+          "reportsTo": "p29"
+        }
       ]
     },
     {
@@ -63,15 +725,38 @@
       "icon": "file-text",
       "defaultView": "table",
       "views": [
-        { "type": "table" },
-        { "type": "flow" }
+        {
+          "type": "table"
+        },
+        {
+          "type": "flow"
+        }
       ],
       "fields": [
-        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 260 },
-        { "key": "kind", "label": "Kind", "type": "select", "options": ["Visit", "Call"], "width": 120 }
+        {
+          "key": "title",
+          "label": "Title",
+          "type": "text",
+          "primary": true,
+          "width": 260
+        },
+        {
+          "key": "kind",
+          "label": "Kind",
+          "type": "select",
+          "options": [
+            "Visit",
+            "Call"
+          ],
+          "width": 120
+        }
       ],
       "sampleRows": [
-        { "id": "fn_1", "title": "Site walkthrough", "kind": "Visit" }
+        {
+          "id": "fn_1",
+          "title": "Site walkthrough",
+          "kind": "Visit"
+        }
       ]
     },
     {
@@ -82,12 +767,29 @@
       "seedCount": 0,
       "defaultView": "flow",
       "views": [
-        { "type": "table" },
-        { "type": "flow", "relationField": "parent" }
+        {
+          "type": "table"
+        },
+        {
+          "type": "flow",
+          "relationField": "parent"
+        }
       ],
       "fields": [
-        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 220 },
-        { "key": "parent", "label": "Parent", "type": "relation", "relation": "flow_empty", "width": 180 }
+        {
+          "key": "name",
+          "label": "Name",
+          "type": "text",
+          "primary": true,
+          "width": 220
+        },
+        {
+          "key": "parent",
+          "label": "Parent",
+          "type": "relation",
+          "relation": "flow_empty",
+          "width": 180
+        }
       ],
       "sampleRows": []
     }
