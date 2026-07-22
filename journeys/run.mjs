@@ -589,12 +589,8 @@ const journeys = [
       const pickItem = async (trigger, locator) => {
         await page.click(trigger);
         await locator.waitFor();
-        for (let i = 0; i < 12; i++) {
-          if ((await locator.getAttribute("data-highlighted")) !== null) break;
-          await page.keyboard.press("ArrowDown");
-          await page.waitForTimeout(70);
-        }
-        await page.keyboard.press("Enter");
+        await locator.click(); // click the item directly — the ArrowDown key-hunt raced Radix focus transfer
+        await locator.waitFor({ state: "detached", timeout: 2000 }).catch(() => {}); // let the menu tear down before any reopen (the real cause of the 2nd-open timeout)
       };
       await page.goto(URLBASE + "/#/o/companies");
       await page.waitForSelector('[data-testid="table-companies"] tbody tr');
@@ -1397,12 +1393,8 @@ const journeys = [
         await page.click(`[data-testid="${trigger}"]`);
         const it = page.locator(`[data-testid="${item}"]`);
         await it.waitFor();
-        for (let i = 0; i < 8; i++) {
-          if ((await it.getAttribute("data-highlighted")) !== null) break;
-          await page.keyboard.press("ArrowDown");
-          await page.waitForTimeout(80);
-        }
-        await page.keyboard.press("Enter");
+        await it.click(); // click the item directly — the ArrowDown key-hunt raced Radix focus transfer
+        await it.waitFor({ state: "detached", timeout: 2000 }).catch(() => {}); // let the menu tear down before any reopen (the real cause of the 2nd-open timeout)
       };
       // companies: count per industry, no stageField needed
       await page.goto(URLBASE + "/#/o/companies");
@@ -1637,12 +1629,8 @@ const journeys = [
         await page.click('[data-testid="group-by"]');
         const item = page.locator(`[data-testid="group-by-${key}"]`);
         await item.waitFor();
-        for (let i = 0; i < 8; i++) {
-          if ((await item.getAttribute("data-highlighted")) !== null) break;
-          await page.keyboard.press("ArrowDown");
-          await page.waitForTimeout(80);
-        }
-        await page.keyboard.press("Enter");
+        await item.click(); // click the item directly — the ArrowDown key-hunt raced Radix focus transfer
+        await item.waitFor({ state: "detached", timeout: 2000 }).catch(() => {}); // let the menu tear down before any reopen (the real cause of the 2nd-open timeout)
       };
       await pickGroup("owner");
       await page.waitForSelector('[data-testid="col-you"]', { timeout: 6000 });
