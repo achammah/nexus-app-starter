@@ -1,6 +1,6 @@
 # Architecture — file map + data flow
 
-Config key reference: `docs/CONFIG.md` · the `/api` surface + data spine: `docs/API.md` · extension seams: `docs/EXTENDING.md` · the
+Config key reference: `docs/CONFIG.md` · page kinds: `docs/PAGE-KINDS.md` · the block library: `docs/BLOCKS.md` · the `/api` surface + data spine: `docs/API.md` · extension seams: `docs/EXTENDING.md` · the
 vendored kit and its registries: `docs/UI-KIT.md` · docs index: `docs/README.md`.
 
 ```

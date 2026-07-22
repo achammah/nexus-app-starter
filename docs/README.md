@@ -11,6 +11,8 @@ Start at `AGENTS.md` in the repo root (the front door), then come here.
 | know every key I may write in `starter.config.json` | **`CONFIG.md`** — the complete config reference |
 | see what THIS config currently produces | `DATA-MODEL.md` — generated ER + field tables (`npm run model`) |
 | do a specific task (add an entity, wire enrichment, add a whiteboard field…) | `RECIPES.md` — exact files, exact order |
+| add a page without writing code (`config.pages[]`) | **`PAGE-KINDS.md`** — every kind, free-surface vs aggregate |
+| configure a workbook, document workspace, or 3D viewer | **`BLOCKS.md`** — the free-surface block reference |
 | add a view type, field type, page, data source, journey | **`EXTENDING.md`** — the code-level seams |
 | use the component kit, the registries, or theming | **`UI-KIT.md`** — `src/ui`, sync-ui, tokens, skins |
 | write or run tests | **`TESTING.md`** — the journey harness |

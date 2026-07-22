@@ -9,11 +9,12 @@ wire enrichment, whiteboard, generation, tasks) have their cookbook in
 | Rung | Change | Where |
 |---|---|---|
 | 1 | a new entity, field, view instance, relation, demo data | `starter.config.json` only |
-| 2 | a new non-record surface | a component in `src/app/pages/` + a registry row |
-| 3 | a new view TYPE or field TYPE | a dropped folder in **nexus-ui**, then `npm run sync-ui` |
-| 4 | new server behavior | `server/*.mjs` (node built-ins only) + a permission gate + a client twin |
+| 2 | a new page of a built-in kind | a `config.pages[]` entry — no code (`docs/PAGE-KINDS.md`) |
+| 3 | a bespoke non-record surface | a component in `src/app/pages/` + a registry row |
+| 4 | a new view TYPE or field TYPE | a dropped folder in **nexus-ui**, then `npm run sync-ui` |
+| 5 | new server behavior | `server/*.mjs` (node built-ins only) + a permission gate + a client twin |
 
-Rung 3 and 4 both end with: a manifest row, a journey asserting a VISIBLE outcome, and
+Rungs 4 and 5 both end with: a manifest row, a journey asserting a VISIBLE outcome, and
 `npm run journeys` green.
 
 ---
@@ -117,7 +118,17 @@ you add one in `server/env.mjs`.
 ## Add a free-surface page (its own persisted document)
 
 For a page whose content is one opaque document rather than record rows — a workbook, a
-canvas, a board. `src/app/pages/Spreadsheet.tsx` is the reference implementation.
+document workspace, a canvas, a 3D scene. `src/app/pages/Spreadsheet.tsx` is the reference
+implementation, and every free-surface page repeats the SAME six steps:
+
+```
+storeKey(pageKey) → api.state() load → guard → seed if unset
+                  → mount the surface (lazily if the engine is heavy)
+                  → debounced api.setState persist
+```
+
+That shape is identical across every block in `docs/BLOCKS.md`, so a new one is a copy of
+an existing page with one store key and one surface swapped.
 
 1. **The block** lives in nexus-ui (`src/blocks/<block>/`) and exports the contract in
    `docs/UI-KIT.md` §"free-surface block contract": `value` / `onChange` / `reloadNonce`,

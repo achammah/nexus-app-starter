@@ -4,17 +4,44 @@ The rules that are not obvious from reading one file, and the failure each one p
 
 ## Install + dependencies
 
-**First install needs `--force`.**
+**Both install paths need `--force`.**
 
 ```bash
 npm install --force     # first install
-npm ci                  # from the committed lockfile — no flag needed
+npm ci --force          # from the committed lockfile
 ```
 
 `@glideapps/glide-data-grid@6.0.3` (the Sheet view's engine) pins its peer to React ≤18
 but renders correctly on React 19. `--force` keeps npm's modern peer resolution so every
 glide/recharts peer still auto-installs. **`--legacy-peer-deps` does NOT work here** — it
 strips those peers and the build fails to resolve `react-is` / `react-responsive-carousel`.
+
+A plain `npm ci` fails the same way (`ERESOLVE`, conflicting peer `react@18.3.1`) — the
+committed lockfile does not exempt it, so CI needs the flag too. If a shared npm cache is
+under concurrent use, an `EACCES`/`File exists` failure inside `_cacache` is contention,
+not a broken lockfile: retry with `--cache <a private dir>`.
+
+**A vendored block brings its own dependencies.** `npm run sync-ui` copies library SOURCE
+into `src/ui/`; it does NOT touch `package.json`. A block that imports an npm package
+needs that package declared in the APP's `package.json`, or the build fails on an
+unresolved import (a dynamically imported one fails at the moment a user triggers the
+feature, which is worse — it looks like a broken button). Current examples: `exceljs`
+(workbook XLSX/CSV I/O), `docx` and `mammoth` (document export/import), `three` (the 3D
+viewer), `polygon-clipping` (whiteboard boolean ops). After any sync that pulls in a new
+block, check its imports against your dependency list before assuming the feature works.
+
+**Dependency reachability decides eager vs lazy — not the author's intent.** A module ends
+up in the eager bundle if ANY eagerly-imported module reaches it. `polygon-clipping`
+(364 KB) stays out of the main chunk only because it is reached solely through
+`geometry.ts` → `OpsRail` → `WhiteboardCanvas` → the `React.lazy` `WhiteboardField`. Add
+one eager import of that module — surfacing a boolean-op affordance in a list cell, or
+touching it from a registry definition — and the whole library lands in the main bundle.
+Trace the import path before adding one, and re-measure against the 2% budget after.
+
+**Successive `npm install --no-save` calls prune each other.** Each run reconciles
+`node_modules` against `package.json`, so packages added by an earlier `--no-save` call
+are removed by the next one. Install extra packages in ONE command, or declare them in
+`package.json` properly.
 
 **The server is zero-dependency.** `server/*.mjs` uses node built-ins only. No npm package
 may be imported under `server/`. Client dependencies need a maintainer go and a row in
@@ -42,6 +69,22 @@ irreducible monoliths and load only when their surface actually mounts.
 
 An empty value must cost nothing: an empty whiteboard cell renders a static glyph with
 zero imports. Apply the same rule to any new heavy field type.
+
+## Serve every asset extension the app ships
+
+The static server maps a file extension to a content type from ONE table in
+`server/server.mjs`; anything unlisted is served as `application/octet-stream`. A browser
+REFUSES an ES module with a non-JavaScript MIME type, so a block that ships an
+ES-module worker or a `.mjs` asset (pdf.js and its worker are the usual case) breaks with
+"Expected a JavaScript module script" until `.mjs` is in that table:
+
+```js
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", … };
+```
+
+The same applies to any other extension a new block emits into `dist/assets` — `.wasm`,
+`.glb`, a font format not already listed. Check the table when you add a block whose build
+output is not plain `.js`/`.css`.
 
 ## No external hosts at runtime
 

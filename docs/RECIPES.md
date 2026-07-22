@@ -105,6 +105,20 @@ Every field type's editors live in ONE registry — `src/ui/record-core/fields/`
 2. Register in `src/app/pages.tsx` (`key/label/icon/component`) → nav + `#/p/<key>` route appear.
 3. Journey + manifest row.
 
+## Dial a document surface along the spectrum
+
+The document surface runs from a Word-like page with track changes to a full Notion
+workspace, set by one `preset` plus per-element toggles — `suggestions` is orthogonal and
+available at every level. Preset table, the per-element flags, the page store and its
+operations, import/export formats, and worked configs at both ends:
+`docs/BLOCKS.md` §"The composability spectrum".
+
+## Turn a workbook into a simple grid (or a full Excel)
+
+`WorkbookConfig` gates filters, sort, conditional formatting, data validation, find and
+replace, notes, and XLSX/CSV import-export independently; `MINIMAL_WORKBOOK_CONFIG` is the
+plain-grid end, the defaults are the full-Excel end. See `docs/BLOCKS.md` §`workbook`.
+
 ## Add a Spreadsheet (full Univer workbook) page
 The built-in Spreadsheet page (`#/p/spreadsheet`) is the reference. For ANOTHER, independently-persisted workbook page:
 1. Component under `src/app/pages/YourSheet.tsx`: load/save an `IWorkbookData` blob through `api.state()` / `api.setState(workbookStoreKey("<key>"), snap)` (own key = own workbook), and mount `LazyWorkbookSurface` from `../../ui/blocks/workbook` under Suspense (`value` in, `onChange` out, host debounces).
