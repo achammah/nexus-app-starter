@@ -43,6 +43,7 @@ import {
   isDarkBasemap,
   basemapHasGlyphs,
 } from "../../src/ui/record-core/views/map/basemaps.ts";
+import { spiderfyLayout } from "../../src/ui/record-core/views/map/spiderfy.ts";
 
 /* ── geomath ── */
 test("haversine matches a known great-circle distance (Brussels→Amsterdam ≈ 173 km)", () => {
@@ -221,4 +222,38 @@ test("basemap catalogue: offered-set hygiene, vector-vs-raster style, flags", ()
   assert.equal(isDarkBasemap("streets"), false);
   assert.equal(basemapHasGlyphs("streets"), true);
   assert.equal(basemapHasGlyphs("satellite"), false); // raster ships no glyphs
+});
+
+test("satellite is a HYBRID style (imagery + road + label overlays)", () => {
+  const sat = basemapStyle("satellite") as { sources: Record<string, unknown>; layers: { id: string }[] };
+  assert.ok(sat.sources.basemap && sat.sources["sat-roads"] && sat.sources["sat-labels"], "three raster sources");
+  assert.deepEqual(sat.layers.map((l) => l.id), ["basemap", "sat-roads", "sat-labels"]);
+});
+
+/* ── spiderfy ── */
+test("spiderfyLayout leaves singletons put and fans colliding groups onto a ring", () => {
+  // two far-apart points → no offset
+  const far = spiderfyLayout([{ id: "a", x: 0, y: 0 }, { id: "b", x: 500, y: 500 }], 26);
+  assert.deepEqual(far.get("a"), { dx: 0, dy: 0, spread: false });
+  assert.deepEqual(far.get("b"), { dx: 0, dy: 0, spread: false });
+
+  // three points stacked on one spot → all spread, each pushed off-centre
+  const stacked = spiderfyLayout(
+    [{ id: "a", x: 100, y: 100 }, { id: "b", x: 102, y: 101 }, { id: "c", x: 101, y: 103 }],
+    26,
+  );
+  for (const id of ["a", "b", "c"]) {
+    const o = stacked.get(id);
+    assert.ok(o?.spread, `${id} spreads`);
+    assert.ok(Math.hypot(o.dx, o.dy) > 5, `${id} moved off the pile`);
+  }
+  // the fanned pins are mutually separated (no two land on the same screen point)
+  const pts = ["a", "b", "c"].map((id) => {
+    const src = { a: [100, 100], b: [102, 101], c: [101, 103] }[id];
+    const o = stacked.get(id);
+    return [src[0] + o.dx, src[1] + o.dy];
+  });
+  for (let i = 0; i < pts.length; i++)
+    for (let j = i + 1; j < pts.length; j++)
+      assert.ok(Math.hypot(pts[i][0] - pts[j][0], pts[i][1] - pts[j][1]) > 15, "fanned pins are separated");
 });

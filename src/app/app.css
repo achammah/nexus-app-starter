@@ -265,8 +265,14 @@
 [data-slot="dialog-overlay"],
 [data-slot="dialog-content"] { animation: none !important; }
 
-/* dialogs open/close INSTANTLY — enter/exit animations on stacked layers (palette →
-   create dialog → peek) can wedge mid-flight and strand an invisible overlay over
-   the click target; instant transitions are also simply faster to use */
-[data-slot="dialog-overlay"],
-[data-slot="dialog-content"] { animation: none !important; }
+/* Mobile MAP-FIRST: at phone width a map view is the surface, not a widget under a
+   full list header. Hide the page title, collapse the view bar to just the
+   Table/Map switch (the map carries its own search + controls), and let the map
+   fill the viewport. The map's own overlays give search/geocode/layers/tools. */
+@media (max-width: 768px) {
+  [data-active-view="map"] .pageHead { display: none; }
+  [data-active-view="map"] .nxViewBar { margin: 0 0 6px; gap: 0; row-gap: 0; }
+  [data-active-view="map"] .nxViewBar > *:not(.viewSwitch) { display: none; }
+  [data-active-view="map"] .viewSwitch { margin-left: auto; }
+  [data-active-view="map"] .nxMapView { height: calc(100dvh - 168px); min-height: 420px; }
+}
