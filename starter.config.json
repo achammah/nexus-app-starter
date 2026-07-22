@@ -11,7 +11,7 @@
   "pages": [
     { "key": "warroom", "label": "War Room", "icon": "pen-tool", "kind": "whiteboard" },
     { "key": "systemmap", "label": "System Map", "icon": "workflow", "kind": "flow" },
-    { "key": "scratch", "label": "Scratch Sheet", "icon": "table-2", "kind": "spreadsheet" },
+    { "key": "scratch", "label": "Scratch Sheet", "icon": "notebook-pen", "kind": "spreadsheet" },
     { "key": "allsites", "label": "All Sites", "icon": "map", "kind": "map", "source": "demo_places" },
     { "key": "companycal", "label": "Company Calendar", "icon": "calendar-days", "kind": "calendar", "source": ["deals", "demo_calendar"], "view": { "defaultView": "month", "enabledViews": ["month", "week", "listMonth"] } }
   ],

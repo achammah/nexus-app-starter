@@ -100,6 +100,13 @@
   align-items: center; justify-content: center;
   color: var(--nx-fg-faint); font: var(--nx-text-meta);
 }
+/* top-nav (app.nav:"top") separates the Records items from the Pages items */
+.topNavDivider { width: 1px; height: 20px; background: var(--nx-chrome-border, var(--nx-border)); margin: 0 4px; flex: none; align-self: center; }
+/* the flow PAGE restores a compact minimap on mobile — the record flow VIEW keeps it
+   hidden to reclaim canvas (flow.css), so this page-scoped override doesn't touch it */
+@media (max-width: 760px) {
+  .nxCanvasPage .nxFlowWrap .react-flow__minimap { display: block; width: 96px; height: 66px; }
+}
 
 /* view switch (table / kanban) */
 .viewSwitch { display: inline-flex; background: var(--nx-bg-sunken); border: 1px solid var(--nx-border); border-radius: var(--nx-radius-s); padding: 2px; gap: 2px; }

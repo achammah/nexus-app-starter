@@ -24,6 +24,22 @@ import { pageViewKey } from "./pageHost";
 
 const SRC_COLORS: OptionColor[] = ["blue", "green", "orange", "purple", "teal", "pink", "red", "yellow"];
 
+/* the live app theme (light | dark) — an aggregate MAP page defaults its basemap to the
+   dark style in dark mode so the map doesn't read as a bright block under dark chrome.
+   Reacts to a runtime theme flip (the client-composable / live-dark-mode bar); a user's
+   explicit basemap pick (persisted in viewState) still wins. */
+function useDataTheme(): "light" | "dark" {
+  const read = () => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
+  const [theme, setTheme] = React.useState<"light" | "dark">(read);
+  React.useEffect(() => {
+    const obs = new MutationObserver(() => setTheme(read()));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    setTheme(read());
+    return () => obs.disconnect();
+  }, []);
+  return theme;
+}
+
 type Decoded = { obj: string; id: string };
 interface AggModel {
   object: ObjectConfig;
@@ -67,6 +83,7 @@ export default function AggregatePage({
   go: (hash: string) => void;
 }) {
   const kind = page.kind as "map" | "calendar";
+  const dark = useDataTheme() === "dark";
   const sources = React.useMemo(
     () => (Array.isArray(page.source) ? page.source : page.source ? [page.source] : []).filter((k) => config.objects.some((o) => o.key === k)),
     [page.source, config.objects],
@@ -127,11 +144,15 @@ export default function AggregatePage({
   const model = React.useMemo<AggModel | null>(() => {
     if (!def || objects.length === 0 || !rowsByObj) return null;
 
+    // dark mode → default the map basemap to the dark style (overrides an object's
+    // streets default; an explicit page.view.defaultBasemap or a user pick still wins)
+    const darkMap = kind === "map" && dark ? { defaultBasemap: "dark" } : {};
+
     if (single) {
       const obj = objects[0];
       const own = obj.views?.find((v) => v.type === kind) ?? {};
       const { type: _t, ...ownEntry } = own as Record<string, unknown>;
-      const entry = { ...ownEntry, ...(page.view ?? {}) };
+      const entry = { ...ownEntry, ...darkMap, ...(page.view ?? {}) };
       const viewConfig = { ...(def.defaultConfig?.(obj) ?? {}), ...entry };
       return {
         object: obj,
@@ -155,7 +176,7 @@ export default function AggregatePage({
         srcField,
       ];
       const object: ObjectConfig = { key: `__agg_${page.key}`, label: page.label, labelOne: "Record", defaultView: "map", fields };
-      const entry = { latField: "__lat", lngField: "__lng", titleField: "__title", colorField: "__src", legend: true, addPoint: false, clustering: true, ...(page.view ?? {}) };
+      const entry = { latField: "__lat", lngField: "__lng", titleField: "__title", colorField: "__src", legend: true, addPoint: false, clustering: true, ...darkMap, ...(page.view ?? {}) };
       const rows: RecordRow[] = [];
       objects.forEach((o, i) => {
         const mp = maps[i];
@@ -206,7 +227,7 @@ export default function AggregatePage({
       return { obj: d.obj, id: d.id, realPatch };
     };
     return { object, viewConfig: { ...(def.defaultConfig?.(object) ?? {}), ...entry }, rows, decode, translate };
-  }, [def, objects, rowsByObj, single, kind, page.key, page.label, page.view, config.objects]);
+  }, [def, objects, rowsByObj, single, kind, dark, page.key, page.label, page.view, config.objects]);
 
   const onOpen = React.useCallback((id: string) => { const d = model?.decode(id); if (d) openRecord(d.obj, d.id); }, [model, openRecord]);
   const onPatch = React.useCallback((id: string, patch: Record<string, unknown>) => {

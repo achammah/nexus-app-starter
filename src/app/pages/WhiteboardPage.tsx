@@ -36,27 +36,29 @@ const shift = (s: Skel, dx: number, dy: number): Skel => ({
 const tpl = (key: "kanban" | "matrix2x2" | "flow" | "timeline" | "mindmap", dx: number, dy: number): Skel[] =>
   (resolveTemplate(key)?.skeletons ?? []).map((s) => shift(s as Skel, dx, dy));
 
-function warRoomSkeletons(): Skel[] {
+/* the title is the PAGE's own label, so each whiteboard page seeds a distinct board
+   (a "Roadmap" page opens on "Roadmap", not a clone of another page's title). Kept
+   terse — excalidraw re-measures free text at mount (a Virgil font-load race), so long
+   strings shear their tail regardless of width. */
+function boardSkeletons(title: string): Skel[] {
   return [
-    // short text only — excalidraw re-measures free text at mount (a Virgil font-load
-    // race), so long strings shear their tail regardless of width; keep titles terse
-    { type: "text", x: 0, y: -8, text: "War Room", fontSize: 30, strokeColor: "#1e1e1e" },
-    { type: "text", x: 0, y: 36, text: "A live board", fontSize: 14, strokeColor: "#868e96" },
-    ...tpl("kanban", 0, 70),        // three lanes with sticky notes (tuned, clean)
-    ...tpl("mindmap", 800, 90),     // a linked idea web to its right
-    ...tpl("timeline", 0, 600),     // a Q1–Q4 timeline beneath
+    { type: "text", x: 0, y: -8, text: title, fontSize: 30, strokeColor: "#1e1e1e" },
+    { type: "text", x: 0, y: 40, text: "A live board", fontSize: 14, strokeColor: "#868e96" },
+    ...tpl("kanban", 0, 74),        // three lanes with sticky notes (tuned, clean)
+    ...tpl("mindmap", 800, 94),     // a linked idea web to its right
+    ...tpl("timeline", 0, 604),     // a Q1–Q4 timeline beneath
   ];
 }
 
-function seedWarRoom(): WhiteboardScene {
-  const elements = convertToExcalidrawElements(warRoomSkeletons() as never) as unknown as WhiteboardScene["elements"];
+function seedBoard(title: string): WhiteboardScene {
+  const elements = convertToExcalidrawElements(boardSkeletons(title) as never) as unknown as WhiteboardScene["elements"];
   return { elements };
 }
 
 export default function WhiteboardPage({ page }: { page: PageConfig }) {
   const KEY = wbDocKey(page.key);
   const config = React.useMemo(() => resolveWhiteboardConfig(page.whiteboard), [page.whiteboard]);
-  const { phase, initial, reloadNonce, save, saveState, reseed } = usePageDoc<WhiteboardScene>(KEY, isScene, seedWarRoom);
+  const { phase, initial, reloadNonce, save, saveState, reseed } = usePageDoc<WhiteboardScene>(KEY, isScene, () => seedBoard(page.label));
 
   const bar = (
     <div className="nxPageBar" data-testid="wb-page-bar">

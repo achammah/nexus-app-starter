@@ -450,7 +450,10 @@ export function App() {
       {!inDrawer && <span className="kbd">⌘K</span>}
     </label>
   );
-  const navButtons = (prefix: "" | "drawer-") => (
+  // Records (data objects) and Pages (config.pages[] + static customPages) are
+  // DIFFERENT taxonomies, so each nav surface renders them under its own header —
+  // a page is a surface, not a record.
+  const navObjectButtons = (prefix: "" | "drawer-") => (
     <>
       {config.objects.filter((o) => !o.hideInNav).map((o) => (
         <button
@@ -464,6 +467,10 @@ export function App() {
           <span className="navCount">{counts[o.key] ?? ""}</span>
         </button>
       ))}
+    </>
+  );
+  const navPageButtons = (prefix: "" | "drawer-") => (
+    <>
       {visiblePages.map((p) => (
         <button
           key={p.key}
@@ -560,7 +567,11 @@ export function App() {
           <header className="topNav" data-testid="nav-top">
             {burger}
             {brand}
-            <nav className="topNavItems">{navButtons("")}</nav>
+            <nav className="topNavItems">
+              {navObjectButtons("")}
+              {visiblePages.length > 0 && <span className="topNavDivider" aria-hidden="true" />}
+              {navPageButtons("")}
+            </nav>
             <span style={{ flex: 1 }} />
             <div className="topNavTools">
               {favs.length > 0 && (
@@ -645,10 +656,18 @@ export function App() {
           <div className="sideSection">
             <span className="nxMicro">Records</span>
             <nav className="sideNav" data-testid="nav">
-              {navButtons("")}
+              {navObjectButtons("")}
               {burger}
             </nav>
           </div>
+          {visiblePages.length > 0 && (
+            <div className="sideSection">
+              <span className="nxMicro">Pages</span>
+              <nav className="sideNav" data-testid="nav-pages">
+                {navPageButtons("")}
+              </nav>
+            </div>
+          )}
           {favs.length > 0 && (
             <div className="sideSection sideFavs" data-testid="fav-shelf">
               <span className="nxMicro">Favorites</span>
@@ -901,7 +920,14 @@ export function App() {
             </SheetHeader>
             <div className="drawerBody">
               {searchBox(true)}
-              <nav className="sideNav">{navButtons("drawer-")}</nav>
+              <span className="nxMicro">Records</span>
+              <nav className="sideNav">{navObjectButtons("drawer-")}</nav>
+              {visiblePages.length > 0 && (
+                <div className="drawerSection">
+                  <span className="nxMicro">Pages</span>
+                  <nav className="sideNav">{navPageButtons("drawer-")}</nav>
+                </div>
+              )}
               {favs.length > 0 && (
                 <div className="drawerSection">
                   <span className="nxMicro">Favorites</span>
