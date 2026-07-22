@@ -16,8 +16,25 @@ import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-const URLBASE = process.env.JOURNEY_URL || "http://localhost:4000";
+/* JOURNEY_URL — FAIL-CLOSED. Journeys WRITE test data (records, stage moves, saved
+   views, notes) against whatever they drive, so the runner must NEVER silently target
+   the live preview on :4000: a bare default or an explicit :4000 pollutes the in-memory
+   store people are reviewing (measured incident). So: default to a THROWAWAY band port
+   (:4173, auto-booted below), and REFUSE :4000 outright with a clear error. Point it at
+   any other port you like (e.g. a pre-booted server) via JOURNEY_URL. */
+const URLBASE = process.env.JOURNEY_URL || "http://localhost:4173";
 const SURFACE = process.env.JOURNEY_SURFACE || "local";
+let BOOT_PORT;
+try { BOOT_PORT = new URL(URLBASE).port || "4173"; }
+catch { console.error(`REFUSED: JOURNEY_URL="${URLBASE}" is not a valid URL.`); process.exit(3); }
+if (BOOT_PORT === "4000") {
+  console.error(
+    `REFUSED: JOURNEY_URL="${URLBASE}" targets the live preview port :4000. Journeys write test\n` +
+    `data and would pollute it. Use a throwaway band port (e.g. http://localhost:4173) or leave\n` +
+    `JOURNEY_URL unset (it defaults to :4173, which the runner auto-boots).`,
+  );
+  process.exit(3);
+}
 const SHOTS = path.join(ROOT, ".playwright-mcp");
 mkdirSync(SHOTS, { recursive: true });
 
@@ -35,7 +52,9 @@ async function up(u) {
 }
 if (!(await up(URLBASE))) {
   if (SURFACE !== "local") { console.error(`BLOCKED: ${URLBASE} unreachable`); process.exit(3); }
-  serverProc = spawn("node", [path.join(ROOT, "server", "server.mjs")], { stdio: "ignore", detached: false });
+  // auto-boot on the TARGET port (never :4000 — guarded above), so an unset JOURNEY_URL
+  // self-boots a throwaway :4173 server instead of latching onto whatever holds :4000
+  serverProc = spawn("node", [path.join(ROOT, "server", "server.mjs")], { stdio: "ignore", detached: false, env: { ...process.env, PORT: BOOT_PORT } });
   for (let i = 0; i < 20 && !(await up(URLBASE)); i++) await new Promise((r) => setTimeout(r, 400));
   if (!(await up(URLBASE))) { console.error("BLOCKED: server failed to boot"); process.exit(3); }
 }
