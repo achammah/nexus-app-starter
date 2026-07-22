@@ -98,28 +98,52 @@ poll never clobbers an in-progress edit. Reference implementation: `fields/white
 
 ## The free-surface block contract
 
-A **free surface** is a page whose content is one opaque document, not record rows —
-the Spreadsheet page is the reference. Every such block follows the same contract:
+Two kinds of surface exist in this app, and the split is the thing to get right first:
+
+| | Where the content lives | Examples |
+|---|---|---|
+| **Record surface** | the record store — rows of a configured object (`/api/objects/*`) | table, kanban, calendar, map, gallery, form, flow, sheet-over-records |
+| **Free surface** | ONE opaque document in `app_state`, owned by the page | workbook, document, page workspace, 3D viewer |
+
+Every free-surface block implements the SAME contract, so a new one is recognisably
+another of these rather than a new pattern to learn:
 
 | Piece | Contract |
 |---|---|
-| `value` | the document to load; `null` → the block seeds a demo |
+| `value` | the document to load; `null` → the block seeds one |
 | `onChange(snapshot)` | fires on every persisted change; the HOST debounces and persists |
 | `reloadNonce` | bump to force a fresh mount from the current `value` (reset, external reload) |
-| store key | `<blockStoreKey>("<pageKey>")` — an `app_state` key; own key = own document |
-| guard | `is<Block>Snapshot(value)` — validate before mounting; a bad value renders a designed invalid state |
-| seed | `seed<Block>()` — the starting document when the store is empty |
-| lazy surface | `Lazy<Block>Surface` (a `React.lazy` export) mounted under Suspense; the heavy engine never rides the eager bundle |
+| `<block>StoreKey(pageKey)` | builds the `app_state` key from a page key — own key = own document |
+| `is<Block>Snapshot(value)` | the guard: validate before mounting; anything foreign or corrupt recovers to a seed instead of crashing |
+| `seed<Block>()` | the starting document when the store is empty |
+| `readOnly` / `className` / `data-testid` | uniform across the blocks that take them |
 
-The workbook block (`src/ui/blocks/workbook`) exports exactly that set:
-`workbookStoreKey` · `isWorkbookSnapshot` · `seedWorkbook` · `seedLargeWorkbook` ·
-`WorkbookSurface` / `LazyWorkbookSurface`, plus `WorkbookSurfaceProps`
-(`value`, `onChange`, `reloadNonce`, `className`, `actions`, `data-testid`) and the
-theme derivation helpers. `actions` renders host controls (save state, reset) INTO the
-vendor toolbar's reserved right end, so the page needs no extra header strip.
+**Lazy is conditional, not part of the contract.** A block whose engine is heavy exports
+a `React.lazy` surface (`LazyWorkbookSurface`, `LazyViewer3DSurface`) that the host mounts
+under Suspense; a LIGHT block exports its surface eagerly. The document block is
+deliberately eager — the block editor and outline are small — and pushes only its heavy
+paths (`docx` export, `mammoth` import) behind dynamic imports inside the functions that
+use them, so they load when a user actually exports or imports. A host that wants to
+code-split an eager surface can wrap it in `React.lazy` itself.
 
-Because the document is an ordinary `app_state` value, a workflow or agent can produce
-one by writing the same key: `POST /api/state {key, value}`.
+### The blocks that implement it
+
+| Block | Store prefix | Guard · seed | Surface | Engine weight |
+|---|---|---|---|---|
+| `blocks/workbook` | `workbook:` | `isWorkbookSnapshot` · `seedWorkbook`, `seedLargeWorkbook` | `LazyWorkbookSurface` | Univer, lazy |
+| `blocks/document` | `document:` | `isDocumentSnapshot` · `seedDocument` | `DocumentSurface` (eager) | light |
+| `blocks/document` (workspace) | `pageworkspace:` | `isPageStore` · `seedPageStore` | `PageWorkspace` (eager) | light |
+| `blocks/viewer3d` | `viewer3d:` | `isViewer3dSnapshot` · `seedScene(kind)` | `LazyViewer3DSurface` | three.js, lazy |
+
+`seedScene` takes the variant it should seed (`"vehicle" | "floorplan"`) — an example of a
+block whose seed is parameterised rather than fixed.
+
+Two blocks additionally accept an `actions` node, rendered INTO the surface's own toolbar
+band so the page needs no extra header strip of its own (the workbook puts save-state and
+reset there).
+
+Because a free surface is an ordinary `app_state` value, a workflow or agent can produce
+or read one with a single `POST /api/state {key, value}` — no UI involved.
 
 ---
 

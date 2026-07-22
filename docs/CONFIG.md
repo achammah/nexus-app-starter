@@ -32,6 +32,7 @@ product. Relation targets must be listed BEFORE the objects that point at them.
 | `copilot.suggestions` | string[] | no | starter prompts |
 | `users` | string[] | no | the people directory `user`-type fields pick from |
 | `objects` | AppObject[] | yes | the record model (§2) |
+| `pages` | PageConfig[] | no | config-declared surfaces that are not record lists — one entry adds a nav item and a `#/p/<key>` route with no code. Full reference: `docs/PAGE-KINDS.md` |
 
 Server-set, never authored by hand (they arrive on `/api/config`): `demo` (seeded rows
 exist → the sidebar "Demo data" badge) and `features` (the env feature flags).
@@ -188,8 +189,9 @@ type's config. An entry naming an uninstalled or invalid type renders as an inli
 turns a misconfiguration into a plain-language chip naming the gap.
 
 Installed types: `table` · `kanban` · `chart` · `grid` · `gallery` · `form` · `flow` ·
-`calendar` · `map`. Runtime picks in the Columns / group-by / measure / rollup menus
-override config per user (persisted per object; saved views capture them).
+`calendar` · `map` · `timeline` · `focus`. Runtime picks in the Columns / group-by /
+measure / rollup menus override config per user (persisted per object; saved views
+capture them).
 
 ### `table` — Table
 No config keys. Column visibility and multi-level sort live in view state
@@ -287,6 +289,56 @@ hubs. Dragged node positions persist. Lazy chunk.
 day-grid, a `dateTime` object the hourly time-grid. View state persists the active
 view and the visible anchor date. Lazy chunk.
 
+### `timeline` — Timeline (Gantt)
+
+Tasks as bars on a time axis: subtask tree, dependency arrows, drag-to-reschedule, zoom,
+today marker, health styling and critical-path emphasis. A due-only task renders as a
+milestone diamond. Every key is optional — defaults resolve from the task shape
+(§"The task object model"), then from the object's own fields. Lazy chunk.
+
+| Key | Kind | Default |
+|---|---|---|
+| `startDateField` | a `date`/`dateTime` field key | the object's first date field |
+| `dueDateField` | a `date`/`dateTime` field key | the object's second date field, else the first |
+| `titleField` | any field key | the primary field |
+| `statusField` | a `select` field key — bar color comes from its option palette | — |
+| `assigneeField` | a `user` field key | — |
+| `progressField` | a `number` field key (0–100) | — |
+| `parentField` | a self-`relation` field key → the subtask tree | — |
+| `dependenciesField` | a multiple self-`relation` ("blocked by" ids) → arrows | — |
+| `doneStatuses` | comma-separated status values counting as complete | values named like done/complete/shipped/closed/cancel |
+| `defaultZoom` | `day` \| `week` \| `month` \| `quarter` | `week` |
+| `criticalPath` | boolean | on |
+
+View state: `tlZoom`, `tlCollapsed` (id→true), `tlAssignee`. The toolbar adds an assignee
+filter (when the object has a `user` field and the app has users) and a zoom segment
+(desktop only).
+
+### `focus` — Today
+
+The day-planning surface: an ordered day plan with per-task timers on the left, and a
+pull-in pane of due/overdue suggestions plus backlog on the right. Every key is optional.
+Lazy chunk.
+
+| Key | Kind |
+|---|---|
+| `titleField` | any field key |
+| `statusField` | a `select` field key |
+| `assigneeField` | a `user` field key |
+| `dueDateField` | a `date`/`dateTime` field key |
+| `estimateField` | a `number` field key, in HOURS — drives the spent-vs-estimate meter |
+| `timeEntriesField` | a `json` field key — the time log the timer appends to |
+| `plannedForField` | a `date` field key — the day plan itself |
+| `focusOrderField` | a `number` field key — order within the day |
+| `doneStatuses` | comma-separated status values counting as complete |
+| `newTaskStatus` | the status given to new and reopened tasks |
+
+Two behaviors worth designing around: **planning is EXPLICIT** — a due date never drafts
+work into the day, it only SUGGESTS — and exactly ONE timer runs at a time across the
+whole task set. The view needs somewhere to store the plan: without a `plannedFor` date
+field (or a `plannedForField` naming another one) it renders the misconfiguration chip
+instead. View state: `focusDate`, `focusUser`, `focusPane`.
+
 ### `map` — Map
 | Key | Kind | Default |
 |---|---|---|
@@ -317,6 +369,57 @@ Basemap ids come from `src/ui/record-core/views/map/basemaps.ts`. Lazy chunk plu
 separate GL-renderer chunk; both load only when a map view first renders.
 
 ---
+
+## 4b. The task object model
+
+Work tracking is a shaped OBJECT, not a special surface: an object whose fields follow the
+task shape gets the timeline and focus views working with zero view config, because both
+resolve their defaults from that shape.
+
+`taskObjectConfig(opts?)` builds the whole `ObjectConfig` for you. The field KEYS it emits
+are the contract (`TASK_KEYS`) — keep them and the views configure themselves; rename one
+and name it explicitly in the view config instead.
+
+| Field key | Type |
+|---|---|
+| `title` | text (primary) |
+| `status` | select — also the `stageField` |
+| `assignee` | user |
+| `priority` · `labels` | select · multiselect |
+| `startDate` · `dueDate` | date |
+| `estimate` · `timeSpent` · `progress` | number (hours, hours, %) |
+| `repeat` | select — None / Daily / Weekly / Biweekly / Monthly |
+| `parent` | self-relation → subtasks (`inverseLabel: "Subtasks"`) |
+| `blockedBy` | multiple self-relation → dependencies (`inverseLabel: "Blocks"`) |
+| `description` | richText |
+| `timeEntries` | json — the time log |
+| `plannedFor` · `focusOrder` | date · number — the day plan |
+
+Subtasks and dependencies are ordinary SELF-RELATIONS, so the whole relation machinery
+(pickers, related lists, id identity, merge re-pointing) applies to them unchanged.
+
+Options: `key` (default `tasks` — the self-relations point at it), `label`/`labelOne`,
+`statuses` (default Backlog · Todo · In progress · In review · Done, colored),
+`doneStatuses`, `priorities` (Urgent · High · Medium · Low), `labels`, `extraFields`,
+`views` and `defaultView`. The default view set is Today · Table · Board · Timeline ·
+Calendar, opening on Today.
+
+"Done" resolves automatically: any status value named like done/complete/shipped/closed/cancel
+counts as complete for overdue, at-risk and critical-path styling. Pass `doneStatuses` to
+be explicit instead.
+
+**Time tracking** (`timeTracking.ts`) is a pure layer over the `timeEntries` json field —
+`taskEntries`, `runningEntry`, `isTracking`, `trackedSeconds`, `trackedSecondsOn`,
+`totalTrackedOn`, and the patch builders `startTimerPatches` / `stopTimerPatch` /
+`toggleTimerPatches`. It performs no I/O: the host applies the patches through the normal
+record path.
+
+**Issue sync** (`taskSync.ts`) is a config SEAM, not an integration. It owns the two things
+a consumer cannot guess — the normalised shape a provider returns, and the mapping onto
+the task record — and performs NO network I/O: you supply `fetchIssues` (your
+authenticated call, your rate limits, your pagination) and it returns a patchset of
+creates and updates to apply. Its `mockIssues` is explicitly labelled demo data so a
+surface rendering it can say so rather than implying a connected account.
 
 ## 5. Permissions
 
