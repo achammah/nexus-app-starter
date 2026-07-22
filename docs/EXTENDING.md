@@ -134,11 +134,35 @@ an existing page with one store key and one surface swapped.
    `docs/UI-KIT.md` §"free-surface block contract": `value` / `onChange` / `reloadNonce`,
    a `<block>StoreKey(pageKey)` helper, an `is<Block>Snapshot` guard, a `seed<Block>()`,
    and a `Lazy<Block>Surface` React.lazy export.
-2. **The page** (`src/app/pages/YourSurface.tsx`) owns persistence:
-   read `api.state()` at mount, validate with the guard, fall back to the seed, mount the
-   lazy surface under Suspense, and persist debounced `onChange` snapshots with
-   `api.setState(storeKey("<pageKey>"), snapshot)`. A distinct page key = a distinct
-   document. Copy the loading / empty / error / save-state treatment from the reference.
+2. **The page** (`src/app/pages/YourSurface.tsx`) owns persistence, in this exact order —
+   every wired free-surface page is this file with two nouns swapped:
+
+   ```tsx
+   const KEY = React.useMemo(() => yourStoreKey(pageKey), [pageKey]);   // 1. namespace the store
+   // 2. load once, 3. guard, 4. seed if unset (and persist the seed when demoSeed)
+   React.useEffect(() => {
+     let live = true;
+     api.state().then((s) => {
+       if (!live) return;
+       const snap = s[KEY];
+       if (isYourSnapshot(snap)) setInitial(snap);
+       else { const seed = seedYour(); setInitial(seed); if (demoSeed) api.setState(KEY, seed).catch(() => {}); }
+       setPhase("ready");
+     }).catch(() => { setInitial(seedYour()); setPhase("ready"); });
+     return () => { live = false; };
+   }, [KEY, demoSeed]);
+   // 5. persist debounced — ONE timer for the page lifetime, cleared on unmount
+   const persist = React.useCallback((v: YourSnapshot) => {
+     if (saveTimer.current) clearTimeout(saveTimer.current);
+     saveTimer.current = setTimeout(() => { api.setState(KEY, v).catch(() => {}); }, SAVE_DELAY);
+   }, [KEY]);
+   // 6. mount (lazily when the engine is heavy), showing a designed loading state first
+   ```
+
+   Take a `pageKey` prop rather than hardcoding one — that is what lets several
+   `config.pages[]` entries of the same kind share ONE component, each with its own
+   document. A catch on the load falls back to the seed, so a store read failing never
+   leaves a dead page.
 3. **Register** in `src/app/pages.tsx`. Wrap the page root in `.pageBleed` if the surface
    should fill the content area with no card frame, and pass page controls (save state,
    reset) as the block's `actions` so they render inside the vendor toolbar row.

@@ -9,10 +9,11 @@ A **page** is any surface that is not an object's record list. There are two way
 
 This file covers the first. Custom pages: `docs/EXTENDING.md` §"Add a page".
 
-> **Requires the pages host.** `config.pages[]` is read by the app shell: the `PageKind`
-> union and `PageConfig` type in `src/app/api.ts`, the nav merge in `src/app/pages.tsx`
-> (`navPages` / `configPageFor`), and the icon resolver `src/app/pageIcons.tsx`. If those
-> are absent from an app, it has only the custom-page registry — add a page as a component
+> **The pages host.** `config.pages[]` is read by the app shell: the `PageKind` union and
+> `PageConfig` type in `src/app/api.ts`, the nav merge in `src/app/pages.tsx`
+> (`navPages` / `configPageFor`), the kind→component branch in
+> `src/app/pages/pageHost.tsx`, and the icon resolver `src/app/pageIcons.tsx`. If those are
+> absent from an app, it has only the custom-page registry — add a page as a component
 > instead, or bring the shell up to date.
 
 ## The two families
@@ -50,6 +51,7 @@ storeKey / guard / seed shape, so they behave identically from the host's side.
 | `source` | string \| string[] | aggregate kinds | the object key(s) whose records feed the surface. An ARRAY merges objects onto one surface — every deal AND every session on one calendar |
 | `view` | object | aggregate kinds | any of the underlying view type's config keys (`docs/CONFIG.md` §4), so a page tailors its surface |
 | `whiteboard` | WhiteboardConfig | `whiteboard` kind | the canvas option set (tools, palette, templates, ops) — same shape as the whiteboard FIELD's config |
+| `scene` | `"vehicle"` \| `"floorplan"` | `viewer3d` kind | which demo scene seeds the page — the kind-specific option pattern: a kind may add its own key, resolved by its host component |
 | `demoSeed` | boolean | free-surface kinds | seed this page with rich EXAMPLE content on first load. **Omitted → the page starts EMPTY**, which is what a genuinely new page should be; the starter's showcase pages set it true |
 
 Icons are declared as a NAME because JSON is stringly-typed. Matching is normalized on
@@ -63,13 +65,23 @@ Config pages and hand-written custom pages merge into ONE ordered nav list, so a
 
 ## The kinds
 
-| Kind | Family | What it is | Needs |
-|---|---|---|---|
-| `whiteboard` | free surface | an excalidraw canvas page | — (optional `whiteboard` config) |
-| `flow` | free surface | a node-graph canvas page | — |
-| `spreadsheet` | free surface | a full Univer workbook | — |
-| `map` | aggregate | records plotted on a GL map | `source` + coordinate fields on the object |
-| `calendar` | aggregate | records on a calendar; `source` may merge objects | `source` + a date field on each object |
+| Kind | Family | What it is | Needs | Host component |
+|---|---|---|---|---|
+| `whiteboard` | free surface | an excalidraw canvas page | — (optional `whiteboard` config) | `WhiteboardPage` |
+| `flow` | free surface | a node-graph canvas page | — | `FlowPage` |
+| `spreadsheet` | free surface | a full Univer workbook | — | `Spreadsheet` |
+| `document` | free surface | a Notion-style page WORKSPACE — nested pages, tree, links, backlinks | — (optional `scene`-free; see `docs/BLOCKS.md`) | `DocumentPage` (lazy) |
+| `viewer3d` | free surface | a 3D object / floor-plan viewer | — (optional `scene`) | `Viewer3DPage` (lazy) |
+| `map` | aggregate | records plotted on a GL map | `source` + coordinate fields on the object | `AggregatePage` |
+| `calendar` | aggregate | records on a calendar; `source` may merge objects | `source` + a date field on each object | `AggregatePage` |
+
+Both aggregate kinds share ONE host component, because an aggregate page is the matching
+VIEW rendered over `source`'s rows — which is why `view` takes that view type's config keys
+directly. The heavy free surfaces are lazy branches in the host, so a page kind costs
+nothing until someone opens it.
+
+`presentation` and `esignature` kinds are not in this set yet; when their blocks land they
+become one row here and one section in `docs/BLOCKS.md`.
 
 Per-kind surface behavior and options are the same as the equivalent VIEW where one
 exists — a `map` page and a `map` view render the same surface, so `docs/CONFIG.md` §4 is

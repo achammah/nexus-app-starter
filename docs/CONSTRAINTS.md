@@ -22,13 +22,29 @@ under concurrent use, an `EACCES`/`File exists` failure inside `_cacache` is con
 not a broken lockfile: retry with `--cache <a private dir>`.
 
 **A vendored block brings its own dependencies.** `npm run sync-ui` copies library SOURCE
-into `src/ui/`; it does NOT touch `package.json`. A block that imports an npm package
-needs that package declared in the APP's `package.json`, or the build fails on an
-unresolved import (a dynamically imported one fails at the moment a user triggers the
-feature, which is worse — it looks like a broken button). Current examples: `exceljs`
-(workbook XLSX/CSV I/O), `docx` and `mammoth` (document export/import), `three` (the 3D
-viewer), `polygon-clipping` (whiteboard boolean ops). After any sync that pulls in a new
-block, check its imports against your dependency list before assuming the feature works.
+into `src/ui/`; it does NOT touch `package.json`. A block that imports an npm package needs
+that package declared in the APP's `package.json` — and the failure mode depends on how the
+block imports it:
+
+| Import style | Fails | Looks like |
+|---|---|---|
+| static (`import * as THREE from "three"`) | at BUILD | an unresolved import from a file you did not write |
+| dynamic (`await import("exceljs")`) | at RUN, when a user triggers the feature | a broken button |
+
+Known block dependencies: `three` (3D viewer, static) · `exceljs` (workbook XLSX/CSV,
+dynamic) · `docx` and `mammoth` (document export/import, dynamic) · `polygon-clipping`
+(whiteboard boolean ops).
+
+**A local build passing is not evidence the dependency is declared.** A package installed
+ad hoc sits in `node_modules` and satisfies the build on that machine while being absent
+from `package.json` and the lockfile — so it works for you and fails for every fresh clone
+and for CI. After any sync that pulls in a new block, verify against the LOCKFILE rather
+than the build:
+
+```bash
+node -e "console.log(require.resolve('three'))"    # your machine — proves nothing about a clone
+grep '"three"' package.json package-lock.json      # this is the check that matters
+```
 
 **Dependency reachability decides eager vs lazy — not the author's intent.** A module ends
 up in the eager bundle if ANY eagerly-imported module reaches it. `polygon-clipping`
@@ -73,18 +89,21 @@ zero imports. Apply the same rule to any new heavy field type.
 ## Serve every asset extension the app ships
 
 The static server maps a file extension to a content type from ONE table in
-`server/server.mjs`; anything unlisted is served as `application/octet-stream`. A browser
-REFUSES an ES module with a non-JavaScript MIME type, so a block that ships an
-ES-module worker or a `.mjs` asset (pdf.js and its worker are the usual case) breaks with
-"Expected a JavaScript module script" until `.mjs` is in that table:
+`server/server.mjs`; anything unlisted is served as `application/octet-stream`, and a
+browser REFUSES an ES module with a non-JavaScript MIME type ("Expected a JavaScript
+module script"). Bundled ES-module workers — pdf.js, and any worker a block lazy-loads —
+ship as `.mjs`, so that entry is load-bearing:
 
 ```js
-const MIME = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", … };
+const MIME = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript",
+               ".css": "text/css", ".svg": "image/svg+xml", ".json": "application/json",
+               ".png": "image/png", ".ico": "image/x-icon", ".woff2": "font/woff2",
+               ".wasm": "application/wasm" };
 ```
 
-The same applies to any other extension a new block emits into `dist/assets` — `.wasm`,
-`.glb`, a font format not already listed. Check the table when you add a block whose build
-output is not plain `.js`/`.css`.
+Extend it when you add a block whose build output is not plain `.js`/`.css` — a `.glb`
+model, a font format not listed, any new worker format. The symptom is always the same
+shape: the asset downloads fine and the browser refuses to execute it.
 
 ## No external hosts at runtime
 
