@@ -242,16 +242,64 @@ The completion certificate id is a SHA-256 over the envelope's terminal facts �
 document name, per-signer id/email/signed-at, per-field id/type/page/filled-ness, and the
 completion timestamp.
 
-### Non-goals — read these before promising a feature
+### Limits — read before promising anything to a customer
 
-The surface deliberately does NOT do: multi-select, align or distribute on placed fields ·
-snap-to-text · auto-detection of signature lines · multi-document envelopes · page
-thumbnails.
+This surface is a signing UI with seams, not a signing SYSTEM. Four limits decide what you
+must build behind it.
 
-**The certificate carries no IP metadata, by design.** A browser cannot observe its own
-public IP, and inventing one would put fabricated evidence on an audit document. If your
-compliance regime needs originating IP, the backend behind `onSend` is the only honest
-place to record it.
+**1. The flatten covers OUR field values only — the source PDF's own form fields stay
+editable.** Verified by running a probe PDF through the real download path and diffing
+with `pdf-lib`:
+
+| | Source | After flatten |
+|---|---|---|
+| Pages · geometry | 1 · 612×792 | 1 + an appended certificate page · unchanged |
+| Existing AcroForm fields | `existing.customerRef` | **still present, still interactive** |
+| Page annotations (incl. links) | 2 | preserved |
+| Metadata | present | preserved |
+| E-signature field values | — | painted as page content; no new form fields |
+
+Signature values are drawn onto the page and cannot be edited afterwards, but a source
+document that was an interactive form is delivered with its fields still fillable — a
+recipient can change them after completion, and nothing here detects it. **If your sources
+carry AcroForm fields, flatten them server-side after download** (`form.flatten()`, qpdf,
+or your PDF service) before archiving or distributing. If the artifact must be
+tamper-evident, seal it server-side: the client output is not sealed.
+
+**2. Typed signatures rasterise through the browser canvas**, so the exact glyph shapes
+depend on the fonts installed on the signing machine. The snapshot deliberately keeps the
+typed text AND the font name, so a server can re-render them consistently.
+
+**3. The certificate is an integrity hash, not legal evidence.** `certificateId` is a
+SHA-256 over the terminal envelope state, so recomputing it proves a snapshot has not been
+altered. It is NOT bound to a verified identity, not countersigned, and not timestamped by
+an authority — and because the input IS the snapshot, anyone holding it can produce a
+matching certificate. It carries no IP, no trustworthy user-agent provenance, no
+geolocation: a browser cannot observe its own IP, and writing a client-declared one into a
+certificate of completion would fabricate an audit record, which in a signing product is a
+corrupt record rather than a cosmetic lie.
+
+Treat `onSend` as the boundary where the real record begins: your backend issues the
+signing links and records, per recipient at the moment they act, the source IP, user
+agent, authentication method and identity, and a server clock (ideally an RFC 3161
+timestamp). That record is authoritative; the client audit trail is a UX convenience.
+Under eIDAS or ESIGN/UETA the evidence, identity-binding and retention obligations all sit
+on that backend.
+
+**4. Delivery, signing and validation are seams, not implementations.**
+
+| Seam | What the surface does | What you must add |
+|---|---|---|
+| Delivery | without `onSend`, a demo send: status moves to `sent`, the audit records it, the dialog states no mail is delivered. `reminders` and `cc` ride in the request | scheduling and sending mail |
+| Signing | LOCAL — you act for each signer from the Sign tab, which the UI says plainly | per-recipient links and authentication |
+| Validation | `fieldFormatError` runs client-side; it is exported so you can re-run it | server-side validation — the client check is usability, never a trust boundary |
+| Adopted signatures | session-only, deliberately NOT written into the snapshot — a stored signature image is a credential, and persisting it into a blob that gets passed around is a leak waiting to happen | store against an authenticated user server-side if you want it saved |
+
+**Scoped out, not overlooked:** multi-select and align/distribute across fields,
+snap-to-text, auto-detection of printed signature lines, multi-document envelopes, and a
+page-thumbnail navigator. Field editing is one field at a time. Templates key to roles by
+ORDER, so a template whose role count differs from the envelope's signer count is refused
+outright rather than partially applied.
 
 ## `viewer3d` — a 3D object and floor-plan viewer
 

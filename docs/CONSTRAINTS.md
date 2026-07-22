@@ -174,6 +174,22 @@ the library, then re-sync. After a sync, restamp `src/app/gallery.catalog.json`'
 - **Field validation is server-side and derived from the type** (`validate()` in
   `server/store.mjs`). A new structured type without a case there is unvalidated.
 
+## A "finished" artifact is only finished where you verified it
+
+A surface that produces a document, export or signed artifact hands the user something they
+will treat as final. Verify what the output actually contains, on a probe input, before
+calling it done — the gap between the operation's NAME and its scope is where the damage
+lives. The signing surface's flatten is the worked example: it flattens the app's own field
+values, while the source PDF's pre-existing form fields pass through STILL INTERACTIVE, so
+a delivered "signed" document can still be edited (`docs/BLOCKS.md` §`esign`). Nothing in
+the UI is wrong; the word "flatten" simply covers less than it sounds like.
+
+Two rules follow. Anything that must be tamper-evident is sealed SERVER-side, because a
+client-produced artifact is not sealed. And anything that stands as evidence — an audit
+record, a certificate, a timestamp — is recorded server-side at the moment the actor acts;
+a browser cannot observe its own IP, and writing a client-declared one into an audit
+document fabricates the record rather than completing it.
+
 ## Irreversible actions need a review surface
 
 Anything irreversible or bulk (delete, destroy, bulk edit, send, import) ships WITH a
