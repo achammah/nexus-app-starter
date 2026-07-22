@@ -7,7 +7,7 @@
 
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { accentScale, neutralScale, deriveWorkbookTheme, type ColorScale, type UniverTheme } from "../../src/ui/blocks/workbook/workbook-theme.ts";
+import { accentScale, neutralScale, canvasGridTheme, deriveWorkbookTheme, type ColorScale, type UniverTheme } from "../../src/ui/blocks/workbook/workbook-theme.ts";
 
 test("accentScale maps 500 to the raw accent and fills the full 50..900 scale", () => {
   const resolve = (e: string) => (e === "var(--nx-accent)" ? "rgb(1, 2, 3)" : `MIX(${e})`);
@@ -27,7 +27,7 @@ test("neutralScale spans the warm token ramp: surfaces low, borders mid, text hi
   assert.ok(scale["50"].includes("--nx-bg"), "50 is the page surface");
   assert.ok(scale["100"].includes("--nx-bg-sunken"), "100 is the sunken surface");
   assert.ok(scale["200"].includes("--nx-border"), "200 is the border");
-  assert.ok(scale["300"].includes("--nx-border-strong"), "300 is the strong border");
+  assert.ok(scale["300"].includes("--nx-border"), "300 is a border tone (plain border: it feeds the frozen-pane divider)");
   assert.ok(scale["400"].includes("--nx-fg-faint"), "400 is faint text");
   assert.ok(scale["500"].includes("--nx-fg-muted"), "500 is muted text");
   assert.ok(scale["900"].includes("--nx-fg"), "900 is full text");
@@ -54,4 +54,22 @@ test("deriveWorkbookTheme rebuilds the palette from tokens while preserving blac
   assert.equal((theme.red as ColorScale)["50"], "keep"); // unmapped steps of a base scale survive
   assert.equal((theme.green as ColorScale)["500"], "R(var(--nx-ok))");
   assert.equal((theme.yellow as ColorScale)["500"], "R(var(--nx-warn))");
+});
+
+test("neutralScale gives the freeze-divider step (300) a quiet accent rule", () => {
+  const scale = neutralScale((e) => e);
+  assert.ok(scale["300"].includes("--nx-accent") && scale["300"].includes("--nx-border") && !scale["300"].includes("--nx-border-strong"),
+    "gray.300 (the frozen-pane divider source) is a low accent-into-border mix");
+});
+
+test("canvasGridTheme: whisper gridlines, achromatic-ours headers (brand lives in states)", () => {
+  const grid = canvasGridTheme((e) => e);
+  assert.ok(grid.gridlinesColor.includes("color-mix") && grid.gridlinesColor.includes("--nx-border") && grid.gridlinesColor.includes("--nx-bg-raised"),
+    "gridlines are a whisper border-into-surface mix");
+  assert.ok(grid.header.backgroundColor.includes("--nx-bg-sunken") && !grid.header.backgroundColor.includes("--nx-accent"),
+    "the header band is the achromatic sunken surface (Notion-model chrome; accent stays in states)");
+  assert.ok(grid.header.fontColor.includes("--nx-fg-muted"), "header text is muted");
+  assert.ok(grid.header.borderColor.includes("--nx-border") && !grid.header.borderColor.includes("--nx-accent"),
+    "header hairlines are the plain border tone");
+  assert.ok(typeof grid.header.fontFamily === "string" && grid.header.fontFamily.length > 0, "header font comes from the app");
 });
