@@ -12,12 +12,17 @@ const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const cfgPath = process.env.CONFIG_PATH || "starter.config.json";
 const CONFIG = JSON.parse(readFileSync(path.isAbsolute(cfgPath) ? cfgPath : path.join(ROOT, cfgPath), "utf8"));
 
+/* select/multiselect options may be plain strings or {value,label,color} */
+const optLabel = (o) => (typeof o === "string" ? o : o.label ?? o.value);
+
 const lines = ["erDiagram"];
 for (const o of CONFIG.objects) {
   lines.push(`  ${o.key} {`);
   for (const f of o.fields) {
     const flags = [f.primary ? "PK" : null].filter(Boolean).join(" ");
-    lines.push(`    ${f.type.replace(/[^a-z]/g, "_")} ${f.key} ${flags ? `"${flags}"` : ""}`.trimEnd());
+    // mermaid attribute types are [a-z_]: lowercase FIRST so dateTime → datetime,
+    // not date_ime (stripping the capital would swallow the letter itself)
+    lines.push(`    ${f.type.toLowerCase().replace(/[^a-z]/g, "_")} ${f.key} ${flags ? `"${flags}"` : ""}`.trimEnd());
   }
   lines.push("  }");
 }
@@ -35,7 +40,7 @@ const tables = CONFIG.objects
       .map((f) => {
         const extra = [
           f.primary ? "primary" : null,
-          f.options ? `options: ${f.options.join(" / ")}` : null,
+          f.options ? `options: ${f.options.map(optLabel).join(" / ")}` : null,
           f.relation ? `→ ${f.relation}` : null,
           f.primitive ? `enrich: ${f.primitive.label ?? f.primitive.kind}` : null,
           o.stageField === f.key ? "stage (board columns)" : null,

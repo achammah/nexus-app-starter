@@ -2,6 +2,11 @@
 
 Task cookbook. Each recipe names the files touched and the order of operations. If a recipe and the code disagree, the code won; fix the recipe in the same commit.
 
+Companion files: **`docs/CONFIG.md`** is the exhaustive config-key reference (every object,
+field and per-view option); **`docs/EXTENDING.md`** covers the code-level seams (new view
+type, field type, page, data source); **`docs/TESTING.md`** the journey harness. This file
+stays task-shaped: what to do, in what order.
+
 ## Add an entity
 Fastest: `npm run generate object Invoice -- --fields "name:text:primary,amount:currency,stage:select:Draft|Sent|Paid,owner:user"` — writes the config entry (board on the first select, seeded rows, `npm run model` refresh). By hand:
 1. `starter.config.json` → append to `objects[]`: `key/label/labelOne/icon`, `fields[]`, optional `stageField` (a select field's key → enables the board), `defaultView`, and demo data (`sampleRows` with stable ids, or `seedCount`). Relation targets must be listed BEFORE the objects that point at them.
@@ -89,7 +94,7 @@ Every field type's editors live in ONE registry — `src/ui/record-core/fields/`
 - **Rich-text save-state** — the `richText` field editor coalesces keystrokes through nexus-ui's `useDebouncedSave` and shows a "Saving… / Saved" chip. Automatic on every `richText` field; no config.
 
 ## Add an async-generation action to an object
-1. `starter.config.json` → on the object add `generate` (see DATA-MODEL "App-object options"): name the `statusField` (a `select` with a generating value + a ready value) and optionally a `resultField` (the `richText`/text field the finished record fills). Demo: the `reports` object.
+1. `starter.config.json` → on the object add `generate` (see docs/CONFIG.md §7): name the `statusField` (a `select` with a generating value + a ready value) and optionally a `resultField` (the `richText`/text field the finished record fills). Demo: the `reports` object.
 2. Boot with a warehouse so the external-writer catch-up is live: `WAREHOUSE=local` (offline, file-backed) or `WAREHOUSE=bigquery`.
 3. The list gains a "Generate" button: it drops a placeholder row (status = the generating value) with an in-flight indicator, fires `/api/_mock/generate`, and the finished record lands via the warehouse + the poll's `syncStore()` — the SAME row settles to the ready value (a stall hint shows past `stallAfterMs`).
 4. Swap the labeled `/api/_mock/generate` writeback in `server/server.mjs` for a real generation workflow — a `fireAsyncGeneration` `webhookUrl` pointing at a Nexus workflow that writes the finished record back to the warehouse.

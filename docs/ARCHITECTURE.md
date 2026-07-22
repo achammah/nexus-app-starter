@@ -1,5 +1,8 @@
 # Architecture — file map + data flow
 
+Config key reference: `docs/CONFIG.md` · extension seams: `docs/EXTENDING.md` · the
+vendored kit and its registries: `docs/UI-KIT.md` · docs index: `docs/README.md`.
+
 ```
 starter.config.json      app identity · theme seed · chat.embedUrl · OBJECTS (the record model)
 index.html → src/app/main.tsx   css order: tokens → shadcn bridge → primitives → record-core → app
