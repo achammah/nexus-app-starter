@@ -114,6 +114,26 @@ export default [
     },
   },
   {
+    name: "map-spiderfy", feature: "Map view (records on a map)",
+    async run(page, { URLBASE, assert, ROOT }) {
+      const ctx = await wide(page);
+      await abortExternal(ctx);
+      const p = await ctx.newPage();
+      await openMap(p, URLBASE, "demo_places");
+      // turn clustering off → 100+ individual pins; the dense metros collide, so
+      // colliding groups fan onto a ring with leader lines (no unreadable stacks)
+      await p.click('[data-testid="map-layers-btn"]');
+      await p.click('[data-testid="map-layer-clusters"]');
+      await p.click('[data-testid="map-layers-btn"]');
+      await p.waitForFunction(() => document.querySelector('[data-testid="map-demo_places"]')?.getAttribute("data-map-mode") === "markers", { timeout: 8000 });
+      await p.waitForFunction(() => document.querySelectorAll('[data-testid="map-demo_places"] .nxMapLeader').length > 0, { timeout: 8000 });
+      const leaders = await p.locator('[data-testid="map-demo_places"] .nxMapLeader').count();
+      assert(leaders > 0, `colliding pins spiderfy out with leader lines instead of stacking (${leaders} fanned)`);
+      await shot(p, ROOT, "map-spiderfy");
+      await ctx.close();
+    },
+  },
+  {
     name: "map-search-open", feature: "Map view geocode + search",
     async run(page, { URLBASE, assert, ROOT }) {
       const ctx = await wide(page);
@@ -305,11 +325,12 @@ export default [
       await openMap(p, URLBASE, "demo_places");
       await hostSearch(p, "demo_places", "Hamburg"); // Hamburg cluster → DOM markers to click
       await p.click('[data-testid="map-route-btn"]');
-      // the Hamburg pins sit close together (dense cluster) and animate in — force
-      // dispatches the click to each specific marker regardless of overlap/stability
+      // the Hamburg pins sit close together and spiderfy fans them into an
+      // overlapping ring — dispatchEvent fires each SPECIFIC marker's handler
+      // (a coordinate click would hit-test to whichever pin is topmost)
       const markers = p.locator('[data-testid="map-demo_places"] [data-testid^="map-marker-"]');
-      await markers.nth(0).click({ force: true });
-      await markers.nth(1).click({ force: true });
+      await markers.nth(0).dispatchEvent("click");
+      await markers.nth(1).dispatchEvent("click");
       await p.waitForFunction(() => (document.querySelector('[data-testid="map-demo_places"]')?.getAttribute("data-map-route") || "") !== "", { timeout: 8000 });
       const km = Number(await attr(p, "demo_places", "data-map-route"));
       assert(km > 0, `routing between two records draws a path with a distance (${km} m)`);
@@ -347,6 +368,9 @@ export default [
       const p = await ctx.newPage();
       await openMap(p, URLBASE, "demo_places");
       assert((await attr(p, "demo_places", "data-map-mode")) === "cluster", "at 390px the dense map still clusters");
+      // MAP-FIRST at phone width: the page title/header collapses so the map is the
+      // surface (its own search + controls carry navigation)
+      assert(!(await p.locator(".pageHead").isVisible().catch(() => false)), "at 390px the page-head collapses — map-first, not a widget under a full header");
       // the always-visible map search opens a record without a hover-only affordance
       await p.fill('[data-testid="map-search"]', "Aurora");
       await p.waitForSelector('[data-testid="map-search-result-pl_1"]', { timeout: 8000 });

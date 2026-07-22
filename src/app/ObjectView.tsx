@@ -507,7 +507,7 @@ export function ObjectView({
   };
 
   return (
-    <div>
+    <div data-active-view={view}>
       <div className="pageHead">
         <h1 className="pageTitle">{config.label}</h1>
         <span className="nxCount" data-testid="row-count">{rows ? `${rows.length}` : "…"}</span>
