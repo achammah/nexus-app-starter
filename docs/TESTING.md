@@ -112,6 +112,11 @@ Rules that keep the suite trustworthy:
   and restore or destroy it afterwards. A journey must leave the seed state it found.
 - **Do not hardcode row counts** when earlier journeys mutate the same object — assert
   narrowing and correctness instead (`before > after && every row matches`).
+- **Know the surface's rendering mode.** A GL-rendered surface may have no DOM node to
+  select: with clustering on, map records are points in the `map-point` GL layer, not
+  `[data-testid^="map-marker-"]` elements. Assert on the container's mirrored state
+  attributes (`data-map-mode`, `data-map-clusters`) or query the GL layer — a testid
+  selector that never matches reads as "the feature is broken" when it is the selector.
 - **Cover mobile** for any surface a user touches: a 390x664 pass exercising the core
   interaction by touch.
 - A journey needing its own config boots its own server on a fixture:

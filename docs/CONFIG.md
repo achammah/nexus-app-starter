@@ -419,9 +419,38 @@ load. Rapid or mid-load switches are safe — the attempt re-arms per basemap an
 selection wins. The failure this guards against is subtle: a cosmetic 404 (a missing text
 font making the glyph server 404) must not be treated as a style failure.
 
-Other interactions: ⌥/Alt + scroll flies the camera, one click toggles between a level
-top-down pose and a 3D oblique one (tilting a globe orbits it), and on mobile the panels
-are bottom sheets.
+**Camera gestures.** ⌥/Alt + two-finger scroll is the fly gesture — vertical tilts,
+horizontal rotates — deliberately NOT a bare two-finger drag, which is already trackpad
+zoom/pan; plain scroll stays untouched. A 3D/2D button eases into an oblique pose, or
+levels to top-down AND north in one click. On touch: two-finger drag to tilt, two-finger
+twist to rotate, sideways two-finger drag to pan. Pitch is clamped to `maxPitch` so the
+camera never drops under the horizon. All of it works in flat and globe alike — tilting a
+globe orbits the planet.
+
+#### Known limits — read before extending or filing a bug
+
+Each is a deliberate, verified constraint. Nothing is faked in the UI: where the data is
+not real, the surface says so.
+
+| Limit | Why | The lever |
+|---|---|---|
+| **Building heights are mostly synthetic** — they only read as mass from ~z16 | most OSM footprints carry `render_height` 0–3 m, so an ~8 m floor applies | point the style at a source with populated heights. **Do not raise the floor** — that produces uniform fake skylines |
+| **3D buildings need a VECTOR basemap** | satellite / hybrid / terrain carry no building geometry — the toggle is correctly disabled there | switch to streets / light / dark |
+| **The arrival clock is not traffic-aware** | arrival = departure + route duration; the public OSRM demo has no traffic model, and the UI labels it "no traffic" | wire a traffic-aware provider via `routeEndpoint` |
+| **Route alternatives are single-leg only and often absent** | OSRM returns extras only for some point pairs, never for multi-stop | nothing — an absent picker is correct. **Do not add a "1 of 1" chooser** |
+| **Geocoding defaults to a local mock** | no vendor is hardcoded, so no key can leak and no blocked host can break it. RECORD results are always real; ADDRESS results are mocked until wired | set `geocodeEndpoint` to an app route proxying a keyed vendor server-side |
+| **Routing falls back to a labelled mock** | offline / CI / CSP-blocked → a densified great-circle path with synthesized steps, flagged `approximate` and shown as an estimate | `osrmBaseUrl` or `routeEndpoint`; `osrmBaseUrl: ""` forces mock-only |
+| **Default relief is RASTER hillshade, not a mesh** | a pre-rendered image — the ground stays flat under it. A true mesh needs a DEM host the CSP allows | set `terrainDemUrl` (terrarium raster-dem tiles). Relief is only visible where there IS relief — test over real terrain before concluding it is broken |
+| **Transit and live traffic are absent** | both need a keyed vendor or a non-allow-listed host | documented seams, off by default, never faked |
+| **A basemap switch is a soft dip, not a crossfade** | a true frame-to-frame crossfade needs an untyped escape hatch in react-map-gl v8 | accepted — the blur/opacity dip removes the hard flip |
+| **Mobile is PARTIAL** | the directions panel has a proper sheet with peek/half snaps (alternatives are pinned into the always-visible region), but the Layers/basemap picker has no sheet treatment and the legend does not collapse — it eats a large share of a phone screen | treat mobile as unfinished; no horizontal overflow and the controls are reachable at 390px |
+
+**Rendering mode matters for tests.** With the default clustering, a dense object renders
+as GL clusters at every zoom, so individual records are GL points rather than DOM pins —
+a journey hit-testing markers must query the `map-point` layer, not a
+`[data-testid^="map-marker-"]` selector. With clustering turned OFF, a dense set still
+renders as compact GPU proportional symbols (colored and sized by field) rather than a
+wall of DOM teardrops; that declutter guard is a second rendering mode, not clustering.
 
 ---
 
