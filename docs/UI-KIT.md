@@ -134,6 +134,7 @@ code-split an eager surface can wrap it in `React.lazy` itself.
 | `blocks/document` | `document:` | `isDocumentSnapshot` · `seedDocument` | `DocumentSurface` (eager) | light |
 | `blocks/document` (workspace) | `pageworkspace:` | `isPageStore` · `seedPageStore` | `PageWorkspace` (eager) | light |
 | `blocks/viewer3d` | `viewer3d:` | `isViewer3dSnapshot` · `seedScene(kind)` | `LazyViewer3DSurface` | three.js, lazy |
+| `blocks/presentation` | `presentation:` | `isDeckSnapshot` (alias `isPresentationSnapshot`) · `seedDeck` | `PresentationSurface` (eager) / `LazyPresentationSurface` | light; pptxgenjs + jszip dynamic |
 | `blocks/esign` | `esign:` | `isEsignSnapshot` · `seedEnvelope` (+ per-stage seeds) | `LazyESignSurface` | pdfjs-dist + pdf-lib, lazy |
 
 `seedScene` takes the variant it should seed (`"vehicle" | "floorplan"`) — an example of a

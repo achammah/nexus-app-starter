@@ -192,6 +192,94 @@ for the page, so the surface never stacks two.
 
 ---
 
+## `presentation` — a deck editor with share + track
+
+A slide deck: layout templates AND free placement, shapes, images, charts, tables,
+speaker notes, present mode, PPTX/PDF export, PPTX import, plus a share-and-track layer
+(links, view analytics, data rooms).
+
+**Persistence:** one `DeckSnapshot` under `presentation:<pageKey>`.
+**Weight:** the editor is light and the barrel is safe to import eagerly; `pptxgenjs`
+(export) and `jszip` (import) hide behind dynamic imports inside their own modules. A
+`LazyPresentationSurface` is exported too, so a host can wire it exactly like the workbook.
+
+### The deck
+
+`DeckSnapshot` is `{kind, version, id, title, theme, slides, sharing, analytics, rooms}`.
+
+Each `Slide` carries a `layout`, its `blocks`, plain-text `notes`, an optional
+`transition`, and an optional `elements` array. **Two content paths coexist on every
+slide**: layout REGIONS are the template path — the layout decides where text sits — and
+ELEMENTS are the PowerPoint path, anything anywhere on top, painted in array order as
+z-order. A layout gives a fast start; elements give full freedom.
+
+| Type | Values |
+|---|---|
+| `SlideLayout` | `title` · `title-body` · `two-column` · `image` · `quote` · `section` · `blank` · `canvas` (no regions — pure free placement) |
+| `SlideTransition` | `none` · `fade` · `slide` · `zoom` |
+| `DeckThemeId` | `native` · `paper` · `midnight` · `accent` · `gradient` |
+| `ElementKind` | `text` · `shape` · `image` · `chart` · `table` |
+| `ShapeKind` | `rect` · `roundRect` · `ellipse` · `triangle` · `arrow` · `line` · `star` · `callout` |
+| `ChartKind` | `bar` · `line` · `pie` · `area` · `scatter` |
+
+Element geometry (`x/y/w/h`, `rot`, `locked`, `groupId`) is in a 1280×720 design box, so a
+slide renders identically as a thumbnail, on the canvas, in present mode and in an export.
+`ElementStyle` separates `opacity` (whole element) from `fillOpacity` (shape fill only,
+leaving the label readable) — the latter is what PowerPoint's shape Transparency actually
+does.
+
+A chart carries its OWN data (`ChartSpec.series` + `rows`), so a deck is self-contained
+and a slide never depends on a live query to render.
+
+### `PresentationConfig`
+
+| Key | Does |
+|---|---|
+| `defaultTheme` | the theme new decks start on |
+| `features` | switches, all defaulting ON: `share` · `analytics` · `rooms` · `pptxExport` · `pptxImport` · `pdfExport` · `present` |
+| `buildShareUrl(slug)` | host-owned slug → public URL. The default builds a location-based URL; a real deployment points this at its viewer route |
+| `onAnalyticsEvent(event)` | a seam — viewer events are ALSO forwarded here (e.g. to a backend); the in-snapshot fold still happens through `onEvent` → `applyViewEvent` |
+
+### Import and export
+
+| Direction | Format | How |
+|---|---|---|
+| Export | PPTX | `exportDeckToPptx` (pptxgenjs, dynamically imported) |
+| Export | PDF | `exportDeckToPdf` — a print window with each slide as one fixed 16:9 landscape page, then the browser's Save-as-PDF. No library, no bundle cost |
+| Import | PPTX | `import.ts` (jszip, dynamically imported) — PowerPoint, Google Slides via File → Download → .pptx, Keynote's PPTX export, or this block's own output |
+
+**Imported slides land on the `canvas` layout as free elements, deliberately.** A
+PowerPoint slide is already absolutely positioned, so mapping it onto template layouts
+would mean guessing at — and losing — the author's geometry; `canvas` is lossless for
+position.
+
+Import fidelity is scoped, and **anything unread is reported in `warnings`, never silently
+dropped**:
+
+| Read | Not read |
+|---|---|
+| shape geometry (position, size, rotation) · drawable preset shape kinds · solid fills and outlines · text with per-run bold/italic/underline/size/colour · bullets · pictures (embedded as data URLs) · grouped shapes (flattened with composed transforms) · speaker notes | theme colour inheritance · gradient and image fills · tables · charts · SmartArt · animations · master/placeholder geometry inheritance · WordArt effects |
+
+### Share and track
+
+`ShareLink` carries a url-safe `slug`, an optional `expiresAt` the viewer refuses entry
+after, an `emailGate` flag that collects an email before showing the deck, and `disabled`.
+`ViewSession` records per-link viewing: `slideMs` per slide, `maxSlideIndex`, and whether
+the session `completed`. The viewer emits `session_start` / `slide_time` /
+`session_complete`, which the host folds into the snapshot with `applyViewEvent` or ships
+to a backend via `onAnalyticsEvent`.
+
+A `DataRoom` is an ordered grouping shared as one set. Items are either `this-deck` or a
+`link` — a reference by title and href — because a snapshot owns only its own deck;
+resolving a pointer to another page is the host's seam.
+
+### Limits
+
+Element-level ANIMATION and slide MASTERS/templates are not in the model: slides carry a
+`transition`, and there is no per-element animation or master-slide inheritance. Both are
+also on the not-read side of PPTX import, so a deck that uses them imports without them
+and says so in its warnings.
+
 ## `esign` — an e-signature envelope
 
 A signing surface: document intake, field placement, ordered signers, a review-gated send,

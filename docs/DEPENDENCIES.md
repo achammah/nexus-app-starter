@@ -44,6 +44,8 @@ Every npm dependency, why it exists, and how it loads. The server (`server/*.mjs
 | lodash | ^4.17.21 → 4.18.1 | MIT | glide-data-grid / @univerjs peer, declared directly | 4972 | with its consumers |
 | marked | ^18.0.7 → 18.0.7 | MIT | glide-data-grid's markdown cell kind (unused by the Sheet view; tree-shaken) | 460 | with the grid chunk |
 | react-responsive-carousel | ^3.2.23 → 3.2.23 | MIT | glide-data-grid's image cell kind (unused by the Sheet view; tree-shaken) | 320 | with the grid chunk |
+| pptxgenjs | ^4.0.1 → 4.0.1 | MIT | PPTX export from the presentation block | 2568 | dynamic `import()` at export time |
+| jszip | ^3.10.1 → 3.10.1 | MIT or GPL-3.0-or-later | reads the OOXML zip on PPTX import (presentation block) | 880 | dynamic `import()` at import time |
 | pdfjs-dist | 4.10.38 (pinned) → 4.10.38 | Apache-2.0 | renders PDF pages to canvas in the e-signature surface (`blocks/esign`). Ships an ES-module WORKER — see the `.mjs` MIME requirement in `docs/CONSTRAINTS.md` | 37464 | lazy chunk (`LazyESignSurface`) |
 | pdf-lib | 1.17.1 (pinned) → 1.17.1 | MIT | flattens placed fields + signatures into the signed PDF (`blocks/esign`) | 23212 | lazy chunk (`LazyESignSurface`) |
 | polygon-clipping | ^0.15.7 → 0.15.7 | MIT | the whiteboard's boolean/shape ops (add/subtract/intersect/exclude/split) — the Martinez polygon-clipping algorithm behind Turf, over polygonised excalidraw shapes (`fields/whiteboard/geometry.ts`); transitive: splaytree 3.2.3 (MIT, 136 KB) | 364 | LAZY — `geometry.ts` is reached only through `OpsRail` → `WhiteboardCanvas` → the `React.lazy` `WhiteboardField`, so it rides that chunk; zero eager cost (pure geometry, no React, node-testable) |
