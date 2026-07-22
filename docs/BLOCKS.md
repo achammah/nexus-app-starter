@@ -192,6 +192,67 @@ for the page, so the surface never stacks two.
 
 ---
 
+## `esign` — an e-signature envelope
+
+A signing surface: document intake, field placement, ordered signers, a review-gated send,
+signing with drawn / typed / uploaded signatures, an audit trail and a completion
+certificate, plus reusable templates.
+
+**Persistence:** one `EsignEnvelope` under `esign:<pageKey>`.
+**Weight:** the PDF engines are lazy — `LazyESignSurface`; `pdfjs-dist` renders and
+`pdf-lib` flattens, and neither touches the eager bundle. The exported helpers are
+dependency-free and node-testable.
+
+### The envelope
+
+`EsignEnvelope` carries `id`, `name`, `status`, `signingOrder`, the `document`, `signers`,
+optional `cc` recipients (they receive the completed document and sign nothing), a
+`reminders` policy, the placed `fields`, the `events` audit trail, `templates`, and on
+completion `completedAt` + `certificateId`.
+
+| Enum | Values |
+|---|---|
+| `EsignEnvelopeStatus` | `draft` · `sent` · `partially_signed` · `completed` |
+| `EsignSignerStatus` | `pending` · `viewed` · `signed` |
+| `EsignSigningOrder` | `sequential` · `parallel` |
+| `EsignFieldType` | `signature` · `initials` · `date` · `text` · `checkbox` · `dropdown` |
+| `EsignFieldFormat` | `any` · `email` · `number` · `phone` · `date` |
+
+Seeds for every stage ship as fixtures: `seedEnvelope`, `seedDraftEnvelope`,
+`seedSentEnvelope`, `seedCompletedEnvelope`, enumerated by `ESIGN_SEED_STATES`.
+
+### `ESignConfig`
+
+| Key | Does |
+|---|---|
+| `title` | surface title; defaults to the envelope name |
+| `fieldTypes` | restrict the palette; default is all six types |
+| `signingOrder` | the default order for new envelopes |
+| `onSend` | **the delivery seam** — a real mailer/backend. Absent → a clearly LABELED demo send that writes an audit event and delivers nothing |
+| `signingUrlTemplate` | e.g. `https://app.example.com/sign/{envelopeId}/{signerId}` |
+| `demoStates` | the demo-state switcher (draft / partially signed / completed). Defaults TRUE so a visitor can reach post-send states instead of being stranded in a locked envelope — **set it false in a real deployment** |
+
+`EsignSendRequest` is the exact payload a backend mailer needs: the envelope and document
+identity, signing order, per-recipient rows (name, email, role, order, field counts, the
+`signingUrl` a real backend generates and mails, an optional per-recipient message), the
+`cc` list, the reminder cadence and expiry, and `sentAt`. Implement `onSend` against that
+shape and nothing else in the surface changes.
+
+The completion certificate id is a SHA-256 over the envelope's terminal facts — its id,
+document name, per-signer id/email/signed-at, per-field id/type/page/filled-ness, and the
+completion timestamp.
+
+### Non-goals — read these before promising a feature
+
+The surface deliberately does NOT do: multi-select, align or distribute on placed fields ·
+snap-to-text · auto-detection of signature lines · multi-document envelopes · page
+thumbnails.
+
+**The certificate carries no IP metadata, by design.** A browser cannot observe its own
+public IP, and inventing one would put fabricated evidence on an audit document. If your
+compliance regime needs originating IP, the backend behind `onSend` is the only honest
+place to record it.
+
 ## `viewer3d` — a 3D object and floor-plan viewer
 
 Two modes from one snapshot: `object` (a model on a turntable) and `floorplan` (levels you

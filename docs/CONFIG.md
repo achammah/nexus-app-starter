@@ -340,33 +340,88 @@ field (or a `plannedForField` naming another one) it renders the misconfiguratio
 instead. View state: `focusDate`, `focusUser`, `focusPane`.
 
 ### `map` — Map
+
+Records on a GL map. Every capability is config-declared with a working default, so an
+object with two number fields gets a usable map and a client narrows from there.
+
+**Projection and basemap are ORTHOGONAL axes**, not a list of modes. `projection`
+(`flat` | `globe`) changes only the projection — viewport, markers, route, filters and the
+chosen style all carry across — and any of the six basemaps renders under either. "Earth"
+is a named PRESET composing those axes (globe + an imagery basemap + a tilted camera), not
+a third mode; it reads as active whenever the live state matches, whether you reached it
+by the preset chip or by setting the axes yourself.
+
 | Key | Kind | Default |
 |---|---|---|
-| `latField` | a `number` field key (**required**) | inferred from field names |
-| `lngField` | a `number` field key (**required**) | inferred from field names |
+| `latField` / `lngField` | `number` field keys (**required**) | inferred from field names |
 | `titleField` | any field key | the primary field |
-| `colorField` | a `select` field key → marker colors + legend | none |
-| `sizeField` | a `number`/`currency`/`money` field key → marker size ramp | none |
-| `basemaps` | subset of the offered basemap ids | all |
+| `colorField` | a `select` field key → marker colors + legend | — |
+| `sizeField` | a `number`/`currency`/`money` field key → size ramp | — |
+| `basemaps` | subset of `streets` `light` `dark` `satellite` `hybrid` `terrain` | all six |
 | `defaultBasemap` | one of the offered ids | the first offered |
+| `projection` | `"flat"` \| `"globe"` | `flat` |
+| `buildings3d` | boolean — extruded buildings on vector basemaps | `true` |
+| `hillshade` | boolean — terrain shading on by default | `false` |
+| `terrainDemUrl` | DEM tile URL (a seam) | — |
+| `terrainExaggeration` | number, clamped 0.1–4 | `1.3` |
+| `maxPitch` | number, 0–85° | `72` |
+| `initialPitch` | number, 0–85° | `0` |
+| `initialBearing` | number, −180–180° | `0` |
+| `doubleClickAction` | `"zoom"` \| `"addPoint"` | `zoom` |
 | `clustering` | boolean | `true` |
 | `clusterRadius` | number, clamped 20–100 px | `50` |
-| `clusterThreshold` | number — cluster above N points, clamped 1–100000 | `25` |
-| `heatmap` | boolean — heatmap layer on by default | `false` |
-| `heatmapWeightField` | a `number`/`currency`/`money` field key | none |
-| `legend` | boolean | on |
+| `clusterThreshold` | number, clamped 1–100000 | `25` |
+| `heatmap` | boolean | `false` |
+| `heatmapWeightField` | a `number`/`currency`/`money` field key | — |
+| `legend` | boolean | `true` |
 | `draw` | boolean — draw + measure tools | `true` |
 | `filterByArea` | boolean — a drawn shape filters the plotted records | `true` |
-| `geocode` | boolean — address search | `true` |
-| `route` | boolean — directions between two records | `true` |
-| `addPoint` | boolean — click the map to open a seeded create dialog | `true` |
-| `scaleControl` | boolean | `true` |
-| `geolocateControl` | boolean | `false` |
-| `fullscreenControl` | boolean | `true` |
-| `geocodeEndpoint` / `routeEndpoint` | URL string | unset → the offline mock provider |
+| `geocode` | boolean — address search + reverse geocode | `true` |
+| `route` | boolean — directions / itinerary | `true` |
+| `routeProfile` | `"driving"` \| `"walking"` \| `"cycling"` | `driving` |
+| `addPoint` | boolean — click to create a record there | `true` |
+| `contextMenu` | boolean — right-click menu | `true` |
+| `scaleControl` · `geolocateControl` | boolean | `true` · `true` |
+| `fullscreenControl` · `minimap` | boolean | `true` · `false` |
+| `geocodeEndpoint` / `routeEndpoint` / `osrmBaseUrl` | URL strings — the provider seams | mock / OSRM demo |
 
-Basemap ids come from `src/ui/record-core/views/map/basemaps.ts`. Lazy chunk plus a
-separate GL-renderer chunk; both load only when a map view first renders.
+**3D reveals itself.** Turning on 3D buildings or terrain shading from a top-down camera
+would show nothing — extrusions collapse to their footprints and relief is invisible — so
+enabling either eases the camera into a pose where the layer is legible: an oblique tilt,
+and for buildings a zoom-in as well. It fires only when turning a layer ON, and only for
+the axes that need moving.
+
+Be honest with users about building data: footprints exist from z14, but most OSM
+footprints carry no height tag and fall back to a floor of roughly 8 m, so buildings only
+read as real mass from about z16. That is a data limit, not a rendering bug.
+
+**Routing is a three-provider seam**, resolved in order: a custom `routeEndpoint` (your
+app route proxying any vendor SERVER-SIDE, so the key never reaches the browser) → the
+public OSRM demo at `osrmBaseUrl` (real road geometry and turn-by-turn, keyless) → a
+deterministic local mock (a densified great-circle path with synthesized steps, marked
+`approximate`) so the itinerary is never empty offline or in CI. No key is hardcoded and
+no vendor host is assumed reachable.
+
+The itinerary offers stop autocomplete over records and geocoded addresses, "Your
+location", an arrival clock with a depart-at picker (labelled as excluding traffic), added
+stops, and clickable steps that fly the map to that manoeuvre. Route ALTERNATIVES are
+advisory: at most TWO beside the chosen route, and only when the engine returns genuinely
+distinct ones — never for multi-stop trips — so the picker simply does not appear when
+there are none.
+
+**Measurement auto-scales** to the unit a surveyor would use: m² below a hectare, hectares
+below a square kilometre, km² above, with perimeter and a points-inside count alongside.
+
+**Tiles fail gracefully.** A basemap swap never leaves a blank canvas: the last-good
+basemap is remembered, a failing style retries with backoff and then reverts to it behind
+a visible retry chip, and the token-only canvas is reserved for a genuine offline FIRST
+load. Rapid or mid-load switches are safe — the attempt re-arms per basemap and the latest
+selection wins. The failure this guards against is subtle: a cosmetic 404 (a missing text
+font making the glyph server 404) must not be treated as a style failure.
+
+Other interactions: ⌥/Alt + scroll flies the camera, one click toggles between a level
+top-down pose and a 3D oblique one (tilting a globe orbits it), and on mobile the panels
+are bottom sheets.
 
 ---
 

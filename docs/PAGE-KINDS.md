@@ -72,6 +72,7 @@ Config pages and hand-written custom pages merge into ONE ordered nav list, so a
 | `spreadsheet` | free surface | a full Univer workbook | — | `Spreadsheet` |
 | `document` | free surface | a Notion-style page WORKSPACE — nested pages, tree, links, backlinks | — (spectrum options: `docs/BLOCKS.md`) | `DocumentPage` (lazy) |
 | `viewer3d` | free surface | a 3D object / floor-plan viewer | — (optional `scene`) | `Viewer3DPage` (lazy) |
+| `esignature` | free surface | an e-signature envelope — placement, signing, audit certificate | — (seams: `docs/BLOCKS.md`) | — |
 | `map` | aggregate | records plotted on a GL map | `source` + coordinate fields on the object | `AggregatePage` |
 | `calendar` | aggregate | records on a calendar; `source` may merge objects | `source` + a date field on each object | `AggregatePage` |
 
@@ -80,8 +81,10 @@ VIEW rendered over `source`'s rows — which is why `view` takes that view type'
 directly. The heavy free surfaces are lazy branches in the host, so a page kind costs
 nothing until someone opens it.
 
-`presentation` and `esignature` kinds are not in this set yet; when their blocks land they
-become one row here and one section in `docs/BLOCKS.md`.
+The `esignature` row documents a block that is ready (`docs/BLOCKS.md` §`esign`); its page
+KIND is not in the union yet, so it has no host component and cannot be declared in
+`config.pages[]` until it is wired. A `presentation` kind is likewise still to come — each
+costs one row here and one section in `docs/BLOCKS.md`.
 
 Per-kind surface behavior and options are the same as the equivalent VIEW where one
 exists — a `map` page and a `map` view render the same surface, so `docs/CONFIG.md` §4 is
