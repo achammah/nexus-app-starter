@@ -100,6 +100,24 @@ const waitForCount = async (port, obj, id, field, expected, budgetMs = SAVE_BUDG
   return false;
 };
 
+/* ---- depth-lane helpers (feat/whiteboard-depth) ---- */
+/* own port band 5874-5879 (5870-5872 are this file's foundation journeys). */
+const DPORT = { tools: 5874, bool: 5875, tmpl: 5876, arrange: 5877, gate: 5878, mobile: 5879 };
+async function openCluster(p, id) {
+  await p.locator(`[data-testid="wb-ops-${id}"]`).click();
+  await p.waitForSelector(`[data-testid="wb-ops-panel-${id}"]`, { timeout: 6000 });
+}
+/* click empty canvas (right of the properties island, below content) to deselect */
+async function deselect(p, box) { await p.mouse.click(box.x + box.width * 0.86, box.y + box.height * 0.9); await p.waitForTimeout(200); }
+/* a rubber-band drag over a region (fractions of the canvas box) */
+async function rubberBand(p, box, x1, y1, x2, y2) {
+  const cx = (f) => box.x + box.width * f, cy = (f) => box.y + box.height * f;
+  await p.mouse.move(cx(x1), cy(y1)); await p.mouse.down();
+  for (let i = 1; i <= 10; i++) await p.mouse.move(cx(x1) + (cx(x2) - cx(x1)) * i / 10, cy(y1) + (cy(y2) - cy(y1)) * i / 10);
+  await p.mouse.up(); await p.waitForTimeout(300);
+}
+const savedField = async (port, obj, id, field) => (await (await fetch(`${BASE(port)}/api/objects/${obj}/${id}`)).json())[field];
+
 export default [
   {
     name: "whiteboard-canvas-mounts", feature: "Whiteboard field (canvas on records)",
@@ -427,6 +445,191 @@ export default [
           const c = getComputedStyle(s).color; s.remove(); return c;
         });
         assert(primAfter === "rgb(13, 148, 136)", `a live skin change re-derives excalidraw --color-primary from --nx-accent (${primAfter})`);
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    // DEPTH: every native tool surfaced (image now on) + the config-gated ops rail
+    // (palette / templates / combine / arrange / presence) + a dense seeded board.
+    name: "whiteboard-depth-tools-and-rail", feature: "Whiteboard depth — tools + ops rail",
+    async run(page, { assert, ROOT }) {
+      const proc = await bootFixture(ROOT, { port: DPORT.tools });
+      try {
+        const { ctx, p } = await openPage(page, `${BASE(DPORT.tools)}/#/o/sketches/r/sk_4`);
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
+        await p.waitForTimeout(1200);
+        // every native tool is surfaced, INCLUDING image (the v1 boundary is gone).
+        // the VISIBLE control is the <label> wrapping excalidraw's hidden radio input.
+        for (const t of ["selection", "freedraw", "rectangle", "diamond", "ellipse", "arrow", "line", "text", "image", "eraser"]) {
+          const vis = await p.locator(`.excalidraw label:has([data-testid="toolbar-${t}"])`).first().isVisible().catch(() => false);
+          assert(vis, `the ${t} tool is surfaced in the toolbar`);
+        }
+        // the ops rail carries every configured cluster, fully in the canvas (not clipped)
+        assert((await p.locator('[data-testid="wb-ops-rail"]').count()) === 1, "the ops rail renders on the canvas");
+        for (const c of ["palette", "templates", "combine", "arrange", "presence"]) {
+          assert((await p.locator(`[data-testid="wb-ops-${c}"]`).count()) === 1, `the ${c} cluster is present`);
+        }
+        const rail = await p.locator('[data-testid="wb-ops-rail"]').boundingBox();
+        const cbox = await p.locator('[data-testid="field-sketch"] .nxWbCanvas').boundingBox();
+        assert(rail.x + rail.width <= cbox.x + cbox.width + 1, "the ops rail is not clipped by the canvas edge");
+        // demo density is a deliverable — the seeded board is rich, not three shapes
+        const els = (await savedField(DPORT.tools, "sketches", "sk_4", "sketch"))?.elements ?? [];
+        assert(els.length >= 40, `the seeded demo board is dense (${els.length} elements)`);
+        await p.locator('[data-testid="field-sketch"] .nxWbCanvas').screenshot({ path: path.join(ROOT, "_shots", "wb-depth-demo-light.png") });
+        // native chrome follows a live dark flip
+        await p.click('[data-testid="theme-toggle"]');
+        await p.waitForSelector(".excalidraw.theme--dark", { timeout: 8000 });
+        await p.waitForTimeout(400);
+        await p.locator('[data-testid="field-sketch"] .nxWbCanvas').screenshot({ path: path.join(ROOT, "_shots", "wb-depth-demo-dark.png") });
+        assert(true, "the rich board + ops rail render in dark theme");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    // DEPTH: boolean/shape ops — the geometry layer excalidraw lacks natively. Draw two
+    // overlapping rectangles, select both, Add (union) → one filled polygon persists.
+    name: "whiteboard-boolean-union", feature: "Whiteboard depth — boolean shape ops",
+    async run(page, { assert, ROOT }) {
+      const proc = await bootFixture(ROOT, { port: DPORT.bool });
+      try {
+        const { ctx, p } = await openPage(page, `${BASE(DPORT.bool)}/#/o/sketches/r/sk_2`);
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
+        await p.waitForTimeout(700);
+        const box = await canvasBox(p, "sketch");
+        // give the shapes a fill so the boolean result is a visible filled polygon
+        await pickTool(p, "rectangle"); await drawRect(p, box, 0.44, 0.30, 0.60, 0.55);
+        await pickTool(p, "rectangle"); await drawRect(p, box, 0.54, 0.42, 0.70, 0.68);
+        assert(await waitForCount(DPORT.bool, "sketches", "sk_2", "sketch", 2), "two overlapping rectangles drawn");
+        await pickTool(p, "selection");
+        await deselect(p, box);
+        await rubberBand(p, box, 0.38, 0.22, 0.76, 0.74); // enclose both
+        await openCluster(p, "combine");
+        const hint = await p.locator('[data-testid="wb-ops-panel-combine"] .nxWbOpsHint').textContent();
+        assert(/2 shapes selected/.test(hint ?? ""), `the ops rail sees the two selected shapes (${hint})`);
+        assert(!(await p.locator('[data-testid="wb-bool-union"]').isDisabled()), "Add (union) is enabled with two shapes selected");
+        await p.locator('[data-testid="wb-bool-union"]').click();
+        // union removes the two sources and adds one closed line (polygon) — 2 → 1
+        assert(await waitForCount(DPORT.bool, "sketches", "sk_2", "sketch", 1), "union removed the sources and produced one shape");
+        const els = (await savedField(DPORT.bool, "sketches", "sk_2", "sketch"))?.elements ?? [];
+        assert(els[0]?.type === "line" && Array.isArray(els[0]?.points) && els[0].points.length >= 6,
+          `the result is a real combined polygon (${els[0]?.type}, ${els[0]?.points?.length} points)`);
+        await p.screenshot({ path: path.join(ROOT, "_shots", "wb-depth-boolean.png"), fullPage: true });
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    // DEPTH: insertable templates (a config surface) — Kanban drops a real multi-lane
+    // structure at the viewport centre, built through convertToExcalidrawElements.
+    name: "whiteboard-templates", feature: "Whiteboard depth — templates",
+    async run(page, { assert, ROOT }) {
+      const proc = await bootFixture(ROOT, { port: DPORT.tmpl });
+      try {
+        const { ctx, p } = await openPage(page, `${BASE(DPORT.tmpl)}/#/o/sketches/r/sk_2`);
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
+        await p.waitForTimeout(700);
+        assert((await savedField(DPORT.tmpl, "sketches", "sk_2", "sketch")) == null, "the record starts blank");
+        await openCluster(p, "templates");
+        // every configured template is offered
+        for (const k of ["kanban", "matrix2x2", "flow", "timeline", "mindmap"]) {
+          assert((await p.locator(`[data-testid="wb-template-${k}"]`).count()) === 1, `the ${k} template is offered`);
+        }
+        await p.locator('[data-testid="wb-template-kanban"]').click();
+        assert(await waitForCount(DPORT.tmpl, "sketches", "sk_2", "sketch", 16), "inserting Kanban drops its full structure (16 elements)");
+        const els = (await savedField(DPORT.tmpl, "sketches", "sk_2", "sketch"))?.elements ?? [];
+        assert(els.some((e) => e.type === "text" && /To do|In progress|Done/.test(e.text ?? "")), "the inserted lanes carry their headers");
+        await p.locator('[data-testid="field-sketch"] .nxWbCanvas').screenshot({ path: path.join(ROOT, "_shots", "wb-depth-template.png") });
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    // DEPTH: arrange — group binds the selection under one shared group id (persisted).
+    name: "whiteboard-arrange-group", feature: "Whiteboard depth — arrange + group",
+    async run(page, { assert, ROOT }) {
+      const proc = await bootFixture(ROOT, { port: DPORT.arrange });
+      try {
+        const { ctx, p } = await openPage(page, `${BASE(DPORT.arrange)}/#/o/sketches/r/sk_2`);
+        await p.waitForSelector('[data-testid="field-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
+        await p.waitForTimeout(700);
+        const box = await canvasBox(p, "sketch");
+        await pickTool(p, "rectangle"); await drawRect(p, box, 0.44, 0.30, 0.58, 0.52);
+        await pickTool(p, "ellipse"); await drawRect(p, box, 0.56, 0.42, 0.70, 0.66);
+        assert(await waitForCount(DPORT.arrange, "sketches", "sk_2", "sketch", 2), "two shapes drawn");
+        await pickTool(p, "selection");
+        await deselect(p, box);
+        await rubberBand(p, box, 0.38, 0.22, 0.76, 0.72);
+        await openCluster(p, "arrange");
+        assert(!(await p.locator('[data-testid="wb-arr-group"]').isDisabled()), "Group is enabled with two shapes selected");
+        await p.locator('[data-testid="wb-arr-group"]').click();
+        await p.waitForTimeout(900);
+        const els = (await savedField(DPORT.arrange, "sketches", "sk_2", "sketch"))?.elements ?? [];
+        const groups = els.map((e) => (Array.isArray(e.groupIds) ? e.groupIds[0] : null)).filter(Boolean);
+        assert(groups.length === 2 && groups[0] === groups[1], "both shapes now share one group id (grouped)");
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    // DEPTH: config-composability — a narrowed field config hides ops clusters AND tools.
+    name: "whiteboard-config-gating", feature: "Whiteboard depth — config-composable",
+    async run(page, { assert, ROOT }) {
+      const proc = await bootFixture(ROOT, { port: DPORT.gate });
+      try {
+        const { ctx, p } = await openPage(page, `${BASE(DPORT.gate)}/#/o/minimal/r/min_1`);
+        await p.waitForSelector('[data-testid="field-board"] .excalidraw', { timeout: MOUNT_TIMEOUT });
+        await p.waitForTimeout(1000);
+        // config offers palette only; boolean/arrange/templates/presence are OFF
+        assert((await p.locator('[data-testid="wb-ops-palette"]').count()) === 1, "the configured palette cluster shows");
+        for (const c of ["combine", "arrange", "templates", "presence"]) {
+          assert((await p.locator(`[data-testid="wb-ops-${c}"]`).count()) === 0, `the disabled ${c} cluster is absent`);
+        }
+        // tools allowlist: rectangle/ellipse/text surfaced; diamond/arrow/line hidden; image off
+        // (the VISIBLE control is the <label>; excalidraw's radio input is always hidden)
+        assert(await p.locator('.excalidraw label:has([data-testid="toolbar-rectangle"])').first().isVisible(), "an allowed tool (rectangle) is surfaced");
+        for (const t of ["diamond", "arrow", "line"]) {
+          const vis = await p.locator(`.excalidraw label:has([data-testid="toolbar-${t}"])`).first().isVisible().catch(() => false);
+          assert(!vis, `the un-listed ${t} tool is hidden`);
+        }
+        assert((await p.locator('.excalidraw [data-testid="toolbar-image"]').count()) === 0, "the un-listed image tool is not rendered");
+        await p.locator('[data-testid="field-board"] .nxWbCanvas').screenshot({ path: path.join(ROOT, "_shots", "wb-depth-gating.png") });
+        await ctx.close();
+      } finally {
+        proc.kill();
+      }
+    },
+  },
+  {
+    // DEPTH: mobile — the rich board rests as a preview; editing opens the fullscreen
+    // overlay with the canvas AND a compact ops rail (no hover-only affordances).
+    name: "whiteboard-depth-mobile", feature: "Whiteboard depth — mobile ops",
+    async run(page, { assert, ROOT }) {
+      const proc = await bootFixture(ROOT, { port: DPORT.mobile });
+      try {
+        const { ctx, p } = await openPage(page, `${BASE(DPORT.mobile)}/#/o/sketches/r/sk_4`, {
+          viewport: { width: 390, height: 720 }, hasTouch: true,
+        });
+        await p.waitForSelector('[data-testid="wb-edit-sketch"]', { timeout: 15000 });
+        const hs = await p.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+        assert(!hs, "no horizontal page scroll at 390px");
+        await p.locator('[data-testid="wb-edit-sketch"]').tap();
+        await p.waitForSelector('[data-testid="wb-overlay-sketch"] .excalidraw', { timeout: MOUNT_TIMEOUT });
+        await p.waitForTimeout(1200);
+        assert((await p.locator('[data-testid="wb-overlay-sketch"] [data-testid="wb-ops-rail"]').count()) === 1, "the ops rail is available in the mobile editor");
+        assert((await p.locator('[data-testid="wb-overlay-sketch"] .nxWbOps--compact').count()) === 1, "the mobile ops rail renders in its compact form");
+        await p.screenshot({ path: path.join(ROOT, "_shots", "wb-depth-mobile.png"), fullPage: false });
         await ctx.close();
       } finally {
         proc.kill();
