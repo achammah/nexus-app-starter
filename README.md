@@ -37,6 +37,13 @@ npm run dev           # vite dev server (5173) + API (4000)
 - **Direction boards** (`boards/`): three rendered token directions — serve them, pick one, lock it in `docs/DESIGN.md`.
 - **`.nexus-starter`** marker: arms the strict deploy gate for starter-born repos.
 
+## Where to look
+
+`docs/README.md` is the index. The four you will open most: **`docs/CONFIG.md`** (every
+config key), **`docs/EXTENDING.md`** (adding a view/field/page/data source),
+**`docs/UI-KIT.md`** (the kit, registries, tokens, skins), **`docs/TESTING.md`** (the
+journey harness). `docs/CONSTRAINTS.md` lists the traps.
+
 ## Lifecycle
 
 Clone → rename + edit `starter.config.json` → pick a design direction (`boards/`, lock it in `docs/DESIGN.md`) → build on the record-core → `npm run journeys` green → deploy (`git push` fires the auto-build). Provenance rules: `PROVENANCE.md` (binding).

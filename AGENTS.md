@@ -2,7 +2,18 @@
 
 **North star: the config IS the app. Prefer a config change over new code, a journey over a claim, and the smallest diff that ships the ask.**
 
-You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the strict deploy gate). Read order: this file → `starter.config.json` (what the app IS) → `docs/RECIPES.md` (exact files + order for common tasks) → `docs/` contracts (SPEC · DESIGN · feature-manifest · COVERAGE) → `docs/ARCHITECTURE.md` (file map + data flow) + `docs/DATA-MODEL.md` (generated ER view) → `src/ui/` docs via the library's own `AGENTS.md`/`docs/INDEX.md` (vendored copy of nexus-ui; catalog also at `src/ui/../..` in the library repo).
+You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the strict deploy gate). Read order: this file → `starter.config.json` (what the app IS) → `docs/README.md` (the docs index — which file answers which question) → `docs/RECIPES.md` (exact files + order for common tasks) → `docs/` contracts (SPEC · DESIGN · feature-manifest · COVERAGE) → `docs/ARCHITECTURE.md` (file map + data flow) + `docs/DATA-MODEL.md` (generated ER view) → `src/ui/` docs via the library's own `AGENTS.md`/`docs/INDEX.md` (vendored copy of nexus-ui; catalog also at `src/ui/../..` in the library repo).
+
+| Question | File |
+|---|---|
+| every key I may write in the config | `docs/CONFIG.md` |
+| the `/api` surface, persistence, `app_state` | `docs/API.md` |
+| add a page with no code (`config.pages[]`) | `docs/PAGE-KINDS.md` |
+| configure a workbook / document workspace / 3D viewer | `docs/BLOCKS.md` |
+| how to add a view type / field type / page / data source / journey | `docs/EXTENDING.md` |
+| the component kit, the registries, tokens + skins | `docs/UI-KIT.md` |
+| how to write and run tests | `docs/TESTING.md` |
+| the traps (install flags, lazy loading, mobile, themes, store rules) | `docs/CONSTRAINTS.md` |
 
 ## Commands (the sanctioned set — anything else, justify in your PR)
 | Command | Does |
@@ -28,10 +39,11 @@ You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the st
 ## Common tasks
 | Task | Do |
 |---|---|
-| Add an entity (table/board/record page) | add an object to `starter.config.json` (fields, stageField, defaultView, `sampleRows` demo data — or `seedCount` for generated rows) → the surfaces, relation pickers, related lists, and filters exist; add a manifest row + a journey |
+| Add an entity (table/board/record page) | add an object to `starter.config.json` (fields, stageField, defaultView, `sampleRows` demo data — or `seedCount` for generated rows; full key reference: `docs/CONFIG.md`) → the surfaces, relation pickers, related lists, and filters exist; add a manifest row + a journey |
+| Give an object another view (board, calendar, map, gallery, form, flow, sheet) | add a `views[]` entry — `{"type": "<type>", …options}`; per-type options: `docs/CONFIG.md` §4 |
 | Become a different product | write a config → `CONFIG_PATH=<file> npm run serve`; relation targets are listed BEFORE the objects that point at them (the fullest reference config is the blocks-coverage FIXTURE `journeys/fixtures/coverage.config.json` — a test artifact, not a template) |
-| Add a non-record surface (dashboard, console, wizard…) | create the component under `src/app/pages/`, register in `src/app/pages.tsx` → nav + `#/p/<key>` route appear; full vendored kit available |
-| Add a feature journey | append to `journeys/run.mjs` (assert a VISIBLE outcome — a value changed, a card moved; never a bare 200) + a manifest row; `npm run journeys` |
+| Add a non-record surface (dashboard, console, wizard…) | a built-in kind → a `config.pages[]` entry, no code (`docs/PAGE-KINDS.md`); bespoke → a component under `src/app/pages/` registered in `src/app/pages.tsx` → nav + `#/p/<key>` route appear; full vendored kit available |
+| Add a feature journey | `npm run generate journey <name> -- --feature "<manifest row>"` → `journeys/extra/<name>.mjs` (assert a VISIBLE outcome — a value changed, a card moved; never a bare 200) + a manifest row; `npm run journeys` (`docs/TESTING.md`) |
 | Wire the platform | `src/lib/nexusClient.mjs` (api-key client, server-side only) · `connectFlow.mjs` (vendor OAuth via platform credentials) · `scripts/register-as-tool.mjs` (archetype 1/2 close-out) · `appState` (swap `server/store.mjs` for the warehouse twin; the /api surface doesn't change) |
 | Embed the org agent chat | set `chat.embedUrl` (EMBED deployment URL) → the dock renders; rung 3 seam: `src/lib/chatBridge.ts` |
 | New string | born in `src/app/i18n.ts` dicts (never inline) |
@@ -42,3 +54,5 @@ You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the st
 - Server API JSON is `no-store` (a cached list = moved cards rendering in the old column — measured).
 - Irreversible/bulk actions ship WITH a review surface naming their targets (see ObjectView's delete flow) — the pattern is binding.
 - Every interactive element gets a `data-testid`; journeys assert on those.
+- `npm run journeys` drives whatever answers `JOURNEY_URL` (default `:4000`) and MUTATES its data — pin your own port: `PORT=<p> JOURNEY_URL=http://localhost:<p> npm run journeys`.
+- Both themes and 390px are part of a feature's definition, never a later pass (`docs/CONSTRAINTS.md`).

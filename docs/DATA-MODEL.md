@@ -13,7 +13,7 @@ erDiagram
     number employees
     text city
     text about
-    rich_ext brief
+    richtext brief
   }
   people {
     text name "PK"
@@ -33,13 +33,13 @@ erDiagram
   docs {
     text title "PK"
     select status
-    rich_ext body
+    richtext body
     whiteboard sketch
   }
   reports {
     text title "PK"
     select status
-    rich_ext body
+    richtext body
   }
   settings_rules {
     text rule "PK"
@@ -64,13 +64,15 @@ erDiagram
     text name "PK"
     select kind
     text city
+    number headcount
+    currency revenue
     number lat
     number lng
   }
   demo_calendar {
     text title "PK"
-    date_ime start
-    date_ime end
+    datetime start
+    datetime end
     select track
     text repeat
   }
@@ -108,7 +110,7 @@ Default view: kanban · stage field: `stage`
 | Field | Type | Notes |
 |---|---|---|
 | `name` | text | primary |
-| `stage` | select | options: [object Object] / [object Object] / [object Object] / [object Object] / [object Object] · stage (board columns) |
+| `stage` | select | options: New / Qualified / Proposal / Won / Lost · stage (board columns) |
 | `amount` | currency |  |
 | `closeDate` | date |  |
 | `company` | relation | → companies |
@@ -148,7 +150,7 @@ Default view: grid
 | Field | Type | Notes |
 |---|---|---|
 | `name` | text | primary |
-| `stage` | select | options: [object Object] / [object Object] / [object Object] / [object Object] / [object Object] |
+| `stage` | select | options: Backlog / Scoping / Building / Review / Shipped |
 | `owner` | user |  |
 | `budget` | number |  |
 | `active` | boolean |  |
@@ -161,7 +163,7 @@ Default view: gallery
 |---|---|---|
 | `title` | text | primary |
 | `cover` | url |  |
-| `kind` | select | options: [object Object] / [object Object] / [object Object] |
+| `kind` | select | options: Photo / Sketch / Chart |
 | `notes` | text |  |
 
 ### Places (`demo_places`)
@@ -170,8 +172,10 @@ Default view: map
 | Field | Type | Notes |
 |---|---|---|
 | `name` | text | primary |
-| `kind` | select | options: [object Object] / [object Object] / [object Object] |
+| `kind` | select | options: Office / Warehouse / Store / Customer / Partner / Site |
 | `city` | text |  |
+| `headcount` | number |  |
+| `revenue` | currency |  |
 | `lat` | number |  |
 | `lng` | number |  |
 
@@ -183,7 +187,7 @@ Default view: calendar
 | `title` | text | primary |
 | `start` | dateTime |  |
 | `end` | dateTime |  |
-| `track` | select | options: [object Object] / [object Object] / [object Object] |
+| `track` | select | options: Design / Build / Review |
 | `repeat` | text |  |
 
 Users directory: `you`, `Maya Verstraete`, `Jonas Peeters`, `Sofia Marchetti` (drives `user`-type fields).
@@ -194,11 +198,11 @@ Users directory: `you`, `Maya Verstraete`, `Jonas Peeters`, `Sofia Marchetti` (d
 - `whiteboard` — `{ "elements": ExcalidrawElement[] }` (elements only; a stored `appState` key is tolerated and ignored — the canvas scrolls to content on every mount). Elements are excalidraw's serialized-element objects (drawn in the editor, never hand-written); the server validates `elements` is an array, timeline events log `canvas · N elements`, and free-text search skips the field. Full recipe: docs/RECIPES.md "Add a whiteboard (canvas) field to an object".
 
 ## App-object options (non-field)
-Per object in `starter.config.json`, alongside the field list:
-- `hideInNav?: boolean` — hide the object from the sidebar + mobile tab bar (still reachable by URL/relations).
-- `recordLayout?: "standard" | "document"` — `standard` = fields + timeline tabs; `document` = a centered Notion-style editor that opens as a wide side-panel.
-- `createWizard?: { questions: Q[] }` — a guided-create flow; `Q` is the library Wizard question shape (`{ key, label, kind: text|long|select|list|sources, required?, options? }`). Present → "New <object>" offers guided-vs-blank; each `key` names the field it fills.
-- `generate?: { statusField, resultField?, label?, generating?, ready?, titlePlaceholder?, delayMs?, stallAfterMs? }` — a config-driven async-generation action (demo object: `reports`). Present → the object's list gains a "Generate" button that drops a placeholder row (`statusField` = `generating`, default the first status option) and fires the labeled `/api/_mock/generate` writeback; the finished record lands from the warehouse and the SAME row settles (`statusField` = `ready`, default the last option; `resultField` filled). `delayMs` is the mock writeback delay; `stallAfterMs` the "taking longer than usual" threshold. Needs a warehouse (`WAREHOUSE=local` or `bigquery`) for the external-writer catch-up; on the in-memory app the placeholder settles in-process instead.
-- `views?: { type, …config }[]` — the object's view tabs, in order. `type` picks an installed view definition (`table` | `kanban` | `chart` | `flow` | `calendar` | `gallery` | `form` | `map` built in; adding one: CONTRIBUTING-AGENTS "Adding a view type"); the other keys are that type's config (kanban/chart take `groupField`, a select/user field key; chart takes `measure`, `"count"` or a number/currency/money field key; flow takes `relationField`, a relation field key drawing the edges — self-relations draw record→child edges, cross-object relations draw labeled target hubs — and `labelField`, the card title field, default primary; recipe: docs/RECIPES.md "Add a flow (node-graph) view to an object"). The `calendar` type takes `startDateField` (required, a date/dateTime field key, defaulting to the first one), `endDateField` (optional; events become resizable spans, stored end dates stay inclusive), `titleField` (defaults to the primary) and `colorField` (a select field key; events take its option palette); its view state persists `calMode` ("month" | "week") and `calDate` (the visible anchor). Omitted → derived set: every object gets the table, plus Board + Chart when a select/user field exists. `defaultView` names the initially-active tab. A runtime pick in the Columns/group-by/measure/rollup/via menus overrides the config per user (persisted per object; saved views capture it). An entry naming an uninstalled or invalid type renders as an inline "not installed" chip in place of the view, never a crash.
-- `views[]` entry, `type: "gallery"` — `coverField?` (a url/links/array field; the first image-like value is the cover; missing/broken → initials placeholder; default: the first url field) · `coverFit?: "cover" | "contain"` (default cover) · `titleField?` (default: the primary field) · `cardFields?` (ordered field keys rendered on each card through the field registry; supersedes `metaFields`, which stays honored) · `cardFieldLabels?: boolean` (default false — cards render label-less dense values, the Airtable look; true prefixes each value with its field label) · `groupField?` (a select/user field — cards split into collapsible sections; also a toolbar control, sharing the board's `groupBy` so a group choice carries across views) · `sortField?` + `sortDir?: "asc" | "desc"` (also a toolbar control) · `cardSize?: "s" | "m" | "l"` · `cardClick?: "peek" | "open"`. Card selection wires the host bulk bar; rendering is windowed per section for large objects.
-- `views[]` entry, `type: "form"` — `fields?` (field keys to render, in order; default: every form-editable field — `json` and many-relations excluded) · `sections?` (`[{label, fields[]}]` — labeled field groups; supersedes `fields`) · `requiredOverrides?` (`{key: true|false}` over the primary-only default) · `requiredWhen?` (`{key: {field, equals}}` — a field becomes required when its trigger field equals a value) · `submitLabel?` · `successMode?: "another" | "view"`. Submits through the object's create path; a failed submit shows a jump-to-field error summary above the inline errors; server messages map back onto their field.
+
+Per object in `starter.config.json`, alongside the field list: `hideInNav` · `recordLayout`
+· `openIn` · `columns` · `contextFields` · `stageField` · `pipelineField` · `teamScoped` ·
+`permissions` · `createWizard` · `generate` · `views` · `sampleRows` / `seedCount`.
+
+**The complete reference — every top-level key, every object key, every field key and
+flag, and each view type's own options — is `docs/CONFIG.md`.** It is the single place
+config surface is documented; this file stays the generated view of the CURRENT config.

@@ -4,7 +4,7 @@ Rules for building a feature lane in this repo. Deviations need a maintainer go 
 
 ## Invariants
 
-1. **Config is the app.** A feature is driven by `starter.config.json` (or an env knob) — never hardcoded to one object/field. New config surface is documented in `docs/DATA-MODEL.md` (shape) and `docs/RECIPES.md` (how to use it).
+1. **Config is the app.** A feature is driven by `starter.config.json` (or an env knob) — never hardcoded to one object/field. New config surface is documented in `docs/CONFIG.md` (every key) and `docs/RECIPES.md` (how to use it).
 2. **Zero-dep server.** `server/*.mjs` uses node built-ins only. No new npm dependencies anywhere without flagging the maintainer first (client deps included).
 3. **Command-log discipline.** Every new store mutation that changes domain state is a named `Store` method registered in `LOGGED_OPS` (`server/store-remote.mjs`) and must replay deterministically: no `Date.now()`/randomness inside — the store clock is `this._now()`; ids come from the store counter. Operational state (queues, delivery logs) stays out of the log.
 4. **Permissions.** Every new route gates through `can(role, cfg, action, {own})` (`server/permissions.mjs`) and its client twin mirrors it (`src/app/permissions.ts`). New actions extend BOTH.
@@ -15,7 +15,9 @@ Rules for building a feature lane in this repo. Deviations need a maintainer go 
 9. **Language/tone of docs.** Docs serve the person or agent USING the repo: present tense, functional, no build history, no internal process vocabulary.
 10. **Ports.** Journey servers bind inside your assigned band only (see your lane spec). Never 4400–4402 (live demo instances) or another lane's band.
 11. **Escape/keyboard surfaces** follow the laddered model already in place (edit → cell → row; peek pop → close). Don't add a flat global Escape handler.
-12. **Data hygiene in journeys.** Create what you assert on; restore or destroy it after. A journey must leave the seed state it found (the suite runs in one shared app).
+12. **Claims are probed, not recalled.** Before you document or report a capability, EXERCISE it and read the result. Your own description of your own code is not evidence, and neither is a description someone hands you — a passing local build does not prove a dependency is declared, a self-review can drift from HEAD, a remembered SHA can be stale, and an operation can cover less than its name suggests. When a stated fact and the source disagree, read the source and report the disagreement rather than picking a side. One cheap probe — a scratch install, a grep of the lockfile, a diff of two commits, one throwaway request — settles it. **Probe the BEHAVIOUR, not the NAME:** a probe must distinguish the two states you are choosing between, and if it returns the same answer whether or not the claim is true it confirmed nothing. Searching for a class name proves only that the name is absent — the behaviour may live under a different selector, or a later rule may override the one you read. Finding a package in `node_modules` proves the machine, not the manifest. Counting matches answers "how many" when the question was "which". Where behaviour is what is in doubt, measure the behaviour: the computed style at that viewport, the response body, the file the build actually emitted. A NAME in the source or the DOM is not the computed value either way — the behaviour may exist under a differently-named selector, and a class that says `bg-white` may be overridden to something else entirely. Run a STATEFUL probe twice: one that mutates persisted state (a click that saves a view preference) starts the second run from the state the first run left, and a bug that only exists on that path is invisible to a single green run.
+13. **Docs state what is verified, and mark what is not.** A quantity you did not measure is not written as a number; a license comes from the lockfile, not from memory; a limitation is bounded to what was actually tested. A FALSE limit is worse than a missing one: a missing limit gets discovered, while a false one gets believed and steers people away from working functionality. Where a fact comes from somewhere weaker than the source, say so inline.
+14. **Data hygiene in journeys.** Create what you assert on; restore or destroy it after. A journey must leave the seed state it found (the suite runs in one shared app).
 
 ## Adding a view type
 
@@ -23,10 +25,10 @@ Views are self-registering: the switcher tabs, the per-view toolbar and the view
 
 1. In nexus-ui, create `src/record-core/views/<type>/definition.tsx` default-exporting a `ViewDefinition` (see `views/types.ts`): `type` (the config string), `label` + `icon` (the switcher tab), `component` (a `React.ComponentType<ViewProps>`; use `React.lazy` for heavy views, the host wraps rendering in Suspense), optional `Toolbar` (view-bar controls, rendered twice with `side: "lead" | "trail"`, return null on the unused side), optional `configSchema` / `defaultConfig` / `validateConfig` (a returned message renders as the graceful chip in place of the view).
 2. `ViewProps` hands the component `object`, filtered `rows`, `users`, `readOnly`, `viewConfig` (the object's `views` entry merged over `defaultConfig`), the persisted `viewState` bag + `onViewState(patch)`, `onOpen` / `onPeek` / `onPatch`, and `selection` / `onSelectionChange`. Pick UNIQUE `viewState` keys unless sharing is intended: views naming the same key share it (the board and chart share `groupBy` deliberately). The bag persists per object and saved views capture it.
-3. Give an object the view via config: `"views": [{ "type": "table" }, { "type": "<type>", ... }]` (shape: docs/DATA-MODEL.md "App-object options"; recipe: docs/RECIPES.md "Give an object multiple views"). Objects without `views` derive the pre-registry set (the table, plus board + chart when a select/user field exists).
+3. Give an object the view via config: `"views": [{ "type": "table" }, { "type": "<type>", ... }]` (shape: docs/CONFIG.md §4 "Views"; recipe: docs/RECIPES.md "Give an object multiple views"). Document the new type's option table in docs/CONFIG.md §4 in the same pass. Objects without `views` derive the pre-registry set (the table, plus board + chart when a select/user field exists).
 4. Mobile is part of the definition, never a later rework: every control needs a tap path (no hover-only affordances) and the view must render usefully at 390px. Ship a 390x664 journey exercising the core interaction by touch.
 5. Vendor into the starter: `npm run sync-ui` (source override `NEXUS_UI_PATH`). sync-ui rewrites `src/ui/.ui-version`, which STALES the gallery inventory: if nexus-ui exports changed, first regenerate `docs/catalog.json` in nexus-ui (`node scripts/gen-docs.mjs`, with OURS rows for the new files), copy its fields into `src/app/gallery.catalog.json`, and in every case restamp that file's `uiVersion` to the new `.ui-version` line. A stale stamp fails the gallery journey.
-6. `npm run model` regenerates docs/DATA-MODEL.md and preserves everything below its `<!-- hand-maintained below -->` marker (the App-object options section lives there). Hand-written schema notes go below the marker; text above it is generator-owned.
+6. `npm run model` regenerates docs/DATA-MODEL.md and preserves everything below its `<!-- hand-maintained below -->` marker. Hand-written schema notes go below the marker; text above it is generator-owned.
 
 ## Adding a field type
 
@@ -68,7 +70,7 @@ Reserved-port traps inside otherwise-free bands on macOS: **5000 and 7000** (Con
 - [ ] New store ops in `LOGGED_OPS`, replay-safe (no wall-clock/randomness)
 - [ ] Routes permission-gated; client twin updated
 - [ ] Manifest row(s) added, journey `feature` strings match
-- [ ] Docs updated (`RECIPES` / `DATA-MODEL` as applicable)
+- [ ] Docs updated (`CONFIG` for new config keys · `RECIPES` for a new task · `EXTENDING` for a new seam)
 - [ ] No edits under `src/ui/**` (or: paired nexus-ui PR linked)
 - [ ] No new dependencies (or: flagged and approved)
 - [ ] Journeys clean up after themselves
