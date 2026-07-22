@@ -32,6 +32,7 @@ product. Relation targets must be listed BEFORE the objects that point at them.
 | `copilot.suggestions` | string[] | no | starter prompts |
 | `users` | string[] | no | the people directory `user`-type fields pick from |
 | `objects` | AppObject[] | yes | the record model (§2) |
+| `pages` | PageConfig[] | no | config-declared surfaces that are not record lists — one entry adds a nav item and a `#/p/<key>` route with no code. Full reference: `docs/PAGE-KINDS.md` |
 
 Server-set, never authored by hand (they arrive on `/api/config`): `demo` (seeded rows
 exist → the sidebar "Demo data" badge) and `features` (the env feature flags).

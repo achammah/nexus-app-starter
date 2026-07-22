@@ -8,6 +8,7 @@ You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the st
 |---|---|
 | every key I may write in the config | `docs/CONFIG.md` |
 | the `/api` surface, persistence, `app_state` | `docs/API.md` |
+| add a page with no code (`config.pages[]`) | `docs/PAGE-KINDS.md` |
 | configure a workbook / document workspace / 3D viewer | `docs/BLOCKS.md` |
 | how to add a view type / field type / page / data source / journey | `docs/EXTENDING.md` |
 | the component kit, the registries, tokens + skins | `docs/UI-KIT.md` |
@@ -41,7 +42,7 @@ You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the st
 | Add an entity (table/board/record page) | add an object to `starter.config.json` (fields, stageField, defaultView, `sampleRows` demo data — or `seedCount` for generated rows; full key reference: `docs/CONFIG.md`) → the surfaces, relation pickers, related lists, and filters exist; add a manifest row + a journey |
 | Give an object another view (board, calendar, map, gallery, form, flow, sheet) | add a `views[]` entry — `{"type": "<type>", …options}`; per-type options: `docs/CONFIG.md` §4 |
 | Become a different product | write a config → `CONFIG_PATH=<file> npm run serve`; relation targets are listed BEFORE the objects that point at them (the fullest reference config is the blocks-coverage FIXTURE `journeys/fixtures/coverage.config.json` — a test artifact, not a template) |
-| Add a non-record surface (dashboard, console, wizard…) | create the component under `src/app/pages/`, register in `src/app/pages.tsx` → nav + `#/p/<key>` route appear; full vendored kit available |
+| Add a non-record surface (dashboard, console, wizard…) | a built-in kind → a `config.pages[]` entry, no code (`docs/PAGE-KINDS.md`); bespoke → a component under `src/app/pages/` registered in `src/app/pages.tsx` → nav + `#/p/<key>` route appear; full vendored kit available |
 | Add a feature journey | `npm run generate journey <name> -- --feature "<manifest row>"` → `journeys/extra/<name>.mjs` (assert a VISIBLE outcome — a value changed, a card moved; never a bare 200) + a manifest row; `npm run journeys` (`docs/TESTING.md`) |
 | Wire the platform | `src/lib/nexusClient.mjs` (api-key client, server-side only) · `connectFlow.mjs` (vendor OAuth via platform credentials) · `scripts/register-as-tool.mjs` (archetype 1/2 close-out) · `appState` (swap `server/store.mjs` for the warehouse twin; the /api surface doesn't change) |
 | Embed the org agent chat | set `chat.embedUrl` (EMBED deployment URL) → the dock renders; rung 3 seam: `src/lib/chatBridge.ts` |
