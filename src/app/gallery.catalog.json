@@ -1,7 +1,7 @@
 {
-  "vendoredAt": "2026-07-19T15:24:27.759Z",
-  "style": "new-york-v4",
+  "uiVersion": "nexus-ui @ 2cce9b6 (2026-07-21T22:08:24.298Z)",
   "count": 122,
+  "vendoredAt": "2026-07-19T15:24:27.759Z",
   "items": [
     {
       "name": "accordion",
@@ -858,5 +858,5 @@
       "source": "ours"
     }
   ],
-  "uiVersion": "nexus-ui @ 6665645 (2026-07-21T21:23:54.199Z)"
+  "style": "new-york-v4"
 }

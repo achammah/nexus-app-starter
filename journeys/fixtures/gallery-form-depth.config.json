@@ -1,0 +1,143 @@
+{
+  "app": { "name": "Gallery Form Depth Fixture", "slug": "gallery-form-depth-fixture" },
+  "theme": { "skinPreset": "nexus" },
+  "users": ["you", "Maya Verstraete", "Jonas Peeters"],
+  "objects": [
+    {
+      "key": "shots",
+      "label": "Shots",
+      "labelOne": "Shot",
+      "icon": "building-2",
+      "defaultView": "gallery",
+      "views": [
+        {
+          "type": "gallery",
+          "coverField": "cover",
+          "coverFit": "cover",
+          "groupField": "kind",
+          "sortField": "title",
+          "cardFields": ["kind", "note"]
+        },
+        { "type": "table" }
+      ],
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true, "width": 220 },
+        { "key": "cover", "label": "Cover", "type": "url", "width": 200 },
+        {
+          "key": "kind",
+          "label": "Kind",
+          "type": "select",
+          "options": [
+            { "value": "Photo", "color": "blue" },
+            { "value": "Sketch", "color": "orange" },
+            { "value": "Chart", "color": "green" }
+          ],
+          "width": 120
+        },
+        { "key": "note", "label": "Note", "type": "text" }
+      ],
+      "sampleRows": [
+        { "id": "sh_1", "title": "Harbor at dusk", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%234f46e5'/%3E%3C/svg%3E", "kind": "Photo", "note": "Golden hour" },
+        { "id": "sh_2", "title": "Sprint whiteboard", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%230d9488'/%3E%3C/svg%3E", "kind": "Sketch", "note": "Week 19" },
+        { "id": "sh_3", "title": "Quarterly funnel", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23b45309'/%3E%3C/svg%3E", "kind": "Chart" },
+        { "id": "sh_4", "title": "Team offsite", "kind": "Photo", "note": "No cover on purpose" },
+        { "id": "sh_5", "title": "Cargo route sketch", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23db2777'/%3E%3C/svg%3E", "kind": "Sketch" },
+        { "id": "sh_6", "title": "Winter lookbook", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%232563eb'/%3E%3C/svg%3E", "kind": "Photo", "note": "Draft picks" },
+        { "id": "sh_7", "title": "Aerial delta", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%2316a34a'/%3E%3C/svg%3E", "kind": "Chart" },
+        { "id": "sh_8", "title": "Rooftop panorama", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%239333ea'/%3E%3C/svg%3E", "kind": "Photo" }
+      ]
+    },
+    {
+      "key": "moods",
+      "label": "Moods",
+      "labelOne": "Mood",
+      "defaultView": "gallery",
+      "views": [
+        { "type": "gallery", "coverField": "photos", "coverFit": "contain", "cardFields": ["tag"] },
+        { "type": "table" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true },
+        { "key": "photos", "label": "Photos", "type": "links" },
+        { "key": "tag", "label": "Tag", "type": "select", "options": [{ "value": "Warm", "color": "orange" }, { "value": "Cool", "color": "blue" }] }
+      ],
+      "sampleRows": [
+        { "id": "m_1", "name": "Sunset ridge", "photos": ["data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%23f97316'/%3E%3C/svg%3E", "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%232563eb'/%3E%3C/svg%3E"], "tag": "Warm" },
+        { "id": "m_2", "name": "Ocean calm", "photos": ["data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%230ea5e9'/%3E%3C/svg%3E"], "tag": "Cool" }
+      ]
+    },
+    {
+      "key": "cards",
+      "label": "Cards",
+      "labelOne": "Card",
+      "defaultView": "gallery",
+      "views": [
+        { "type": "gallery", "coverField": "cover", "cardFields": ["kind", "note"] },
+        { "type": "table" }
+      ],
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true },
+        { "key": "cover", "label": "Cover", "type": "url" },
+        { "key": "kind", "label": "Kind", "type": "select", "options": [{ "value": "Photo", "color": "blue" }, { "value": "Sketch", "color": "orange" }] },
+        { "key": "note", "label": "Note", "type": "text" }
+      ],
+      "sampleRows": [
+        { "id": "cd_1", "title": "Harbor at dusk", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Crect width='4' height='3' fill='%234f46e5'/%3E%3C/svg%3E", "kind": "Photo", "note": "Golden hour" },
+        { "id": "cd_2", "title": "Sprint whiteboard", "kind": "Sketch", "note": "Week 19" }
+      ]
+    },
+    {
+      "key": "leads",
+      "label": "Leads",
+      "labelOne": "Lead",
+      "icon": "users",
+      "defaultView": "form",
+      "seedCount": 0,
+      "views": [
+        {
+          "type": "form",
+          "sections": [
+            { "label": "Contact", "fields": ["name", "email"] },
+            { "label": "Company", "fields": ["company", "size", "channel"] }
+          ],
+          "requiredOverrides": { "email": true },
+          "requiredWhen": { "size": { "field": "channel", "equals": "Event" } },
+          "submitLabel": "Add lead"
+        },
+        { "type": "table" }
+      ],
+      "fields": [
+        { "key": "name", "label": "Name", "type": "text", "primary": true, "width": 200 },
+        { "key": "email", "label": "Email", "type": "email", "width": 220 },
+        { "key": "company", "label": "Company", "type": "text", "width": 180 },
+        { "key": "size", "label": "Size", "type": "number", "width": 100 },
+        { "key": "channel", "label": "Channel", "type": "select", "options": ["Inbound", "Referral", "Event"], "width": 130 }
+      ]
+    },
+    {
+      "key": "empty_shots",
+      "label": "Empty shots",
+      "labelOne": "Empty shot",
+      "defaultView": "gallery",
+      "seedCount": 0,
+      "views": [{ "type": "gallery", "coverField": "cover" }, { "type": "table" }],
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true },
+        { "key": "cover", "label": "Cover", "type": "url" }
+      ]
+    },
+    {
+      "key": "bulk",
+      "label": "Bulk",
+      "labelOne": "Bulk row",
+      "defaultView": "gallery",
+      "seedCount": 10000,
+      "views": [{ "type": "gallery", "cardFields": ["kind"] }, { "type": "table" }],
+      "fields": [
+        { "key": "title", "label": "Title", "type": "text", "primary": true },
+        { "key": "kind", "label": "Kind", "type": "select", "options": ["A", "B", "C"] },
+        { "key": "note", "label": "Note", "type": "longText" }
+      ]
+    }
+  ]
+}
