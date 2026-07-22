@@ -427,6 +427,13 @@ twist to rotate, sideways two-finger drag to pan. Pitch is clamped to `maxPitch`
 camera never drops under the horizon. All of it works in flat and globe alike — tilting a
 globe orbits the planet.
 
+**Mobile.** The directions panel is a true bottom sheet — drag grip, peek/half/full snap
+points, and the route alternatives pinned into the always-visible peek region so they are
+reachable one-handed. The legend collapses to a chip that expands on tap (it would
+otherwise eat a large share of a phone screen) and gets out of the way while the sheet is
+open. Tilt and twist-rotate work by touch, tool buttons are 44px targets, and the basemap
+panel is constrained to the viewport so nothing overflows horizontally.
+
 #### Known limits — read before extending or filing a bug
 
 Each is a deliberate, verified constraint. Nothing is faked in the UI: where the data is
@@ -443,7 +450,7 @@ not real, the surface says so.
 | **Default relief is RASTER hillshade, not a mesh** | a pre-rendered image — the ground stays flat under it. A true mesh needs a DEM host the CSP allows | set `terrainDemUrl` (terrarium raster-dem tiles). Relief is only visible where there IS relief — test over real terrain before concluding it is broken |
 | **Transit and live traffic are absent** | both need a keyed vendor or a non-allow-listed host | documented seams, off by default, never faked |
 | **A basemap switch is a soft dip, not a crossfade** | a true frame-to-frame crossfade needs an untyped escape hatch in react-map-gl v8 | accepted — the blur/opacity dip removes the hard flip |
-| **Mobile is PARTIAL** | the directions panel has a proper sheet with peek/half snaps (alternatives are pinned into the always-visible region), but the Layers/basemap picker has no sheet treatment and the legend does not collapse — it eats a large share of a phone screen | treat mobile as unfinished; no horizontal overflow and the controls are reachable at 390px |
+| **The basemap/layers picker is a panel, not a sheet** | on a phone it is width-constrained to the viewport rather than bottom-anchored with a drag grip like the directions sheet | fine as-is; give it the sheet treatment if one-handed reach matters for your users |
 
 **Rendering mode matters for tests.** With the default clustering, a dense object renders
 as GL clusters at every zoom, so individual records are GL points rather than DOM pins —
