@@ -1302,8 +1302,20 @@
       "defaultView": "gallery",
       "hideInNav": true,
       "views": [
-        { "type": "gallery", "coverField": "cover", "coverFit": "cover", "groupField": "kind", "sortField": "title", "cardFields": ["kind", "notes"] },
-        { "type": "table" }
+        {
+          "type": "gallery",
+          "coverField": "cover",
+          "coverFit": "cover",
+          "groupField": "kind",
+          "sortField": "title",
+          "cardFields": [
+            "kind",
+            "notes"
+          ]
+        },
+        {
+          "type": "table"
+        }
       ],
       "fields": [
         {
@@ -1346,27 +1358,151 @@
         }
       ],
       "sampleRows": [
-        { "id": "ds_1", "title": "Harbor at dusk", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234f46e5'/%3E%3Cstop offset='1' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Golden hour" },
-        { "id": "ds_2", "title": "Rooftop panorama", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239333ea'/%3E%3Cstop offset='1' stop-color='%23f0abfc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Blue hour" },
-        { "id": "ds_3", "title": "Winter lookbook", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%2393c5fd'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Draft picks" },
-        { "id": "ds_4", "title": "Coastal fog", "kind": "Photo", "notes": "Long exposure" },
-        { "id": "ds_5", "title": "Night market", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23db2777'/%3E%3Cstop offset='1' stop-color='%23fbcfe8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Neon set" },
-        { "id": "ds_6", "title": "Desert dunes", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f59e0b'/%3E%3Cstop offset='1' stop-color='%23fde68a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Photo", "notes": "Sunrise" },
-        { "id": "ds_7", "title": "Studio portrait", "kind": "Photo", "notes": "Rim light" },
-        { "id": "ds_8", "title": "Sprint whiteboard", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230d9488'/%3E%3Cstop offset='1' stop-color='%235eead4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Week 19" },
-        { "id": "ds_9", "title": "Cargo route sketch", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23db2777'/%3E%3Cstop offset='1' stop-color='%23fbcfe8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Concept" },
-        { "id": "ds_10", "title": "Wireframe pass", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%23ddd6fe'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "v3" },
-        { "id": "ds_11", "title": "Storyboard beats", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230891b2'/%3E%3Cstop offset='1' stop-color='%23a5f3fc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Act two" },
-        { "id": "ds_12", "title": "Napkin math", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2365a30d'/%3E%3Cstop offset='1' stop-color='%23d9f99d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Unit economics" },
-        { "id": "ds_13", "title": "Character turnaround", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ea580c'/%3E%3Cstop offset='1' stop-color='%23fed7aa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Inks" },
-        { "id": "ds_14", "title": "Floor plan", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23475569'/%3E%3Cstop offset='1' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Sketch", "notes": "Option B" },
-        { "id": "ds_15", "title": "Quarterly funnel", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23b45309'/%3E%3Cstop offset='1' stop-color='%23fed7aa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "Q3" },
-        { "id": "ds_16", "title": "Cohort retention", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2316a34a'/%3E%3Cstop offset='1' stop-color='%23bbf7d0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "D30" },
-        { "id": "ds_17", "title": "Revenue bridge", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230f766e'/%3E%3Cstop offset='1' stop-color='%2399f6e4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "YoY" },
-        { "id": "ds_18", "title": "Latency histogram", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23dc2626'/%3E%3Cstop offset='1' stop-color='%23fecaca'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "p99" },
-        { "id": "ds_19", "title": "Market share", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%23bfdbfe'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "2026" },
-        { "id": "ds_20", "title": "Burn-down", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239333ea'/%3E%3Cstop offset='1' stop-color='%23e9d5ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "Sprint 12" },
-        { "id": "ds_21", "title": "NPS trend", "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ca8a04'/%3E%3Cstop offset='1' stop-color='%23fef08a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E", "kind": "Chart", "notes": "Rolling" }
+        {
+          "id": "ds_1",
+          "title": "Harbor at dusk",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%234f46e5'/%3E%3Cstop offset='1' stop-color='%23a78bfa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Photo",
+          "notes": "Golden hour"
+        },
+        {
+          "id": "ds_2",
+          "title": "Rooftop panorama",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239333ea'/%3E%3Cstop offset='1' stop-color='%23f0abfc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Photo",
+          "notes": "Blue hour"
+        },
+        {
+          "id": "ds_3",
+          "title": "Winter lookbook",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%2393c5fd'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Photo",
+          "notes": "Draft picks"
+        },
+        {
+          "id": "ds_4",
+          "title": "Coastal fog",
+          "kind": "Photo",
+          "notes": "Long exposure"
+        },
+        {
+          "id": "ds_5",
+          "title": "Night market",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23db2777'/%3E%3Cstop offset='1' stop-color='%23fbcfe8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Photo",
+          "notes": "Neon set"
+        },
+        {
+          "id": "ds_6",
+          "title": "Desert dunes",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23f59e0b'/%3E%3Cstop offset='1' stop-color='%23fde68a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Photo",
+          "notes": "Sunrise"
+        },
+        {
+          "id": "ds_7",
+          "title": "Studio portrait",
+          "kind": "Photo",
+          "notes": "Rim light"
+        },
+        {
+          "id": "ds_8",
+          "title": "Sprint whiteboard",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230d9488'/%3E%3Cstop offset='1' stop-color='%235eead4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Sketch",
+          "notes": "Week 19"
+        },
+        {
+          "id": "ds_9",
+          "title": "Cargo route sketch",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23db2777'/%3E%3Cstop offset='1' stop-color='%23fbcfe8'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Sketch",
+          "notes": "Concept"
+        },
+        {
+          "id": "ds_10",
+          "title": "Wireframe pass",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%237c3aed'/%3E%3Cstop offset='1' stop-color='%23ddd6fe'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Sketch",
+          "notes": "v3"
+        },
+        {
+          "id": "ds_11",
+          "title": "Storyboard beats",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230891b2'/%3E%3Cstop offset='1' stop-color='%23a5f3fc'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Sketch",
+          "notes": "Act two"
+        },
+        {
+          "id": "ds_12",
+          "title": "Napkin math",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2365a30d'/%3E%3Cstop offset='1' stop-color='%23d9f99d'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Sketch",
+          "notes": "Unit economics"
+        },
+        {
+          "id": "ds_13",
+          "title": "Character turnaround",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ea580c'/%3E%3Cstop offset='1' stop-color='%23fed7aa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Sketch",
+          "notes": "Inks"
+        },
+        {
+          "id": "ds_14",
+          "title": "Floor plan",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23475569'/%3E%3Cstop offset='1' stop-color='%23cbd5e1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Sketch",
+          "notes": "Option B"
+        },
+        {
+          "id": "ds_15",
+          "title": "Quarterly funnel",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23b45309'/%3E%3Cstop offset='1' stop-color='%23fed7aa'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Chart",
+          "notes": "Q3"
+        },
+        {
+          "id": "ds_16",
+          "title": "Cohort retention",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%2316a34a'/%3E%3Cstop offset='1' stop-color='%23bbf7d0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Chart",
+          "notes": "D30"
+        },
+        {
+          "id": "ds_17",
+          "title": "Revenue bridge",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%230f766e'/%3E%3Cstop offset='1' stop-color='%2399f6e4'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Chart",
+          "notes": "YoY"
+        },
+        {
+          "id": "ds_18",
+          "title": "Latency histogram",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23dc2626'/%3E%3Cstop offset='1' stop-color='%23fecaca'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Chart",
+          "notes": "p99"
+        },
+        {
+          "id": "ds_19",
+          "title": "Market share",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%232563eb'/%3E%3Cstop offset='1' stop-color='%23bfdbfe'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Chart",
+          "notes": "2026"
+        },
+        {
+          "id": "ds_20",
+          "title": "Burn-down",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%239333ea'/%3E%3Cstop offset='1' stop-color='%23e9d5ff'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Chart",
+          "notes": "Sprint 12"
+        },
+        {
+          "id": "ds_21",
+          "title": "NPS trend",
+          "cover": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 4 3'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23ca8a04'/%3E%3Cstop offset='1' stop-color='%23fef08a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='4' height='3' fill='url(%23g)'/%3E%3C/svg%3E",
+          "kind": "Chart",
+          "notes": "Rolling"
+        }
       ]
     },
     {
@@ -1382,7 +1518,13 @@
         },
         {
           "type": "map",
-          "colorField": "kind"
+          "colorField": "kind",
+          "sizeField": "headcount",
+          "heatmapWeightField": "revenue",
+          "clustering": true,
+          "clusterRadius": 55,
+          "heatmap": false,
+          "defaultBasemap": "streets"
         }
       ],
       "fields": [
@@ -1407,8 +1549,20 @@
               "color": "orange"
             },
             {
-              "value": "Partner",
+              "value": "Store",
+              "color": "purple"
+            },
+            {
+              "value": "Customer",
               "color": "green"
+            },
+            {
+              "value": "Partner",
+              "color": "teal"
+            },
+            {
+              "value": "Site",
+              "color": "red"
             }
           ],
           "width": 130
@@ -1418,6 +1572,18 @@
           "label": "City",
           "type": "text",
           "width": 140
+        },
+        {
+          "key": "headcount",
+          "label": "Headcount",
+          "type": "number",
+          "width": 110
+        },
+        {
+          "key": "revenue",
+          "label": "Revenue",
+          "type": "currency",
+          "width": 120
         },
         {
           "key": "lat",
@@ -1439,7 +1605,9 @@
           "kind": "Office",
           "city": "Ghent",
           "lat": 51.0543,
-          "lng": 3.7174
+          "lng": 3.7174,
+          "headcount": 77,
+          "revenue": 2041000
         },
         {
           "id": "pl_2",
@@ -1447,7 +1615,9 @@
           "kind": "Warehouse",
           "city": "Antwerp",
           "lat": 51.2194,
-          "lng": 4.4025
+          "lng": 4.4025,
+          "headcount": 39,
+          "revenue": 1266000
         },
         {
           "id": "pl_3",
@@ -1455,7 +1625,9 @@
           "kind": "Warehouse",
           "city": "Rotterdam",
           "lat": 51.9244,
-          "lng": 4.4777
+          "lng": 4.4777,
+          "headcount": 36,
+          "revenue": 3796000
         },
         {
           "id": "pl_4",
@@ -1463,7 +1635,9 @@
           "kind": "Office",
           "city": "Brussels",
           "lat": 50.8503,
-          "lng": 4.3517
+          "lng": 4.3517,
+          "headcount": 65,
+          "revenue": 2720000
         },
         {
           "id": "pl_5",
@@ -1471,7 +1645,9 @@
           "kind": "Warehouse",
           "city": "Utrecht",
           "lat": 52.0907,
-          "lng": 5.1214
+          "lng": 5.1214,
+          "headcount": 28,
+          "revenue": 2864000
         },
         {
           "id": "pl_6",
@@ -1479,7 +1655,9 @@
           "kind": "Warehouse",
           "city": "Hamburg",
           "lat": 53.5511,
-          "lng": 9.9937
+          "lng": 9.9937,
+          "headcount": 27,
+          "revenue": 213000
         },
         {
           "id": "pl_7",
@@ -1487,7 +1665,9 @@
           "kind": "Office",
           "city": "Lille",
           "lat": 50.6292,
-          "lng": 3.0573
+          "lng": 3.0573,
+          "headcount": 132,
+          "revenue": 3895000
         },
         {
           "id": "pl_8",
@@ -1495,7 +1675,9 @@
           "kind": "Partner",
           "city": "Leuven",
           "lat": 50.8798,
-          "lng": 4.7005
+          "lng": 4.7005,
+          "headcount": 76,
+          "revenue": 1868000
         },
         {
           "id": "pl_9",
@@ -1503,7 +1685,9 @@
           "kind": "Office",
           "city": "Paris",
           "lat": 48.8566,
-          "lng": 2.3522
+          "lng": 2.3522,
+          "headcount": 14,
+          "revenue": 542000
         },
         {
           "id": "pl_10",
@@ -1511,19 +1695,969 @@
           "kind": "Partner",
           "city": "Amsterdam",
           "lat": 52.3676,
-          "lng": 4.9041
+          "lng": 4.9041,
+          "headcount": 231,
+          "revenue": 1397000
         },
         {
           "id": "pl_11",
           "name": "Solstice Annex",
           "kind": "Office",
-          "city": "Brugge"
+          "city": "Brugge",
+          "headcount": 30,
+          "revenue": 1046000
         },
         {
           "id": "pl_12",
           "name": "Harborview Site",
           "kind": "Warehouse",
-          "city": "Ostend"
+          "city": "Ostend",
+          "headcount": 27,
+          "revenue": 1202000
+        },
+        {
+          "id": "pl_13",
+          "name": "Silverleaf Supply",
+          "kind": "Site",
+          "city": "Brussels",
+          "headcount": 325,
+          "revenue": 1410000,
+          "lat": 50.841,
+          "lng": 4.4709
+        },
+        {
+          "id": "pl_14",
+          "name": "Cobalt Trading",
+          "kind": "Partner",
+          "city": "Brussels",
+          "headcount": 20,
+          "revenue": 2923000,
+          "lat": 50.8742,
+          "lng": 4.4111
+        },
+        {
+          "id": "pl_15",
+          "name": "Northgate Hub",
+          "kind": "Site",
+          "city": "Brussels",
+          "headcount": 21,
+          "revenue": 3208000,
+          "lat": 50.8433,
+          "lng": 4.4558
+        },
+        {
+          "id": "pl_16",
+          "name": "Vantage Collective",
+          "kind": "Warehouse",
+          "city": "Brussels",
+          "headcount": 22,
+          "revenue": 3858000,
+          "lat": 50.9457,
+          "lng": 4.2535
+        },
+        {
+          "id": "pl_17",
+          "name": "Quaystone Logistics",
+          "kind": "Partner",
+          "city": "Brussels",
+          "headcount": 224,
+          "revenue": 4360000,
+          "lat": 50.8163,
+          "lng": 4.2945
+        },
+        {
+          "id": "pl_18",
+          "name": "Lumen Trading",
+          "kind": "Customer",
+          "city": "Brussels",
+          "headcount": 59,
+          "revenue": 4872000,
+          "lat": 50.8075,
+          "lng": 4.3951
+        },
+        {
+          "id": "pl_19",
+          "name": "Halcyon Supply",
+          "kind": "Partner",
+          "city": "Brussels",
+          "headcount": 46,
+          "revenue": 4866000,
+          "lat": 50.8489,
+          "lng": 4.406
+        },
+        {
+          "id": "pl_20",
+          "name": "Evermark House",
+          "kind": "Customer",
+          "city": "Brussels",
+          "headcount": 115,
+          "revenue": 3929000,
+          "lat": 50.7959,
+          "lng": 4.3681
+        },
+        {
+          "id": "pl_21",
+          "name": "Driftwood Point",
+          "kind": "Warehouse",
+          "city": "Brussels",
+          "headcount": 32,
+          "revenue": 3157000,
+          "lat": 50.8343,
+          "lng": 4.4722
+        },
+        {
+          "id": "pl_22",
+          "name": "Ridgeline Depot",
+          "kind": "Store",
+          "city": "Brussels",
+          "headcount": 187,
+          "revenue": 2238000,
+          "lat": 50.8706,
+          "lng": 4.2339
+        },
+        {
+          "id": "pl_23",
+          "name": "Bluecrest Foundry",
+          "kind": "Office",
+          "city": "Brussels",
+          "headcount": 42,
+          "revenue": 4916000,
+          "lat": 50.8532,
+          "lng": 4.35
+        },
+        {
+          "id": "pl_24",
+          "name": "Fernbrook Foundry",
+          "kind": "Office",
+          "city": "Antwerp",
+          "headcount": 47,
+          "revenue": 3829000,
+          "lat": 51.1724,
+          "lng": 4.3586
+        },
+        {
+          "id": "pl_25",
+          "name": "Ostwind House",
+          "kind": "Customer",
+          "city": "Antwerp",
+          "headcount": 322,
+          "revenue": 736000,
+          "lat": 51.1624,
+          "lng": 4.2821
+        },
+        {
+          "id": "pl_26",
+          "name": "Zephyr Bureau",
+          "kind": "Warehouse",
+          "city": "Antwerp",
+          "headcount": 18,
+          "revenue": 4808000,
+          "lat": 51.1569,
+          "lng": 4.4144
+        },
+        {
+          "id": "pl_27",
+          "name": "Marlow Supply",
+          "kind": "Site",
+          "city": "Antwerp",
+          "headcount": 8,
+          "revenue": 5540000,
+          "lat": 51.1618,
+          "lng": 4.416
+        },
+        {
+          "id": "pl_28",
+          "name": "Castellan Studio",
+          "kind": "Customer",
+          "city": "Antwerp",
+          "headcount": 17,
+          "revenue": 4863000,
+          "lat": 51.2136,
+          "lng": 4.3164
+        },
+        {
+          "id": "pl_29",
+          "name": "Verdant Systems",
+          "kind": "Warehouse",
+          "city": "Antwerp",
+          "headcount": 35,
+          "revenue": 2525000,
+          "lat": 51.1781,
+          "lng": 4.4407
+        },
+        {
+          "id": "pl_30",
+          "name": "Oakhaven House",
+          "kind": "Store",
+          "city": "Antwerp",
+          "headcount": 97,
+          "revenue": 4481000,
+          "lat": 51.2297,
+          "lng": 4.4293
+        },
+        {
+          "id": "pl_31",
+          "name": "Sablefield Trading",
+          "kind": "Customer",
+          "city": "Antwerp",
+          "headcount": 97,
+          "revenue": 2450000,
+          "lat": 51.2858,
+          "lng": 4.3854
+        },
+        {
+          "id": "pl_32",
+          "name": "Windrow Bureau",
+          "kind": "Warehouse",
+          "city": "Ghent",
+          "headcount": 18,
+          "revenue": 808000,
+          "lat": 51.0189,
+          "lng": 3.7571
+        },
+        {
+          "id": "pl_33",
+          "name": "Copperline Forge",
+          "kind": "Office",
+          "city": "Ghent",
+          "headcount": 29,
+          "revenue": 5285000,
+          "lat": 51.0198,
+          "lng": 3.7249
+        },
+        {
+          "id": "pl_34",
+          "name": "Larkspur House",
+          "kind": "Site",
+          "city": "Ghent",
+          "headcount": 22,
+          "revenue": 4845000,
+          "lat": 51.0106,
+          "lng": 3.7147
+        },
+        {
+          "id": "pl_35",
+          "name": "Thornbury Annex",
+          "kind": "Customer",
+          "city": "Ghent",
+          "headcount": 34,
+          "revenue": 1210000,
+          "lat": 51.0558,
+          "lng": 3.7112
+        },
+        {
+          "id": "pl_36",
+          "name": "Highmoor Hub",
+          "kind": "Customer",
+          "city": "Ghent",
+          "headcount": 39,
+          "revenue": 818000,
+          "lat": 51.1112,
+          "lng": 3.7179
+        },
+        {
+          "id": "pl_37",
+          "name": "Ellery Yard",
+          "kind": "Office",
+          "city": "Ghent",
+          "headcount": 70,
+          "revenue": 5381000,
+          "lat": 51.0492,
+          "lng": 3.7541
+        },
+        {
+          "id": "pl_38",
+          "name": "Duskmoor Works",
+          "kind": "Warehouse",
+          "city": "Amsterdam",
+          "headcount": 9,
+          "revenue": 1188000,
+          "lat": 52.3914,
+          "lng": 4.7654
+        },
+        {
+          "id": "pl_39",
+          "name": "Pinecliff Point",
+          "kind": "Site",
+          "city": "Amsterdam",
+          "headcount": 55,
+          "revenue": 3792000,
+          "lat": 52.4236,
+          "lng": 4.8122
+        },
+        {
+          "id": "pl_40",
+          "name": "Ashford Studio",
+          "kind": "Site",
+          "city": "Amsterdam",
+          "headcount": 42,
+          "revenue": 3276000,
+          "lat": 52.3039,
+          "lng": 4.8314
+        },
+        {
+          "id": "pl_41",
+          "name": "Graymoor Hub",
+          "kind": "Site",
+          "city": "Amsterdam",
+          "headcount": 183,
+          "revenue": 4058000,
+          "lat": 52.3488,
+          "lng": 4.993
+        },
+        {
+          "id": "pl_42",
+          "name": "Whitcombe Bureau",
+          "kind": "Office",
+          "city": "Amsterdam",
+          "headcount": 56,
+          "revenue": 469000,
+          "lat": 52.4204,
+          "lng": 4.9011
+        },
+        {
+          "id": "pl_43",
+          "name": "Ravensworth Systems",
+          "kind": "Site",
+          "city": "Amsterdam",
+          "headcount": 16,
+          "revenue": 124000,
+          "lat": 52.3936,
+          "lng": 4.9388
+        },
+        {
+          "id": "pl_44",
+          "name": "Lindqvist Logistics",
+          "kind": "Customer",
+          "city": "Amsterdam",
+          "headcount": 130,
+          "revenue": 1897000,
+          "lat": 52.42,
+          "lng": 4.7873
+        },
+        {
+          "id": "pl_45",
+          "name": "Beaumont Logistics",
+          "kind": "Warehouse",
+          "city": "Amsterdam",
+          "headcount": 17,
+          "revenue": 723000,
+          "lat": 52.4262,
+          "lng": 4.7953
+        },
+        {
+          "id": "pl_46",
+          "name": "Calder Group",
+          "kind": "Store",
+          "city": "Amsterdam",
+          "headcount": 92,
+          "revenue": 5557000,
+          "lat": 52.3141,
+          "lng": 4.9405
+        },
+        {
+          "id": "pl_47",
+          "name": "Merrow Forge",
+          "kind": "Customer",
+          "city": "Amsterdam",
+          "headcount": 21,
+          "revenue": 5252000,
+          "lat": 52.3161,
+          "lng": 4.8274
+        },
+        {
+          "id": "pl_48",
+          "name": "Aurora Forge",
+          "kind": "Office",
+          "city": "Amsterdam",
+          "headcount": 27,
+          "revenue": 2965000,
+          "lat": 52.459,
+          "lng": 4.7611
+        },
+        {
+          "id": "pl_49",
+          "name": "Nordwind Logistics",
+          "kind": "Partner",
+          "city": "Rotterdam",
+          "headcount": 54,
+          "revenue": 6057000,
+          "lat": 51.8256,
+          "lng": 4.5975
+        },
+        {
+          "id": "pl_50",
+          "name": "Cargolane Depot",
+          "kind": "Office",
+          "city": "Rotterdam",
+          "headcount": 34,
+          "revenue": 5741000,
+          "lat": 51.9256,
+          "lng": 4.4531
+        },
+        {
+          "id": "pl_51",
+          "name": "Meridian Group",
+          "kind": "Store",
+          "city": "Rotterdam",
+          "headcount": 15,
+          "revenue": 2982000,
+          "lat": 51.8795,
+          "lng": 4.528
+        },
+        {
+          "id": "pl_52",
+          "name": "GreenCrate Exchange",
+          "kind": "Customer",
+          "city": "Rotterdam",
+          "headcount": 42,
+          "revenue": 5602000,
+          "lat": 51.8926,
+          "lng": 4.4686
+        },
+        {
+          "id": "pl_53",
+          "name": "Tidal Labs",
+          "kind": "Partner",
+          "city": "Rotterdam",
+          "headcount": 129,
+          "revenue": 2956000,
+          "lat": 52.0344,
+          "lng": 4.463
+        },
+        {
+          "id": "pl_54",
+          "name": "Pixelforge Labs",
+          "kind": "Site",
+          "city": "Rotterdam",
+          "headcount": 44,
+          "revenue": 4042000,
+          "lat": 52.053,
+          "lng": 4.4649
+        },
+        {
+          "id": "pl_55",
+          "name": "Amberline Collective",
+          "kind": "Customer",
+          "city": "Rotterdam",
+          "headcount": 25,
+          "revenue": 4142000,
+          "lat": 51.9147,
+          "lng": 4.4198
+        },
+        {
+          "id": "pl_56",
+          "name": "Koppel House",
+          "kind": "Warehouse",
+          "city": "Utrecht",
+          "headcount": 60,
+          "revenue": 3276000,
+          "lat": 52.1047,
+          "lng": 5.0752
+        },
+        {
+          "id": "pl_57",
+          "name": "Solstice Collective",
+          "kind": "Site",
+          "city": "Utrecht",
+          "headcount": 13,
+          "revenue": 6154000,
+          "lat": 52.0737,
+          "lng": 5.1063
+        },
+        {
+          "id": "pl_58",
+          "name": "Harborview House",
+          "kind": "Store",
+          "city": "Utrecht",
+          "headcount": 16,
+          "revenue": 3219000,
+          "lat": 52.0362,
+          "lng": 5.1922
+        },
+        {
+          "id": "pl_59",
+          "name": "Brightpath Supply",
+          "kind": "Office",
+          "city": "Utrecht",
+          "headcount": 32,
+          "revenue": 2339000,
+          "lat": 52.0618,
+          "lng": 5.134
+        },
+        {
+          "id": "pl_60",
+          "name": "Ironwood Yard",
+          "kind": "Customer",
+          "city": "Utrecht",
+          "headcount": 30,
+          "revenue": 158000,
+          "lat": 52.1279,
+          "lng": 5.1186
+        },
+        {
+          "id": "pl_61",
+          "name": "Silverleaf Exchange",
+          "kind": "Partner",
+          "city": "Paris",
+          "headcount": 89,
+          "revenue": 3866000,
+          "lat": 48.8066,
+          "lng": 2.3123
+        },
+        {
+          "id": "pl_62",
+          "name": "Cobalt Partners",
+          "kind": "Customer",
+          "city": "Paris",
+          "headcount": 65,
+          "revenue": 280000,
+          "lat": 48.7958,
+          "lng": 2.3318
+        },
+        {
+          "id": "pl_63",
+          "name": "Northgate Annex",
+          "kind": "Office",
+          "city": "Paris",
+          "headcount": 12,
+          "revenue": 3944000,
+          "lat": 48.7071,
+          "lng": 2.3363
+        },
+        {
+          "id": "pl_64",
+          "name": "Vantage Works",
+          "kind": "Site",
+          "city": "Paris",
+          "headcount": 40,
+          "revenue": 2947000,
+          "lat": 48.9737,
+          "lng": 2.3753
+        },
+        {
+          "id": "pl_65",
+          "name": "Quaystone Hub",
+          "kind": "Warehouse",
+          "city": "Paris",
+          "headcount": 73,
+          "revenue": 2001000,
+          "lat": 48.8457,
+          "lng": 2.4862
+        },
+        {
+          "id": "pl_66",
+          "name": "Lumen Union",
+          "kind": "Customer",
+          "city": "Paris",
+          "headcount": 36,
+          "revenue": 3455000,
+          "lat": 48.8129,
+          "lng": 2.3183
+        },
+        {
+          "id": "pl_67",
+          "name": "Halcyon Studio",
+          "kind": "Partner",
+          "city": "Paris",
+          "headcount": 27,
+          "revenue": 3977000,
+          "lat": 48.9051,
+          "lng": 2.3492
+        },
+        {
+          "id": "pl_68",
+          "name": "Evermark Union",
+          "kind": "Store",
+          "city": "Paris",
+          "headcount": 53,
+          "revenue": 5150000,
+          "lat": 48.6884,
+          "lng": 2.1899
+        },
+        {
+          "id": "pl_69",
+          "name": "Driftwood Group",
+          "kind": "Customer",
+          "city": "Paris",
+          "headcount": 9,
+          "revenue": 641000,
+          "lat": 48.9901,
+          "lng": 2.3743
+        },
+        {
+          "id": "pl_70",
+          "name": "Ridgeline Works",
+          "kind": "Office",
+          "city": "Paris",
+          "headcount": 56,
+          "revenue": 5113000,
+          "lat": 48.7965,
+          "lng": 2.3015
+        },
+        {
+          "id": "pl_71",
+          "name": "Bluecrest Commons",
+          "kind": "Site",
+          "city": "Paris",
+          "headcount": 24,
+          "revenue": 996000,
+          "lat": 48.7433,
+          "lng": 2.6389
+        },
+        {
+          "id": "pl_72",
+          "name": "Fernbrook Collective",
+          "kind": "Partner",
+          "city": "Paris",
+          "headcount": 35,
+          "revenue": 305000,
+          "lat": 48.752,
+          "lng": 2.4399
+        },
+        {
+          "id": "pl_73",
+          "name": "Ostwind Supply",
+          "kind": "Office",
+          "city": "Lille",
+          "headcount": 17,
+          "revenue": 1974000,
+          "lat": 50.6104,
+          "lng": 3.0513
+        },
+        {
+          "id": "pl_74",
+          "name": "Zephyr Junction",
+          "kind": "Store",
+          "city": "Lille",
+          "headcount": 14,
+          "revenue": 4225000,
+          "lat": 50.6189,
+          "lng": 3.0875
+        },
+        {
+          "id": "pl_75",
+          "name": "Marlow Logistics",
+          "kind": "Warehouse",
+          "city": "Lille",
+          "headcount": 19,
+          "revenue": 2294000,
+          "lat": 50.6165,
+          "lng": 3.1428
+        },
+        {
+          "id": "pl_76",
+          "name": "Castellan Depot",
+          "kind": "Customer",
+          "city": "Lille",
+          "headcount": 28,
+          "revenue": 5786000,
+          "lat": 50.6064,
+          "lng": 3.1461
+        },
+        {
+          "id": "pl_77",
+          "name": "Verdant Foundry",
+          "kind": "Office",
+          "city": "Lille",
+          "headcount": 45,
+          "revenue": 5523000,
+          "lat": 50.6202,
+          "lng": 3.0693
+        },
+        {
+          "id": "pl_78",
+          "name": "Oakhaven Collective",
+          "kind": "Warehouse",
+          "city": "Cologne",
+          "headcount": 102,
+          "revenue": 3419000,
+          "lat": 50.9933,
+          "lng": 6.9323
+        },
+        {
+          "id": "pl_79",
+          "name": "Sablefield Systems",
+          "kind": "Store",
+          "city": "Cologne",
+          "headcount": 24,
+          "revenue": 4801000,
+          "lat": 50.9953,
+          "lng": 7.0053
+        },
+        {
+          "id": "pl_80",
+          "name": "Windrow Systems",
+          "kind": "Partner",
+          "city": "Cologne",
+          "headcount": 75,
+          "revenue": 982000,
+          "lat": 50.9932,
+          "lng": 7.0228
+        },
+        {
+          "id": "pl_81",
+          "name": "Copperline Supply",
+          "kind": "Site",
+          "city": "Cologne",
+          "headcount": 58,
+          "revenue": 4190000,
+          "lat": 50.8999,
+          "lng": 7.0476
+        },
+        {
+          "id": "pl_82",
+          "name": "Larkspur Bureau",
+          "kind": "Customer",
+          "city": "Cologne",
+          "headcount": 20,
+          "revenue": 5994000,
+          "lat": 50.9614,
+          "lng": 6.8908
+        },
+        {
+          "id": "pl_83",
+          "name": "Thornbury House",
+          "kind": "Customer",
+          "city": "Cologne",
+          "headcount": 24,
+          "revenue": 660000,
+          "lat": 50.8796,
+          "lng": 6.9526
+        },
+        {
+          "id": "pl_84",
+          "name": "Highmoor Labs",
+          "kind": "Site",
+          "city": "Cologne",
+          "headcount": 21,
+          "revenue": 3257000,
+          "lat": 50.9538,
+          "lng": 6.8587
+        },
+        {
+          "id": "pl_85",
+          "name": "Ellery Union",
+          "kind": "Site",
+          "city": "Hamburg",
+          "headcount": 145,
+          "revenue": 1842000,
+          "lat": 53.6116,
+          "lng": 10.0843
+        },
+        {
+          "id": "pl_86",
+          "name": "Duskmoor Point",
+          "kind": "Customer",
+          "city": "Hamburg",
+          "headcount": 18,
+          "revenue": 5720000,
+          "lat": 53.47,
+          "lng": 10.0459
+        },
+        {
+          "id": "pl_87",
+          "name": "Pinecliff Bureau",
+          "kind": "Warehouse",
+          "city": "Hamburg",
+          "headcount": 25,
+          "revenue": 2010000,
+          "lat": 53.4624,
+          "lng": 10.0817
+        },
+        {
+          "id": "pl_88",
+          "name": "Ashford Hub",
+          "kind": "Office",
+          "city": "Hamburg",
+          "headcount": 36,
+          "revenue": 713000,
+          "lat": 53.5199,
+          "lng": 10.1147
+        },
+        {
+          "id": "pl_89",
+          "name": "Graymoor Studio",
+          "kind": "Partner",
+          "city": "Hamburg",
+          "headcount": 7,
+          "revenue": 1319000,
+          "lat": 53.6099,
+          "lng": 9.9183
+        },
+        {
+          "id": "pl_90",
+          "name": "Whitcombe Partners",
+          "kind": "Warehouse",
+          "city": "Hamburg",
+          "headcount": 14,
+          "revenue": 5445000,
+          "lat": 53.5864,
+          "lng": 9.8032
+        },
+        {
+          "id": "pl_91",
+          "name": "Ravensworth Supply",
+          "kind": "Customer",
+          "city": "London",
+          "headcount": 50,
+          "revenue": 2555000,
+          "lat": 51.4186,
+          "lng": -0.0237
+        },
+        {
+          "id": "pl_92",
+          "name": "Lindqvist Bureau",
+          "kind": "Customer",
+          "city": "London",
+          "headcount": 12,
+          "revenue": 2967000,
+          "lat": 51.45,
+          "lng": -0.1376
+        },
+        {
+          "id": "pl_93",
+          "name": "Beaumont Junction",
+          "kind": "Partner",
+          "city": "London",
+          "headcount": 50,
+          "revenue": 3320000,
+          "lat": 51.5492,
+          "lng": -0.247
+        },
+        {
+          "id": "pl_94",
+          "name": "Calder Terminal",
+          "kind": "Partner",
+          "city": "London",
+          "headcount": 4,
+          "revenue": 2060000,
+          "lat": 51.446,
+          "lng": -0.4846
+        },
+        {
+          "id": "pl_95",
+          "name": "Merrow Terminal",
+          "kind": "Partner",
+          "city": "London",
+          "headcount": 13,
+          "revenue": 829000,
+          "lat": 51.4175,
+          "lng": -0.1869
+        },
+        {
+          "id": "pl_96",
+          "name": "Aurora Point",
+          "kind": "Store",
+          "city": "London",
+          "headcount": 53,
+          "revenue": 1966000,
+          "lat": 51.4306,
+          "lng": -0.2673
+        },
+        {
+          "id": "pl_97",
+          "name": "Nordwind Partners",
+          "kind": "Store",
+          "city": "London",
+          "headcount": 33,
+          "revenue": 4524000,
+          "lat": 51.5845,
+          "lng": -0.3203
+        },
+        {
+          "id": "pl_98",
+          "name": "Cargolane Commons",
+          "kind": "Office",
+          "city": "London",
+          "headcount": 86,
+          "revenue": 1648000,
+          "lat": 51.5404,
+          "lng": -0.0598
+        },
+        {
+          "id": "pl_99",
+          "name": "Meridian Systems",
+          "kind": "Office",
+          "city": "London",
+          "headcount": 58,
+          "revenue": 5657000,
+          "lat": 51.6571,
+          "lng": -0.1528
+        },
+        {
+          "id": "pl_100",
+          "name": "GreenCrate Exchange",
+          "kind": "Office",
+          "city": "London",
+          "headcount": 30,
+          "revenue": 4610000,
+          "lat": 51.5051,
+          "lng": -0.4934
+        },
+        {
+          "id": "pl_101",
+          "name": "Tidal Annex",
+          "kind": "Warehouse",
+          "city": "Luxembourg",
+          "headcount": 14,
+          "revenue": 3952000,
+          "lat": 49.615,
+          "lng": 6.1087
+        },
+        {
+          "id": "pl_102",
+          "name": "Pixelforge Depot",
+          "kind": "Customer",
+          "city": "Luxembourg",
+          "headcount": 27,
+          "revenue": 5040000,
+          "lat": 49.5762,
+          "lng": 6.194
+        },
+        {
+          "id": "pl_103",
+          "name": "Amberline Forge",
+          "kind": "Office",
+          "city": "Luxembourg",
+          "headcount": 333,
+          "revenue": 3076000,
+          "lat": 49.6236,
+          "lng": 6.0635
+        },
+        {
+          "id": "pl_104",
+          "name": "Koppel Logistics",
+          "kind": "Customer",
+          "city": "Luxembourg",
+          "headcount": 312,
+          "revenue": 5227000,
+          "lat": 49.5986,
+          "lng": 6.099
+        },
+        {
+          "id": "pl_105",
+          "name": "Fieldcrest Annex",
+          "kind": "Site",
+          "city": "Namur",
+          "headcount": 22,
+          "revenue": 480000
+        },
+        {
+          "id": "pl_106",
+          "name": "Beacon Trading",
+          "kind": "Customer",
+          "city": "Eindhoven",
+          "headcount": 61,
+          "revenue": 1350000
+        },
+        {
+          "id": "pl_107",
+          "name": "Marrow Bureau",
+          "kind": "Partner",
+          "city": "Reims",
+          "headcount": 14,
+          "revenue": 290000
         }
       ]
     },
