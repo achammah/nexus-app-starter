@@ -169,7 +169,7 @@ a `[data-theme]` flip must repaint everything with no reload.
 
 ## Wire a new data source
 
-The `/api` surface is the contract; the store behind it is swappable.
+The `/api` surface is the contract (`docs/API.md`); the store behind it is swappable.
 
 | Seam | File | Swap |
 |---|---|---|

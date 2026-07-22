@@ -7,6 +7,7 @@ You are in a starter-born Nexus app (marker: `.nexus-starter` — it arms the st
 | Question | File |
 |---|---|
 | every key I may write in the config | `docs/CONFIG.md` |
+| the `/api` surface, persistence, `app_state` | `docs/API.md` |
 | how to add a view type / field type / page / data source / journey | `docs/EXTENDING.md` |
 | the component kit, the registries, tokens + skins | `docs/UI-KIT.md` |
 | how to write and run tests | `docs/TESTING.md` |

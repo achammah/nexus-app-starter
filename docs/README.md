@@ -7,6 +7,7 @@ Start at `AGENTS.md` in the repo root (the front door), then come here.
 | I want to… | Read |
 |---|---|
 | understand what this app IS and how it is put together | `ARCHITECTURE.md` — file map + data flow |
+| call the server, or understand persistence and `app_state` | **`API.md`** — the endpoint table + the data spine |
 | know every key I may write in `starter.config.json` | **`CONFIG.md`** — the complete config reference |
 | see what THIS config currently produces | `DATA-MODEL.md` — generated ER + field tables (`npm run model`) |
 | do a specific task (add an entity, wire enrichment, add a whiteboard field…) | `RECIPES.md` — exact files, exact order |

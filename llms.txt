@@ -5,6 +5,7 @@ AGENTS.md
 docs/README.md
 docs/ARCHITECTURE.md
 docs/CONFIG.md
+docs/API.md
 docs/EXTENDING.md
 docs/UI-KIT.md
 docs/TESTING.md
