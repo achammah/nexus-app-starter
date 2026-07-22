@@ -4128,6 +4128,94 @@ const journeys = [
       assert(true, "click-upload adds a file entry with its name + size");
     },
   },
+  {
+    // config.pages[] nav integration — the generalization: config-declared pages appear
+    // in the nav alongside the hand-written customPages, feature-gated + deep-linkable,
+    // with NO regression to the static pages.
+    name: "pages-nav-integration", feature: "config.pages[] nav + deep-link",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="nav"]');
+      for (const k of ["warroom", "systemmap", "scratch", "allsites", "companycal"]) {
+        assert(await page.locator(`[data-testid="nav-p-${k}"]`).count() === 1, `config page "${k}" is a nav item`);
+      }
+      // static customPages must NOT regress (still present)
+      assert(await page.locator('[data-testid="nav-p-spreadsheet"]').count() === 1, "static Spreadsheet page still in nav");
+      assert(await page.locator('[data-testid="nav-p-tasks"]').count() === 1, "static Tasks page still in nav");
+      // deep-linkable: a config page route resolves to its titled surface (reload lands on it)
+      await page.goto(URLBASE + "/#/p/allsites");
+      await page.waitForSelector('[data-testid="page-aggregate-allsites"]', { timeout: 12000 });
+      const title = await page.textContent(".nxPageBarTitle");
+      assert(title?.includes("All Sites"), `deep-link #/p/allsites lands on "All Sites" (got "${title}")`);
+    },
+  },
+  {
+    // free-surface flow — a standalone node graph over an in-memory store: seeded dense,
+    // layout-switchable, and hand-CREATE adds a node (proves the store adapter writes).
+    name: "page-flow-freesurface", feature: "Pages: free-surface flow",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/systemmap");
+      await page.waitForSelector('[data-testid="page-flow-systemmap"]', { timeout: 12000 });
+      await page.waitForSelector(".react-flow__node", { timeout: 10000 });
+      const before = await page.locator(".react-flow__node").count();
+      assert(before >= 15, `seeded graph is dense (${before} nodes ≥ 15)`);
+      assert(await page.locator('[data-testid="flow-layout-grid"]').count() === 1, "layout switcher offers Grid");
+      // hand-create through the in-memory store: the add button drops a node
+      await page.click('[data-testid="flow-add-node"]');
+      await page.waitForFunction((n) => document.querySelectorAll(".react-flow__node").length > n, before, { timeout: 6000 });
+      const after = await page.locator(".react-flow__node").count();
+      assert(after > before, `add-node writes to the page store (${before} → ${after})`);
+    },
+  },
+  {
+    // free-surface whiteboard — the full excalidraw canvas as a page, seeded + autosaving.
+    name: "page-whiteboard-freesurface", feature: "Pages: free-surface whiteboard",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/warroom");
+      await page.waitForSelector('[data-testid="page-whiteboard-warroom"]', { timeout: 12000 });
+      await page.waitForSelector(".excalidraw", { timeout: 12000 });
+      assert(await page.locator(".excalidraw canvas").count() >= 1, "the excalidraw canvas mounts as the page surface");
+      // the full tool set is surfaced (not a reduced embed) + the page reset affordance
+      assert(await page.locator('[data-testid="toolbar-rectangle"]').count() >= 1, "native drawing tools surfaced");
+      assert(await page.locator('[data-testid="wb-page-reset"]').count() === 1, "page reset affordance present");
+    },
+  },
+  {
+    // config-driven spreadsheet — kind:"spreadsheet" in config hosts the SAME full Univer
+    // workbook the static Spreadsheet page uses, under its own per-page store.
+    name: "page-spreadsheet-config", feature: "Pages: config-driven spreadsheet",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/scratch");
+      await page.waitForSelector('[data-testid="page-spreadsheet"]', { timeout: 12000 });
+      await page.waitForSelector('[data-testid="workbook-surface"] canvas, .nxWorkbook canvas', { timeout: 12000 });
+      assert(await page.locator("canvas").count() >= 1, "the Univer workbook renders on the config page");
+    },
+  },
+  {
+    // aggregate map — every record across the source object on ONE map.
+    name: "page-map-aggregate", feature: "Pages: aggregate map",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/allsites");
+      await page.waitForSelector('[data-testid="page-aggregate-allsites"]', { timeout: 12000 });
+      await page.waitForSelector("canvas", { timeout: 12000 });
+      const count = await page.textContent('[data-testid="aggregate-count"]');
+      assert(/\d+\s+across\s+Places/.test(count ?? ""), `aggregate count reads "N across Places" (got "${count}")`);
+      assert(await page.locator("canvas").count() >= 1, "the map surface renders the aggregated records");
+    },
+  },
+  {
+    // aggregate calendar (MULTI-source) — deals + sessions from TWO objects on one calendar.
+    name: "page-calendar-aggregate", feature: "Pages: aggregate calendar (multi-source)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/p/companycal");
+      await page.waitForSelector('[data-testid="page-aggregate-companycal"]', { timeout: 12000 });
+      const count = await page.textContent('[data-testid="aggregate-count"]');
+      assert(/across\s+Deals\s*\+\s*Sessions/.test(count ?? ""), `merges two objects — "across Deals + Sessions" (got "${count}")`);
+      await page.waitForSelector('[data-testid^="calendar-event-"]', { timeout: 12000 });
+      const events = await page.locator('[data-testid^="calendar-event-"]').count();
+      assert(events >= 8, `events from both objects render on one calendar (${events} ≥ 8)`);
+    },
+  },
 ];
 
 /* ---- generated journeys (scripts/generate.mjs journey <name>) ----

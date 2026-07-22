@@ -10,7 +10,7 @@ import {
 } from "../ui/components/ui/command";
 import { api, type AppConfig } from "./api";
 import { formatCell } from "../ui/record-core/DataTable";
-import { customPages } from "./pages";
+import { allNavPages } from "./pages";
 import { t } from "./i18n";
 import type { RecordRow } from "../ui/record-core/types";
 
@@ -157,16 +157,20 @@ export function CommandPalette({
             </CommandItem>
           ))}
         </CommandGroup>
-        {customPages.length > 0 && (
-          <CommandGroup heading={t("palette.pages")}>
-            {customPages.map((p) => (
-              <CommandItem key={p.key} value={`${p.label} page`} onSelect={() => jump(`#/p/${p.key}`)}>
-                <FileText />
-                <span>{p.label}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        )}
+        {(() => {
+          // customPages + config.pages[] as one Pages group, so ⌘K jumps to any page
+          const pages = allNavPages(config);
+          return pages.length > 0 ? (
+            <CommandGroup heading={t("palette.pages")}>
+              {pages.map((p) => (
+                <CommandItem key={p.key} value={`${p.label} page`} onSelect={() => jump(`#/p/${p.key}`)}>
+                  {p.icon ?? <FileText />}
+                  <span>{p.label}</span>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ) : null;
+        })()}
       </CommandList>
     </CommandDialog>
   );

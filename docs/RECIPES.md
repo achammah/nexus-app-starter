@@ -108,6 +108,26 @@ The built-in Spreadsheet page (`#/p/spreadsheet`) is the reference. For ANOTHER,
 
 Reuse: the block (nexus-ui `src/blocks/workbook`; barrel exports `WorkbookSurface` / `LazyWorkbookSurface` / `workbookStoreKey` / `isWorkbookSnapshot` / `seedWorkbook`) is what a future config-driven pages host renders as `kind:"spreadsheet"`. The record-bound variant (rows to records via the store patch path) is a documented seam, not built. A workflow or agent can produce a workbook by writing the same app_state key (`POST /api/state {key,value}`) with Univer's `IWorkbookData` shape.
 
+## Config-driven pages (`config.pages[]`) — a nav surface with ZERO code
+The pages primitive generalises the hand-written customPages (above) into DATA: declare a `pages[]` entry in `starter.config.json` and a full-fidelity nav surface appears — whiteboard, flow, spreadsheet, map or calendar — with **no app code** (the server passes `pages` straight through; the shell's generic host renders it). Whiteboard/flow/map/calendar exist BOTH as record-attached views AND, this way, as their own top-level pages.
+```json
+"pages": [
+  { "key": "warroom",  "label": "War Room",  "icon": "pen-tool",      "kind": "whiteboard" },
+  { "key": "systemmap","label": "System Map","icon": "workflow",      "kind": "flow" },
+  { "key": "scratch",  "label": "Scratch",   "icon": "table-2",       "kind": "spreadsheet" },
+  { "key": "allsites", "label": "All Sites", "icon": "map",           "kind": "map",      "source": "demo_places" },
+  { "key": "cal",      "label": "Calendar",  "icon": "calendar-days", "kind": "calendar", "source": ["deals","demo_calendar"],
+    "view": { "defaultView": "month", "enabledViews": ["month","week","listMonth"] } }
+]
+```
+Each entry becomes a nav item (sidebar · drawer · top bar), a `⌘K` palette entry, a breadcrumb, and a deep-linkable `#/p/<key>` route (reload/share land on it). Feature-gate one with `features["<key>"]: false` (same gate as the static pages). `icon` is a lucide name (kebab or Pascal — `pen-tool`/`PenTool`/`pentool` all resolve; unknown → the kind's default glyph); extend the curated set in `src/app/pageIcons.tsx`.
+
+**Two families:**
+- **Free-surface** (`whiteboard` · `flow` · `spreadsheet`) — own STORED content, not records. Each persists ONE document under a namespaced app-state key (the SpreadsheetPage data-spine pattern; external-writer-tolerant — one key per write): `wbpage:<key>` (an excalidraw scene), `flowpage:<key>` (a graph of nodes + a self-relation for edges) + `flowview:<key>` (its view-state), `workbook:<key>` (a Univer snapshot). A fresh page seeds a rich demo document, then autosaves; a "Reset" affordance re-seeds. The flow host feeds `FlowView` an in-memory record-store adapter (create nodes, draw edges, inline-rename, node-detail — the full view over stored content). Narrow the whiteboard's tools with a `whiteboard` config on the entry (same option set as the whiteboard FIELD — see "Add a whiteboard (canvas) field").
+- **Aggregate** (`map` · `calendar`, `source` = one object key OR an array to MERGE objects) — ALL records across the source object(s) on ONE surface, coloured by source when multiple. A SINGLE source reuses that object's own tuned view config (full editing, records open in the side-peek); MULTIPLE sources normalise onto canonical fields and colour by source (open routes to the real record; a reschedule/edit writes back through the real object). `view` carries any of the underlying view's config keys (basemaps, clustering, `enabledViews`, …). Create is off on an aggregate (which object would it target?) — the surface is view + open + edit; per-page view-state (basemap/zoom/layers/calView) persists to `pageview:<key>`.
+
+**Reuse, not rebuild:** the host (`src/app/pages/pageHost.tsx` → `ConfigPageHost`) resolves `kind` → the already-full-fidelity view/field component (`FlowView`, `WhiteboardCanvas`, `LazyWorkbookSurface`, `MapView`/`CalendarView` via the view registry), each a lazy chunk (an app with no such page pays ~0 eager bytes). The shell merges the two page lists via `allNavPages(config)` in `src/app/pages.tsx` — static `customPages` first, then `config.pages[]` — so nav/palette/breadcrumb/shortcuts can't drift. Everything is `--nx-*` token-styled (light + dark), frame-continuous with the shell (a `.nxPageBar` over a `.pageBleed` body), and mobile-by-construction (the burger drawer lists config pages; each view owns its touch surface).
+
 ## Add an activity kind (beyond call/email/meeting)
 1. `server/server.mjs` → extend the allowed-kind list in the `/activities` route.
 2. `src/ui/record-core/RecordPage.tsx` is the library copy — add the kind + icon in nexus-ui (`ACTIVITY_KINDS` + `evIcon`), then `npm run sync-ui`. Never edit `src/ui/` directly.

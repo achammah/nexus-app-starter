@@ -81,6 +81,26 @@
   display: flex; flex-direction: column; min-height: 0;
 }
 
+/* config-driven page chrome (config.pages[]): a slim bar (title + save state /
+   actions) over a canvas body that fills the rest — frame-continuous with the shell,
+   token-styled, light + dark. The hosted view/canvas owns its own pan/scroll. */
+.nxCanvasPage { overflow: hidden; }
+.nxPageBar {
+  display: flex; align-items: center; gap: var(--nx-gap-2); flex: none;
+  padding: 8px var(--nx-gap-4);
+  border-bottom: 1px solid var(--nx-border); background: var(--nx-bg);
+}
+.nxPageBarTitle { font: 650 14px/1.2 var(--nx-font-sans); letter-spacing: -0.01em; color: var(--nx-fg); }
+.nxPageBarMeta { font: var(--nx-text-meta); color: var(--nx-fg-faint); white-space: nowrap; }
+.nxCanvasPageBody { flex: 1; min-height: 0; min-width: 0; display: flex; flex-direction: column; position: relative; }
+.nxCanvasPageBody > * { flex: 1 1 auto; min-height: 0; min-width: 0; }
+.nxCanvasPageBody--scroll { overflow: auto; }
+.nxPageLoading {
+  flex: 1; min-height: 240px; display: flex; flex-direction: column; gap: 8px;
+  align-items: center; justify-content: center;
+  color: var(--nx-fg-faint); font: var(--nx-text-meta);
+}
+
 /* view switch (table / kanban) */
 .viewSwitch { display: inline-flex; background: var(--nx-bg-sunken); border: 1px solid var(--nx-border); border-radius: var(--nx-radius-s); padding: 2px; gap: 2px; }
 .viewSwitch button {

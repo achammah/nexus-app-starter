@@ -8,7 +8,8 @@ import { applySkin, type Skin } from "../ui/skins/skin";
 import { skinPresets } from "../ui/skins/presets";
 import { ObjectView } from "./ObjectView";
 import { RecordView } from "./RecordView";
-import { customPages } from "./pages";
+import { customPages, allNavPages, configPageFor } from "./pages";
+import { ConfigPageHost } from "./pages/pageHost";
 import { CommandPalette } from "./CommandPalette";
 import { PanelSearch, PanelActions } from "./PanelPages";
 import { t } from "./i18n";
@@ -366,7 +367,8 @@ export function App() {
           if (saved) applySkin(saved);
         }).catch(() => {});
         if (!route.object && !route.page && !/^#\/(reset|verify|delete|invite)\?/.test(window.location.hash)) {
-          route.go(c.objects[0] ? `#/o/${c.objects[0].key}` : customPages[0] ? `#/p/${customPages[0].key}` : "#/");
+          const firstPage = allNavPages(c)[0];
+          route.go(c.objects[0] ? `#/o/${c.objects[0].key}` : firstPage ? `#/p/${firstPage.key}` : "#/");
         }
         c.objects.forEach((o) => api.list(o.key).then((rows) => setCounts((m) => ({ ...m, [o.key]: rows.length }))).catch(() => {}));
       })
@@ -403,7 +405,10 @@ export function App() {
   /* ---- nav chrome: one knob (config app.nav), three surfaces (sidebar · top bar ·
      mobile drawer) sharing the same item/search renderers so they can't drift ---- */
   const navMode = config.app.nav ?? "side";
-  const visiblePages = customPages.filter((p) => (config.features as Record<string, boolean> | undefined)?.[p.key] !== false);
+  // static customPages + config.pages[] as ONE nav list (the generalization: a
+  // config.pages[] entry is a nav item with no code). Feature-gated identically.
+  const navPages = allNavPages(config);
+  const visiblePages = navPages.filter((p) => (config.features as Record<string, boolean> | undefined)?.[p.key] !== false);
   // every drawer path closes the drawer — including a click on the CURRENT object (no route change)
   const goNav = (h: string) => { route.go(h); setDrawerOpen(false); };
   const brand = (
@@ -540,7 +545,7 @@ export function App() {
       const mo = dest.match(/^#\/o\/([^/?]+)/);
       const mp = dest.match(/^#\/p\/([^/?]+)/);
       const label = mo ? (config.objects.find((o) => o.key === mo[1])?.label ?? mo[1])
-        : mp ? (customPages.find((p) => p.key === mp[1])?.label ?? mp[1])
+        : mp ? (navPages.find((p) => p.key === mp[1])?.label ?? mp[1])
         : dest;
       app.push({ keys: ["G", "then", k.toUpperCase()], label: `Go to ${label}` });
     }
@@ -694,7 +699,7 @@ export function App() {
           {navMode === "side" && (
             <header className="top">
               <span className="crumb">
-                <b>{route.page ? customPages.find((p) => p.key === route.page)?.label ?? route.page : active.label}</b>
+                <b>{route.page ? navPages.find((p) => p.key === route.page)?.label ?? route.page : active.label}</b>
                 {route.recordId && <span>/ record</span>}
               </span>
               {searchBox()}
@@ -707,8 +712,22 @@ export function App() {
           <main className="content">
             {route.page ? (
               (() => {
-                const P = customPages.find((p) => p.key === route.page)?.component;
-                return P ? <P /> : <div className="nxCard" style={{ padding: 32 }}>Unknown page.</div>;
+                // a hand-written customPage renders its component; a config.pages[]
+                // entry renders through the generic ConfigPageHost (keyed per page so
+                // navigating between two same-kind pages remounts cleanly)
+                const staticPage = customPages.find((p) => p.key === route.page);
+                if (staticPage) { const P = staticPage.component; return <P />; }
+                const cfgPage = configPageFor(config, route.page);
+                if (cfgPage) return (
+                  <ConfigPageHost
+                    key={cfgPage.key}
+                    page={cfgPage}
+                    config={config}
+                    openRecord={(obj, id) => openPeek(obj, id)}
+                    go={route.go}
+                  />
+                );
+                return <div className="nxCard" style={{ padding: 32 }}>Unknown page.</div>;
               })()
             ) : route.recordId ? (
               <RecordView
