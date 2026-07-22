@@ -4,22 +4,36 @@ The rules that are not obvious from reading one file, and the failure each one p
 
 ## Install + dependencies
 
-**Both install paths need `--force`.**
+**Every install needs a peer-resolution flag.**
 
 ```bash
-npm install --force     # first install
-npm ci --force          # from the committed lockfile
+npm ci --force               # from the committed lockfile (or --legacy-peer-deps)
+npm install --force          # first install / after changing package.json
 ```
 
-`@glideapps/glide-data-grid@6.0.3` (the Sheet view's engine) pins its peer to React ≤18
-but renders correctly on React 19. `--force` keeps npm's modern peer resolution so every
-glide/recharts peer still auto-installs. **`--legacy-peer-deps` does NOT work here** — it
-strips those peers and the build fails to resolve `react-is` / `react-responsive-carousel`.
+Measured against the committed manifest and lockfile, installing into an empty tree:
 
-A plain `npm ci` fails the same way (`ERESOLVE`, conflicting peer `react@18.3.1`) — the
-committed lockfile does not exempt it, so CI needs the flag too. If a shared npm cache is
-under concurrent use, an `EACCES`/`File exists` failure inside `_cacache` is contention,
-not a broken lockfile: retry with `--cache <a private dir>`.
+| Command | Result |
+|---|---|
+| `npm ci` | **fails** — `ERESOLVE`, conflicting peer `react@18.3.1` |
+| `npm ci --force` | succeeds; every runtime package present |
+| `npm ci --legacy-peer-deps` | succeeds; every runtime package present |
+
+`@glideapps/glide-data-grid@6.0.3` (the Sheet view's engine) pins its peer to React ≤18
+but renders correctly on React 19, so npm's default resolution refuses the tree and a
+flag is unavoidable. The committed lockfile does not exempt `npm ci`, so CI needs the flag
+too.
+
+Either flag works because the packages that used to arrive only as auto-installed PEERS
+(`react-is`, `rxjs`, `lodash`, `marked`, `react-responsive-carousel`) are now declared
+dependencies in their own right. That matters more than it looks: `--legacy-peer-deps`
+turns peer resolution OFF entirely, so anything reachable only as a peer silently
+disappears from the tree — a build that depended on it then fails on a clean clone while
+working for everyone who installed before the change. **Any package the app actually needs
+belongs in `dependencies`, never left to peer resolution.**
+
+If a shared npm cache is under concurrent use, an `EACCES`/`File exists` failure inside
+`_cacache` is contention, not a broken lockfile: retry with `--cache <a private dir>`.
 
 **A vendored block brings its own dependencies.** `npm run sync-ui` copies library SOURCE
 into `src/ui/`; it does NOT touch `package.json`. A block that imports an npm package needs
