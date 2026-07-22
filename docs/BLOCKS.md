@@ -218,9 +218,10 @@ z-order. A layout gives a fast start; elements give full freedom.
 | `SlideLayout` | `title` · `title-body` · `two-column` · `image` · `quote` · `section` · `blank` · `canvas` (no regions — pure free placement) |
 | `SlideTransition` | `none` · `fade` · `slide` · `zoom` |
 | `DeckThemeId` | `native` · `paper` · `midnight` · `accent` · `gradient` |
-| `ElementKind` | `text` · `shape` · `image` · `chart` · `table` |
+| `ElementKind` | `text` · `shape` · `image` · `chart` · `table` · `video` |
 | `ShapeKind` | `rect` · `roundRect` · `ellipse` · `triangle` · `arrow` · `line` · `star` · `callout` |
 | `ChartKind` | `bar` · `line` · `pie` · `area` · `scatter` |
+| `AnimEffect` | `none` · `fade` · `rise` · `pop` · `wipe` |
 
 Element geometry (`x/y/w/h`, `rot`, `locked`, `groupId`) is in a 1280×720 design box, so a
 slide renders identically as a thumbnail, on the canvas, in present mode and in an export.
@@ -273,12 +274,26 @@ A `DataRoom` is an ordered grouping shared as one set. Items are either `this-de
 `link` — a reference by title and href — because a snapshot owns only its own deck;
 resolving a pointer to another page is the host's seam.
 
+### Deck master, templates and animation
+
+`deck.master` (`DeckMaster`) is deck-level defaults layered over the theme: heading and body
+font stacks, palette overrides (`bg`/`fg`/`accent`/`muted`), a logo with a corner position and
+design-px size, and a footer line with optional slide numbers. It applies as slide-scoped CSS
+custom properties, so the filmstrip, canvas, present stage, viewer and PDF export all pick it
+up without each renderer knowing about it.
+
+`deck.templates` (`SlideTemplate[]`) are user-saved slides — id-less, cloned under fresh ids on
+insert — offered from the New-slide menu. They are per-deck by design, not a shared library.
+
+Each element may carry an entrance animation (`anim.effect`: `fade` · `rise` · `pop` · `wipe`,
+or `none`). It plays when the slide ENTERS in present mode or the shared viewer, never while
+editing; ordering follows array order, each step staggering after the previous.
+
 ### Limits
 
-Element-level ANIMATION and slide MASTERS/templates are not in the model: slides carry a
-`transition`, and there is no per-element animation or master-slide inheritance. Both are
-also on the not-read side of PPTX import, so a deck that uses them imports without them
-and says so in its warnings.
+PPTX import does not read masters, placeholder geometry inheritance or animations, so a deck
+built on those imports without them — reported in `warnings`, never silently dropped. Templates
+are per-deck, so a slide library does not travel between decks.
 
 ## `esign` — an e-signature envelope
 
