@@ -20,6 +20,17 @@ Start at `AGENTS.md` in the repo root (the front door), then come here.
 | add or judge a dependency | `DEPENDENCIES.md` — every package, why, weight, load strategy |
 | ship for real | `PRODUCTION_CHECKLIST.md` |
 
+## Folder docs — the mechanism layer
+
+Each folder that owns a mechanism carries its own `README.md`, written to one shape:
+**`DOC-CONTRACT.md`**. Those docs answer "how does this work and how do I change it";
+the files above answer "what do I pass it and what must I know before shipping".
+
+They live with the code (`src/ui/blocks/<block>/README.md`,
+`src/ui/record-core/views/<view>/README.md`, `server/README.md`) so they are edited in the
+same commit as the thing they describe — and because `npm run sync-ui` copies `src/`
+wholesale, a library folder's doc arrives in this app automatically.
+
 ## The four gate artifacts
 
 The deploy gate reads these; they belong to the app YOU build, not to the template.
