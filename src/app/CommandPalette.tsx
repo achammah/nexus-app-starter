@@ -8,20 +8,22 @@ import {
   CommandItem,
   CommandList,
 } from "../ui/components/ui/command";
-import { api, type AppConfig } from "./api";
-import { formatCell } from "../ui/record-core/DataTable";
+import { type AppConfig } from "./api";
 import { allNavPages } from "./pages";
 import { t } from "./i18n";
-import type { RecordRow } from "../ui/record-core/types";
+import { useRecordSearch } from "./useGlobalSearch";
 
-/* ⌘K / Ctrl-K palette — jump to any object, page, or RECORD (live search across
-   every configured object). The vendored shadcn command (cmdk) is the surface. */
+/* THE unified search surface — ⌘K, and the top-bar search field opens it too.
+   Searches RECORDS across every configured object plus the whole nav taxonomy
+   (objects and pages, including config-declared document/map pages). The
+   vendored shadcn command (cmdk) is the chrome. */
 
 export function CommandPalette({
   config,
   go,
   actions = [],
   intercept,
+  openSignal,
 }: {
   config: AppConfig;
   go: (hash: string) => void;
@@ -31,10 +33,12 @@ export function CommandPalette({
      yields); closed → intercept() true = another surface (the side panel) owns this
      Cmd/Ctrl+K and the palette stays closed */
   intercept?: () => boolean;
+  /* external open request (the top-bar search): a NEW object each time, carrying an
+     optional seed query so the first typed character isn't lost */
+  openSignal?: { seed: string } | null;
 }) {
   const [open, setOpen] = React.useState(false);
   const [q, setQ] = React.useState("");
-  const [hits, setHits] = React.useState<{ obj: string; row: RecordRow; name: string }[]>([]);
   // refs so the mount-once key listener sees live values without re-subscribing
   const openRef = React.useRef(open);
   openRef.current = open;
@@ -54,31 +58,14 @@ export function CommandPalette({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // the top bar (and anything else) opens the palette through this signal
   React.useEffect(() => {
-    if (!open || q.trim().length < 2) {
-      setHits([]);
-      return;
-    }
-    let live = true;
-    const timer = setTimeout(async () => {
-      const per = await Promise.all(
-        config.objects.map(async (o) => {
-          const primary = o.fields.find((f) => f.primary) ?? o.fields[0];
-          try {
-            const rows = await api.list(o.key, { q: q.trim() });
-            return rows.slice(0, 5).map((row) => ({ obj: o.key, row, name: formatCell(row[primary.key], primary.type) || String(row.id) }));
-          } catch {
-            return [];
-          }
-        }),
-      );
-      if (live) setHits(per.flat().slice(0, 12));
-    }, 180);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-    };
-  }, [q, open, config.objects]);
+    if (!openSignal) return;
+    setQ(openSignal.seed);
+    setOpen(true);
+  }, [openSignal]);
+
+  const hits = useRecordSearch(config, q, open);
 
   const jump = (hash: string) => {
     setOpen(false);

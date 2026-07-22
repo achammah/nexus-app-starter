@@ -4,7 +4,9 @@
 
 const dicts = {
   en: {
-    "palette.placeholder": "Jump to a record, object, or page…",
+    "palette.placeholder": "Search everything…",
+    "palette.hint": "Records, pages and objects — everywhere in the app",
+    "search.everything": "Search everything…",
     "palette.records": "Records",
     "palette.objects": "Objects",
     "palette.pages": "Pages",

@@ -204,6 +204,33 @@ const journeys = [
     },
   },
   {
+    name: "unified-search", feature: "Unified search (chrome)",
+    async run(page) {
+      await page.goto(URLBASE + "/#/o/companies");
+      await page.waitForSelector('[data-testid="nav"]');
+      // the chrome search is GLOBAL, never scoped to the active object
+      const label = await page.textContent('[data-testid="global-search"]');
+      assert(!/compan/i.test(label ?? ""), `top-bar search is not object-scoped (${label})`);
+      // it opens the one unified palette, seeded by the character typed into it
+      await page.focus('[data-testid="global-search"]');
+      await page.keyboard.press("s");
+      await page.waitForSelector('[data-testid="palette-input"]', { timeout: 5000 });
+      assert((await page.inputValue('[data-testid="palette-input"]')) === "s", "the first typed character seeds the palette");
+      // one query reaches RECORDS across objects AND the page taxonomy
+      await page.fill('[data-testid="palette-input"]', "site");
+      await page.waitForFunction(
+        () => document.querySelectorAll('[data-testid^="palette-hit-"]').length > 0,
+        null, { timeout: 8000 },
+      );
+      const groups = await page.$$eval('[cmdk-group]:not([hidden]) [cmdk-group-heading]', (els) => els.map((e) => e.textContent?.trim()));
+      assert(groups.includes("Records"), `records group present (${groups.join("|")})`);
+      assert(groups.includes("Pages"), `pages group present (${groups.join("|")})`);
+      // per-LIST filtering still has its own field behind the palette
+      await page.keyboard.press("Escape");
+      await page.waitForSelector('[data-testid="list-search"]');
+    },
+  },
+  {
     name: "views-persist", feature: "Saved view (filter+view persist)",
     async run(page) {
       await page.goto(URLBASE + "/#/o/people");

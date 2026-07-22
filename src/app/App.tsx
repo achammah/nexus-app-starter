@@ -1,5 +1,5 @@
 import * as React from "react";
-import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, RefreshCw, Sun, Users, X, Zap, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Building2, ChevronLeft, ChevronRight, Handshake, LayoutGrid, Maximize2, Menu, Moon, RefreshCw, Search, Sun, Users, X, Zap, Sparkles } from "lucide-react";
 import { api, type AppConfig } from "./api";
 import { favList, favToggle, type Fav } from "./favorites";
 import { formatCell } from "../ui/record-core/DataTable";
@@ -134,6 +134,8 @@ export function App() {
   }, []);
   // mobile nav drawer: burger (≤768px, both nav modes) opens a left Sheet
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  // an open REQUEST for the unified palette (new object each time; carries a seed char)
+  const [paletteSignal, setPaletteSignal] = React.useState<{ seed: string } | null>(null);
   // copilot side-panel (renders only when config.copilot is present)
   const [copilotOpen, setCopilotOpen] = React.useState(false);
   // keyboard-shortcuts help overlay (toggled by `?`)
@@ -431,24 +433,34 @@ export function App() {
       <Menu size={16} />
     </button>
   );
-  // the drawer search mirrors the topbar exactly: go to the active object's LIST first,
-  // THEN dispatch — a bare event dispatch does nothing visible from a record/custom page
+  /* The chrome search is GLOBAL, not a per-view filter: it opens the ⌘K palette,
+     which searches records across every object plus every page and object. One
+     unified surface, one implementation — per-LIST filtering keeps its own field
+     in the list view's FilterBar (`list-search`), where it belongs. Typing a
+     printable character straight into the trigger seeds the palette, so it still
+     behaves like a search field. */
   const searchBox = (inDrawer?: boolean) => (
-    <label className={inDrawer ? "topSearch drawerSearch" : "topSearch"} data-testid={inDrawer ? undefined : "global-search"}>
-      <input
-        placeholder={`Search ${active.label.toLowerCase()}…`}
-        data-testid={inDrawer ? "drawer-search" : undefined}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") {
-            const v = (e.target as HTMLInputElement).value;
-            route.go(`#/o/${active.key}`);
-            window.dispatchEvent(new CustomEvent("nx-search", { detail: v }));
-            if (inDrawer) setDrawerOpen(false);
-          }
-        }}
-      />
+    <button
+      type="button"
+      className={inDrawer ? "topSearch drawerSearch" : "topSearch"}
+      data-testid={inDrawer ? "drawer-search" : "global-search"}
+      aria-label={t("search.everything")}
+      onClick={() => {
+        setPaletteSignal({ seed: "" });
+        if (inDrawer) setDrawerOpen(false);
+      }}
+      onKeyDown={(e) => {
+        // Enter/Space keep their native button activation; any other printable seeds
+        if (e.key.length !== 1 || e.key === " " || e.metaKey || e.ctrlKey || e.altKey) return;
+        e.preventDefault();
+        setPaletteSignal({ seed: e.key });
+        if (inDrawer) setDrawerOpen(false);
+      }}
+    >
+      <Search size={14} className="topSearchIcon" />
+      <span className="topSearchLabel">{t("search.everything")}</span>
       {!inDrawer && <span className="kbd">⌘K</span>}
-    </label>
+    </button>
   );
   // Records (data objects) and Pages (config.pages[] + static customPages) are
   // DIFFERENT taxonomies, so each nav surface renders them under its own header —
@@ -854,6 +866,7 @@ export function App() {
                     q={panelQ}
                     onQ={setPanelQ}
                     onOpen={(obj, id) => pushPeek(obj, id)}
+                    onGo={(hash) => { setPeek(null); route.go(hash); }}
                     onPop={popPeek}
                   />
                 ) : (
@@ -977,7 +990,7 @@ export function App() {
           </SheetContent>
         </Sheet>
 
-        <CommandPalette config={config} go={route.go} actions={contextActions} intercept={paletteIntercept} />
+        <CommandPalette config={config} go={route.go} actions={contextActions} intercept={paletteIntercept} openSignal={paletteSignal} />
         {/* copilot supersedes the iframe ChatDock; ChatDock is the fallback when the
             copilot block is absent but a chat.embedUrl is configured */}
         {config.copilot
