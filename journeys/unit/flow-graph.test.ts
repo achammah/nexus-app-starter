@@ -8,13 +8,18 @@ import assert from "node:assert/strict";
 import {
   buildGraph,
   cardMetaFields,
+  groupValueOf,
   positionsFor,
   positionsPatch,
   relationFields,
   resolveLabelField,
   resolveRelation,
+  secondarySelfEdges,
+  sizesFor,
+  sizesPatch,
+  UNGROUPED,
 } from "../../src/ui/record-core/views/flow/graph.ts";
-import { bfsGrid, DAGRE_MAX_NODES, layoutGraph } from "../../src/ui/record-core/views/flow/layout.ts";
+import { bfsGrid, DAGRE_MAX_NODES, forceLayout, gridLayout, layoutGraph } from "../../src/ui/record-core/views/flow/layout.ts";
 
 const tasksObj = {
   key: "tasks", label: "Tasks", labelOne: "Task", defaultView: "flow",
@@ -149,4 +154,51 @@ test("layout strategy switches past the measured dagre cutoff", () => {
   const ms = Date.now() - t0;
   assert.equal(Object.keys(pos).length, many.length);
   assert.ok(ms < 1000, `past the cutoff the BFS grid stays fast (${ms}ms)`);
+});
+
+test("layoutGraph dispatches on mode: grid + force position every node, deterministically", () => {
+  const nodes = ["a", "b", "c", "d", "e"].map((id) => ({ kind: "record" as const, id, row: { id } }));
+  const edges = [{ id: "e1", source: "a", target: "b" }, { id: "e2", source: "b", target: "c" }];
+  const grid = layoutGraph(nodes, edges, "grid");
+  assert.equal(Object.keys(grid).length, 5, "grid positions every node");
+  assert.deepEqual(grid, gridLayout(nodes), "grid mode routes to gridLayout");
+  const f1 = layoutGraph(nodes, edges, "force");
+  const f2 = layoutGraph(nodes, edges, "force");
+  assert.equal(Object.keys(f1).length, 5, "force positions every node");
+  assert.deepEqual(f1, f2, "force is deterministic (seeded) — same input, same layout");
+  // connected a–b–c settle nearer each other than to the disconnected island e
+  const d = (p, q) => Math.hypot(p.x - q.x, p.y - q.y);
+  assert.ok(d(f1.a, f1.b) < d(f1.a, f1.e) * 2, "force pulls linked nodes together");
+});
+
+test("forceLayout handles the degenerate sizes without NaN", () => {
+  assert.deepEqual(forceLayout([], []), {});
+  assert.deepEqual(forceLayout([{ kind: "record", id: "solo", row: { id: "solo" } }], []), { solo: { x: 0, y: 0 } });
+});
+
+test("secondarySelfEdges: record→record only, tagged secondary, outside-set skipped", () => {
+  const rows = [
+    { id: "a", name: "A" },
+    { id: "b", name: "B", teamedWith: ["A"], _refs: { teamedWith: ["a"] } },
+    { id: "c", name: "C", teamedWith: ["A", "gone", "C"], _refs: { teamedWith: ["a", "zz", "c"] } },
+  ];
+  const obj = { ...tasksObj, fields: [...tasksObj.fields, { key: "teamedWith", label: "Teamed with", type: "relation", relation: "tasks", multiple: true }] };
+  const nodeIds = new Set(["a", "b", "c"]);
+  const edges = secondarySelfEdges(obj, rows, "teamedWith", nodeIds);
+  assert.deepEqual(edges.map((e) => `${e.source}>${e.target}`).sort(), ["a>b", "a>c"]); // "gone" outside set, "c>c" self-loop skipped
+  assert.ok(edges.every((e) => e.kind === "secondary"), "every secondary edge is tagged");
+});
+
+test("groupValueOf: the field value, else the ungrouped bucket", () => {
+  const f = { key: "status", label: "Status", type: "select" };
+  assert.equal(groupValueOf({ id: "1", status: "Done" }, f), "Done");
+  assert.equal(groupValueOf({ id: "2" }, f), UNGROUPED);
+  assert.equal(groupValueOf({ id: "3", status: "" }, f), UNGROUPED);
+});
+
+test("node sizes persist per relation and merge per node", () => {
+  const s1 = sizesPatch({}, "dependsOn", { a: { width: 300, height: 90 } });
+  const s2 = { ...s1, ...sizesPatch(s1, "dependsOn", { b: { width: 260, height: 70 } }) };
+  assert.deepEqual(sizesFor(s2, "dependsOn"), { a: { width: 300, height: 90 }, b: { width: 260, height: 70 } });
+  assert.deepEqual(sizesFor({}, "dependsOn"), {});
 });

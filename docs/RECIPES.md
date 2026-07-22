@@ -188,11 +188,39 @@ Records render as draggable cards on a pan/zoom canvas (minimap + zoom controls)
   ] }
 ```
 
-Config keys on the `views` entry: `relationField` (which relation draws the edges; default = the object's first relation field) · `labelField` (the card title; default = the primary field). A missing/invalid relation renders a plain-language chip in place of the view. The card's meta line shows the first 2 non-primary fields (selects as colored chips), excluding the active relation.
+Every capability is config-declared with a working default (so the view works out of the box) and overridable (so a client tailors it). Config keys on the `views` entry:
 
-Runtime behavior: with 2+ relation fields a "via" picker appears beside the view switcher and re-draws the graph per relation (persisted per object, captured by saved views). Dragging arranges nodes; only dragged positions persist (per relation), un-dragged nodes re-run the auto layout — dagre ranks up to 2,000 nodes, an O(V+E) BFS-rank grid beyond that, and the canvas windows its DOM (`onlyRenderVisibleElements`), so 10k-row objects stay usable. Rows arriving from filters, searches, or external writers re-derive the graph live.
+| Group | Key | Effect (default) |
+|---|---|---|
+| Edges | `relationField` | the relation drawing edges (first relation field) |
+| | `secondaryRelationField` | a second self-relation drawn as a distinct dashed edge type (none) |
+| | `edgeStyle` | `smoothstep` · `bezier` · `straight` · `step` (default per layout: elbow for hierarchy, straight direct lines for force/grid) |
+| | `edgeLabels` | show the relation label on edges (`false`) |
+| | `animated` | animated flow-along edges (`false`; edges read as solid — the graph-change transition animates regardless) |
+| Nodes | `labelField` | the card title (the primary field) |
+| | `nodeColorField` | a select field tinting each node by its option color (the stage/first select) |
+| | `nodeShapeField` | a select field giving nodes per-value shapes: rounded · rectangle · pill · diamond · hexagon (none) |
+| | `detailFields` | array of field keys shown in the click-a-node panel (every active field) |
+| Layout | `enabledLayouts` | which of `hierarchical` · `force` · `grid` the switcher offers (all three) |
+| | `defaultLayout` | the initial layout (`hierarchical`) |
+| | `groupField` | a select field folding records into collapsible subflows (none) |
+| | `collapsibleGroups` | allow group collapse/expand (`true`) |
+| Interaction | `handEdit` | inline rename + resize + hand-create (`true`) |
+| | `edgeDraw` | drag-between-records-to-relate (`true`; self-relations only) |
+| | `nodeDetail` | click opens the detail panel (`true`; else click opens the record directly) |
 
-Scope note: the flow view is records-as-graph. A workflow-builder canvas (node palettes, per-node config drawers, executable runs, edge drawing) is future work and deliberately out of this view's scope — the canvas never mutates records, draws connections, or deletes nodes.
+```jsonc
+// an org chart: reportsTo hierarchy + a collaboratesWith dependency web, colored
+// by department, shaped by level, groupable into department subflows
+{ "type": "flow",
+  "relationField": "reportsTo", "secondaryRelationField": "collaboratesWith",
+  "nodeColorField": "department", "nodeShapeField": "level", "groupField": "department",
+  "enabledLayouts": ["hierarchical", "force", "grid"], "defaultLayout": "hierarchical" }
+```
+
+Runtime behavior. The on-canvas toolbar switches layout (hierarchy = dagre ranks, force = a dependency-free spring simulation, grid = a packed lattice), toggles grouping, and searches — a query dims non-matches and Enter focuses the viewport on the match. Fit-to-selection frames the selected nodes. With 2+ relation fields a "via" picker beside the view switcher re-draws the graph per relation. Clicking a node opens a detail panel with its configured fields as typed inline editors (edits commit through the record store) plus Open / Delete actions; double-clicking a card renames it in place. When `edgeDraw` is on and the active relation is a self-relation, hovering a node reveals connect handles — dragging from one record to another writes the relation. Hand-create adds a record through the host's create dialog. Dragging arranges nodes and resizing changes their size; both persist per relation (un-dragged nodes re-run the auto layout). All node/edge/panel/toolbar chrome is `--nx-*` themed and re-derives on theme or skin change; a 390px layout swaps the detail panel for a bottom sheet. Layouts scale (dagre to 2,000 nodes, a BFS-rank grid beyond) and the canvas windows its DOM (`onlyRenderVisibleElements`), so 10k-row objects stay usable. Rows arriving from filters, searches, or external writers re-derive the graph live.
+
+Scope note: the flow view is records-as-graph — it reads and mutates records (inline edits, drawn relations, create, delete) but is not a workflow-builder canvas: no node palettes, per-node config drawers, or executable runs (that is the platform's workflow builder).
 
 ## Add a full-fidelity calendar to an object
 
