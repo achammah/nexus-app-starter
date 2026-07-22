@@ -112,6 +112,10 @@ Rules that keep the suite trustworthy:
   and restore or destroy it afterwards. A journey must leave the seed state it found.
 - **Do not hardcode row counts** when earlier journeys mutate the same object — assert
   narrowing and correctness instead (`before > after && every row matches`).
+- **Assert responsive behaviour by computed style, not by class name.** A surface can be
+  restyled wholesale by a media query — the map's basemap panel is a dropdown on desktop
+  and a bottom sheet under 768px, under the SAME class. `getComputedStyle(el).position` at
+  the target width tells you which; the selector name cannot.
 - **Know the surface's rendering mode.** A GL-rendered surface may have no DOM node to
   select: with clustering on, map records are points in the `map-point` GL layer, not
   `[data-testid^="map-marker-"]` elements. Assert on the container's mirrored state

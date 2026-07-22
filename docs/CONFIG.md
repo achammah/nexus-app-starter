@@ -427,12 +427,20 @@ twist to rotate, sideways two-finger drag to pan. Pitch is clamped to `maxPitch`
 camera never drops under the horizon. All of it works in flat and globe alike — tilting a
 globe orbits the planet.
 
-**Mobile.** The directions panel is a true bottom sheet — drag grip, peek/half/full snap
-points, and the route alternatives pinned into the always-visible peek region so they are
-reachable one-handed. The legend collapses to a chip that expands on tap (it would
-otherwise eat a large share of a phone screen) and gets out of the way while the sheet is
-open. Tilt and twist-rotate work by touch, tool buttons are 44px targets, and the basemap
-panel is constrained to the viewport so nothing overflows horizontally.
+**Mobile.** Both panel families become real bottom sheets on a portrait phone. The
+directions panel has a drag grip and peek/half/full snap points, with route alternatives
+pinned into the always-visible peek region so they are reachable one-handed; its snaps
+size against the MAP CONTAINER rather than the viewport, because `dvh`-sized snaps
+overflow it and push the handle off-screen. The basemap/layers and projection panels
+switch from a dropdown anchored under their trigger to a fixed, bottom-anchored, full-width
+sheet with its own grip, a three-up swatch grid and full-width control rows. The legend
+collapses to a chip that expands on tap — it would otherwise eat a large share of the
+screen — and stays clear while a sheet is open. Touch targets are 44px, including marker
+popup actions.
+
+Touch gestures: a two-finger drag tilts, a two-finger TWIST rotates, and a parallel
+two-finger sideways drag PANS — that last one is correct maplibre behaviour, and testing
+it as a rotation is how a rotation check passes without proving anything.
 
 #### Known limits — read before extending or filing a bug
 
@@ -450,7 +458,7 @@ not real, the surface says so.
 | **Default relief is RASTER hillshade, not a mesh** | a pre-rendered image — the ground stays flat under it. A true mesh needs a DEM host the CSP allows | set `terrainDemUrl` (terrarium raster-dem tiles). Relief is only visible where there IS relief — test over real terrain before concluding it is broken |
 | **Transit and live traffic are absent** | both need a keyed vendor or a non-allow-listed host | documented seams, off by default, never faked |
 | **A basemap switch is a soft dip, not a crossfade** | a true frame-to-frame crossfade needs an untyped escape hatch in react-map-gl v8 | accepted — the blur/opacity dip removes the hard flip |
-| **The basemap/layers picker is a panel, not a sheet** | on a phone it is width-constrained to the viewport rather than bottom-anchored with a drag grip like the directions sheet | fine as-is; give it the sheet treatment if one-handed reach matters for your users |
+| **The sheet treatment is portrait-phone only** | the panels become bottom sheets under a 768px breakpoint, so a LANDSCAPE phone (844×390) exceeds it and gets the desktop dropdown instead — which fits and does not overflow, but is not the one-handed layout | raise the breakpoint, or gate on orientation rather than width, if landscape phones matter to your users |
 
 **Rendering mode matters for tests.** With the default clustering, a dense object renders
 as GL clusters at every zoom, so individual records are GL points rather than DOM pins —
