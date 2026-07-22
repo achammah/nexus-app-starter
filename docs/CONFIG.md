@@ -236,7 +236,7 @@ range selection, TSV clipboard, frozen primary column, keyboard nav). Lazy chunk
 | `sections` | `[{label, fields: []}]` — labeled groups; supersedes `fields` | none |
 | `requiredOverrides` | `{fieldKey: true\|false}` | primary-only |
 | `requiredWhen` | `{fieldKey: {field, equals}}` — required when a trigger field equals a value | none |
-| `submitLabel` | string | "Create" |
+| `submitLabel` | string | `Create <labelOne lowercased>` |
 | `successMode` | `"another"` \| `"view"` | `another` |
 
 ### `flow` — Flow (node graph)
@@ -251,12 +251,12 @@ range selection, TSV clipboard, frozen primary column, keyboard nav). Lazy chunk
 | `enabledLayouts` | subset of `hierarchical` `force` `grid` | all three |
 | `defaultLayout` | one of the above | the first enabled |
 | `edgeStyle` | `smoothstep` \| `bezier` \| `straight` \| `step` | per layout: `smoothstep` for hierarchy, `straight` for force/grid |
-| `edgeLabels` | boolean | — |
-| `animated` | boolean | — |
-| `handEdit` | boolean — inline edit + resize + create | — |
-| `edgeDraw` | boolean — draw an edge to relate two records | — |
-| `nodeDetail` | boolean — node detail panel | — |
-| `collapsibleGroups` | boolean | — |
+| `edgeLabels` | boolean — draw the relation label on each edge | `false` |
+| `animated` | boolean | `false` |
+| `handEdit` | boolean — inline edit + resize + create | `true` |
+| `edgeDraw` | boolean — draw an edge to relate two records | `true` |
+| `nodeDetail` | boolean — node detail panel | `true` |
+| `collapsibleGroups` | boolean | `true` |
 
 A self-relation draws record→child edges; a cross-object relation draws labeled target
 hubs. Dragged node positions persist. Lazy chunk.
@@ -273,11 +273,15 @@ hubs. Dragged node positions persist. Lazy chunk.
 | `defaultView` | one of the above | the first enabled |
 | `editable` | boolean — drag to reschedule / resize | on |
 | `selectable` | boolean — drag-select creates a prefilled range | on |
-| `firstDay` | `Sunday` … `Saturday` | — |
-| `slotDuration` | `"15m"` \| `"30m"` \| `"60m"` | — |
-| `snapDuration` | `"5m"` \| `"10m"` \| `"15m"` \| `"30m"` | — |
-| `slotMinTime` / `slotMaxTime` / `scrollTime` | `"HH:MM"` | — |
-| `allDaySlot` · `weekNumbers` · `businessHours` · `nowIndicator` · `eventOverlap` | boolean | — |
+| `firstDay` | `Sunday` … `Saturday` | `Monday` |
+| `slotDuration` | `"15m"` \| `"30m"` \| `"60m"` | `30m` |
+| `snapDuration` | `"5m"` \| `"10m"` \| `"15m"` \| `"30m"` | `15m` (finer than the slot grid) |
+| `slotMinTime` / `slotMaxTime` / `scrollTime` | `"HH:MM"` | `00:00` / `24:00` / `08:00` |
+| `allDaySlot` | boolean | `true` |
+| `weekNumbers` | boolean | `false` |
+| `businessHours` | boolean — shades Mon–Fri 09:00–17:00 | `false` |
+| `nowIndicator` | boolean | `true` |
+| `eventOverlap` | boolean | `true` |
 
 `week`/`day` resolve against the object's all-day-ness: a `date` object takes the
 day-grid, a `dateTime` object the hourly time-grid. View state persists the active
@@ -304,7 +308,9 @@ view and the visible anchor date. Lazy chunk.
 | `geocode` | boolean — address search | `true` |
 | `route` | boolean — directions between two records | `true` |
 | `addPoint` | boolean — click the map to open a seeded create dialog | `true` |
-| `scaleControl` · `geolocateControl` · `fullscreenControl` | boolean | — |
+| `scaleControl` | boolean | `true` |
+| `geolocateControl` | boolean | `false` |
+| `fullscreenControl` | boolean | `true` |
 | `geocodeEndpoint` / `routeEndpoint` | URL string | unset → the offline mock provider |
 
 Basemap ids come from `src/ui/record-core/views/map/basemaps.ts`. Lazy chunk plus a
