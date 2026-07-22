@@ -123,11 +123,11 @@ core (store key, snapshot validation, the seed generators), and the engine mount
 
 | Chunk | When it loads | min | gzip |
 |---|---|---|---|
-| WorkbookSurface (Univer engine plus sheets UI, `WorkbookSurface-*.js`) | first navigation to `#/p/spreadsheet` (or any mount of the block) | 5,449.43 kB | 1,515.79 kB |
+| WorkbookSurface (Univer engine plus sheets UI, `WorkbookSurface-*.js`) | first navigation to `#/p/spreadsheet` (or any mount of the block) | 5,449.43 kB | 1,516.42 kB |
 | Univer design CSS (`WorkbookSurface-*.css`) | with the engine chunk | 86.86 kB | 13.57 kB |
 | per-language locale data | on demand, only the active locale loads | code-split | code-split |
 
-The workbook chunk exceeds the 250 KB lazy cap about 6x. It is a documented exception, like excalidraw: a full 400+ function formula engine plus a canvas render engine is irreducible for a real spreadsheet, and it loads only on navigation to the Spreadsheet page. The hard budget (eager/main +≤2%) holds: the eager main chunk measures 388.02 kB gzip after the native-chrome pass (below the 395.60 kB recorded at the page's merge; the deep theming is CSS custom-property tables + a theme-object derivation riding the lazy chunk, so it costs the eager bundle nothing). Pinned exact at 0.25.1 (the pre-1.0 line ships breaking changes on minors).
+The workbook chunk exceeds the 250 KB lazy cap about 6x. It is a documented exception, like excalidraw: a full 400+ function formula engine plus a canvas render engine is irreducible for a real spreadsheet, and it loads only on navigation to the Spreadsheet page. The hard budget (eager/main +≤2%) holds: the eager main chunk measures 388.18 kB gzip after the native-chrome + grid-canvas passes (below the 395.60 kB recorded at the page's merge; the deep theming is CSS custom-property tables + a theme-object derivation riding the lazy chunk, so it costs the eager bundle nothing). Pinned exact at 0.25.1 (the pre-1.0 line ships breaking changes on minors).
 
 ## Adapted-source provenance
 
